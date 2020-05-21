@@ -15,7 +15,7 @@ trait ConfigurationReader {
   def collectionOfPrimValues[T](key: String, primType: ConfigurationReader.PrimitiveType[T]): Seq[T]
   def collectionOfEncodedValues[T](key: String, mapper: String => T): Seq[T]
   def collectionOfComposites[T](key: String, reader: ConfigurationReader => T): Seq[T]
-  def polymorphicColl[T](key: String, reader: (String, ConfigurationReader) => T): Seq[T]
+  def collectionOfTypeTaggedComposites[T](key: String, reader: (String, ConfigurationReader) => T): Seq[T]
   def subconfig(path: String): ConfigurationReader
 
   lazy val asOptional: ConfigSyntaxSugarWithEverythingAsOptional = new ConfigSyntaxSugarWithEverythingAsOptional {
@@ -48,7 +48,7 @@ trait ConfigurationReader {
     }
 
     override def collectionOfTypeTaggedComposites[T](key: String, reader: (String, ConfigurationReader) => T): Option[Seq[T]] = evaluateAndReactToMissingValue {
-      self.polymorphicColl(key, reader)
+      self.collectionOfTypeTaggedComposites(key, reader)
     }
   }
 

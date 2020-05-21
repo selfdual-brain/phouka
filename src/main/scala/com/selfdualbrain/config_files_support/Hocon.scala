@@ -52,7 +52,7 @@ class Hocon(typesafeConfig: com.typesafe.config.Config) extends ConfigurationRea
 
   override def collectionOfComposites[T](key: String, reader: ConfigurationReader => T): Seq[T] = ??? //todo
 
-  override def polymorphicColl[T](key: String, reader: (String, ConfigurationReader) => T): Seq[T] = ??? //todo
+  override def collectionOfTypeTaggedComposites[T](key: String, reader: (String, ConfigurationReader) => T): Seq[T] = ??? //todo
 
   override def subconfig(path: String): ConfigurationReader = new Hocon(typesafeConfig.getObject(path).toConfig)
 

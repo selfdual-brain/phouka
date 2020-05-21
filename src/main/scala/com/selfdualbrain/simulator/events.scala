@@ -1,5 +1,7 @@
 package com.selfdualbrain.simulator
 
+import com.selfdualbrain.blockchain.{Ballot, Block}
+
 sealed trait NodeEventPayload
 object NodeEventPayload {
   case class BlockDelivered(block: Block) extends NodeEventPayload

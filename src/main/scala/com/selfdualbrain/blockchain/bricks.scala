@@ -1,34 +1,54 @@
 package com.selfdualbrain.blockchain
 
+import com.selfdualbrain.time.SimTimepoint
+
+//any vertex in the dag
 trait Brick {
   def id: BrickId
   def timepoint: SimTimepoint
-  def justifications: Seq[BlockdagVertex]
-  def explicitJustifications: Seq[BlockdagVertex]
+  def jDagLevel: Int
+}
+
+//vertex created by a validator
+trait Vote extends Brick {
   def creator: ValidatorId
-  def prevMsg: Option[Vote]
-
-
-  val jDagLevel: Int = if (justifications.isEmpty) 0 else justifications.map(j => j.jDagLevel).max + 1
-
+  def previousVote: Option[Vote]
+  def directJustifications: Seq[Brick]
+  def explicitJustifications: Seq[Brick]
+  override val jDagLevel: Int = if (directJustifications.isEmpty) 0 else directJustifications.map(j => j.jDagLevel).max + 1
 }
 
 trait Block extends Brick {
-  def mainParent: Block
+  def generation: Int
 }
 
 case class Ballot(
+  id: BrickId,
+  timepoint: SimTimepoint,
+  explicitJustifications: Seq[Brick],
+  creator: ValidatorId,
+  previousVote: Option[Vote],
+  targetBlock: Block
+ ) extends Vote {
 
-                 ) extends Brick {
-  def targetBlock: Block
-
+  override val directJustifications: Seq[Brick] = (explicitJustifications :+ targetBlock) ++ previousVote
 }
 
-case class NormalBlock extends Block {
+case class NormalBlock(
+  id: BrickId,
+  timepoint: SimTimepoint,
+  explicitJustifications: Seq[Brick],
+  creator: ValidatorId,
+  previousVote: Option[Vote],
+  parent: Block
+ ) extends Block with Vote {
 
+  override val generation: ValidatorId = parent.generation + 1
+  override val directJustifications: Seq[Brick] = (explicitJustifications :+ parent) ++ previousVote
 }
 
-class Genesis extends Block {
-
-
+case class Genesis(id: BrickId) extends Block {
+  override def timepoint: SimTimepoint = SimTimepoint.zero
+  override def generation: Int = 0
+  override def jDagLevel: Int = 0
 }
