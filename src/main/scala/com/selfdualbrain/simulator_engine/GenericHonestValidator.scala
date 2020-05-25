@@ -1,17 +1,11 @@
-package com.selfdualbrain.simulator
+package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain.{Acc, Brick, Ether, ValidatorId, VertexInDag}
-import com.selfdualbrain.graphs.{BinaryRelation, Dag}
+import com.selfdualbrain.blockchain_structure.{Acc, BlockdagVertexId, Brick, Ether, Validator, ValidatorContext, ValidatorId, VertexInDag}
+import com.selfdualbrain.data_structures.{BinaryRelation, Dag}
 
 import scala.collection.mutable
 
-class Validator(
-                 localValidatorId: ValidatorId,
-                 weightsOfValidators: Map[ValidatorId, Ether],
-                 relativeFTT: Double,
-                 ackLevel: Int
-               ) {
-
+class GenericHonestValidator(context: ValidatorContext) extends Validator {
   val messagesBuffer: BinaryRelation[Brick, Brick]
   val jdagGraph: Dag[VertexInDag]
   var globalPanorama: Acc.Panorama = Acc.Panorama.empty
@@ -27,7 +21,12 @@ class Validator(
 //    message2panorama,
 //    estimator)
 
+
   //#################### HANDLING OF INCOMING MESSAGES ############################
+
+  override def startup(): Unit = {
+    //todo
+  }
 
   def handleBrickReceivedFromNetwork(msg: Brick): Unit = {
     val missingDependencies: Seq[Brick] = msg.directJustifications.filter(j => ! jdagGraph.contains(j))
@@ -47,8 +46,8 @@ class Validator(
       val nextMsg = queue.dequeue()
       if (! jdagGraph.contains(nextMsg)) {
         addToLocalJdag(nextMsg)
-        val waitingForThisOne = messagesBuffer.findSourcesFor(nextMsg.id)
-        messagesBuffer.removeTarget(nextMsg.id)
+        val waitingForThisOne = messagesBuffer.findSourcesFor(nextMsg)
+        messagesBuffer.removeTarget(nextMsg)
         val unblockedMessages = waitingForThisOne.filterNot(b => messagesBuffer.hasSource(b))
         queue enqueueAll unblockedMessages
       }
@@ -57,22 +56,25 @@ class Validator(
 
   //################## PUBLISHING OF NEW MESSAGES ############################
 
-  def publishNewMessage(): Unit = {
-    val msg = createNewMessage()
-    addToLocalJdag(msg)
-    val bm = serializer.convertToBinaryRepresentationWithSignature(msg)
-    gossipService.broadcast(bm)
-    myLastMessagePublished = Some(msg)
+  def publishNewBlock(): Unit = {
+    publishNewBrick(shouldBeBlock = true)
   }
 
-  def createNewMessage(): Message = {
-    val creator: ValidatorId = localValidatorId
-    val justifications: Seq[MessageId] = globalPanorama.honestSwimlanesTips.values.map(msg => msg.id).toSeq
-    val dagLevel: Int =
-      if (justifications.isEmpty)
-        0
-      else
-        (justifications map (j => messageIdToMessage(j).dagLevel)).max + 1
+  def publishNewBallot(): Unit = {
+    publishNewBrick(shouldBeBlock = false)
+  }
+
+  def publishNewBrick(shouldBeBlock: Boolean): Unit = {
+    val brick = createNewBrick(shouldBeBlock)
+    addToLocalJdag(brick)
+    context.broadcast(brick)
+    myLastMessagePublished = Some(brick)
+  }
+
+  def createNewBrick(shouldBeBlock: Boolean): Brick = {
+    val creator: ValidatorId = context.validatorId
+    val justifications: Seq[BlockdagVertexId] = globalPanorama.honestSwimlanesTips.values.map(msg => msg.id).toSeq
+    val forkChoiceWinner: Block = forkChoice()
     val consensusValue: Option[Con] =
       if (shouldCurrentVoteBeEmpty())
         None
@@ -118,6 +120,7 @@ class Validator(
   //we received an invalid message; a policy for handling such situations can be plugged-in here
   def gotInvalidMessage(message: Message): Unit
 
+
   //########################## J-DAG ##########################################
 
   def addToLocalJdag(msg: Brick): Unit = {
@@ -129,6 +132,12 @@ class Validator(
       case Some(summit) => consensusHasBeenReached(summit)
       case None => //no consensus yet, do nothing
     }
+  }
+
+  //########################## FORK CHOICE #######################################
+
+  def forkChoice(): Unit = {
+    //todo
   }
 
   //########################## PANORAMAS #######################################

@@ -1,4 +1,4 @@
-package com.selfdualbrain.graphs
+package com.selfdualbrain.data_structures
 
 //Contract for a mutable 2-argument relation (= subset of the cartesian product AxB)
 //We use this structure to represent messages buffer.

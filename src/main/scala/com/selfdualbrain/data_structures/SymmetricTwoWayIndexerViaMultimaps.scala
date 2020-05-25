@@ -1,4 +1,4 @@
-package com.selfdualbrain.graphs
+package com.selfdualbrain.data_structures
 
 import scala.collection.immutable.{Set => ImmutableSet}
 import scala.collection.mutable

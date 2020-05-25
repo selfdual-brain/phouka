@@ -1,4 +1,4 @@
-package com.selfdualbrain.simulator
+package com.selfdualbrain.simulator_engine
 
 import java.io.File
 

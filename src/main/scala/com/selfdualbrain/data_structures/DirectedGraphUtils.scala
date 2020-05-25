@@ -1,4 +1,4 @@
-package com.selfdualbrain.graphs
+package com.selfdualbrain.data_structures
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -6,9 +6,9 @@ import scala.collection.mutable
 /**
   * Provides utility methods for graph-like structures.
   */
-object GraphUtils {
+object DirectedGraphUtils {
 
-  trait QueueLike[E] {
+  private trait QueueLike[E] {
     def head: E
     def enqueue(a: E): Unit
     def dequeue(): E

@@ -1,4 +1,4 @@
-package com.selfdualbrain.graphs
+package com.selfdualbrain.data_structures
 
 //Abstraction of directed acyclic graph.
 //We use this to represent the j-dag.

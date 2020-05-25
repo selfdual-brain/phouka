@@ -1,6 +1,6 @@
-package com.selfdualbrain.simulator
+package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain.{Ballot, Block}
+import com.selfdualbrain.blockchain_structure.{Ballot, Block}
 
 sealed trait NodeEventPayload
 object NodeEventPayload {
@@ -14,6 +14,6 @@ object OutputEventPayload {
   case class BlockProposed(block: Block) extends OutputEventPayload
   case class BallotProposed(ballot: Ballot) extends OutputEventPayload
   case class BlockFinalized(block: Block) extends OutputEventPayload
-  case class EquivocationDiscovered() extends OutputEventPayload
-  case class EquivocationCatastropheDiscovered() extends OutputEventPayload
+  case class EquivocationDetected() extends OutputEventPayload
+  case class EquivocationCatastrophe() extends OutputEventPayload
 }

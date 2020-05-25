@@ -1,4 +1,4 @@
-package com.selfdualbrain.graphs
+package com.selfdualbrain.data_structures
 
 import scala.collection.mutable
 
@@ -43,5 +43,5 @@ class DagImpl[Vertex](getTargets: Vertex => Iterable[Vertex]) extends Dag[Vertex
 
   override def toposortTraverseFrom(v: Vertex): Iterator[Vertex] = this.toposortTraverseFrom(Seq(v))
 
-  override def toposortTraverseFrom(coll: Iterable[Vertex]): Iterator[Vertex] = GraphUtils.breadthFirstTraverse(coll, this.targetsOf)
+  override def toposortTraverseFrom(coll: Iterable[Vertex]): Iterator[Vertex] = DirectedGraphUtils.breadthFirstTraverse(coll, this.targetsOf)
 }

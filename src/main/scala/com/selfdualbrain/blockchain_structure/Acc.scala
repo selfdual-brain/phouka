@@ -1,4 +1,4 @@
-package com.selfdualbrain.blockchain
+package com.selfdualbrain.blockchain_structure
 
 import com.selfdualbrain.abstract_consensus.AccReferenceImpl
 

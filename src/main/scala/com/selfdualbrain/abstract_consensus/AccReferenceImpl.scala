@@ -1,6 +1,6 @@
 package com.selfdualbrain.abstract_consensus
 
-import com.selfdualbrain.graphs.Dag
+import com.selfdualbrain.data_structures.Dag
 
 import scala.annotation.tailrec
 import scala.collection.mutable
