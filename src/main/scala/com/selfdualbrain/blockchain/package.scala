@@ -3,7 +3,8 @@ package com.selfdualbrain
 import com.selfdualbrain.hashing.Hash
 
 package object blockchain {
-  type BrickId = Hash
+  type BlockdagVertexId = Hash
   type ValidatorId = Int
+  type Ether = Long
 
 }
