@@ -12,7 +12,8 @@ class AccReferenceImpl[MessageId,ValidatorId,Con] extends AbstractCasperConsensu
   class ReferenceEstimator(
                             id2msg: MessageId => ConsensusMessage,
                             weightsOfValidators: ValidatorId => Weight,
-                            vote: ConsensusMessage => Option[Con]
+                            vote: ConsensusMessage => Option[Con],
+                            orderingOfConsensusValues: Ordering[Con]
                           ) extends Estimator {
 
     def deriveConsensusValueFrom(panorama: Panorama): Option[Con] = {
@@ -37,7 +38,8 @@ class AccReferenceImpl[MessageId,ValidatorId,Con] extends AbstractCasperConsensu
       //tuples (w,c) are ordered lexicographically, so first weight of votes decides
       //if weights are the same, we pick the bigger consensus value
       //total ordering of consensus values is implicitly assumed here
-      val (winnerConsensusValue, winnerTotalWeight) = accumulator maxBy { case (c, w) => (w, c) }
+      implicit val ord: Ordering[Con] = orderingOfConsensusValues
+      val (winnerConsensusValue, winnerTotalWeight) = accumulator maxBy {case (c, w) => (w, c)}
       return Some(winnerConsensusValue)
     }
 
@@ -64,7 +66,8 @@ class AccReferenceImpl[MessageId,ValidatorId,Con] extends AbstractCasperConsensu
   class ReferenceFinalityDetector(
                                    relativeFTT: Double,
                                    ackLevel: Int,
-                                   weightsOfValidators: Map[ValidatorId, Weight],
+                                   weightsOfValidators: ValidatorId => Weight,
+                                   totalWeight: Weight,
                                    jDag: Dag[ConsensusMessage],
                                    id2msg: MessageId => ConsensusMessage,
                                    vote: ConsensusMessage => Option[Con],
@@ -72,7 +75,6 @@ class AccReferenceImpl[MessageId,ValidatorId,Con] extends AbstractCasperConsensu
                                    estimator: Estimator
                                  ) extends FinalityDetector {
 
-    val totalWeight: Weight = weightsOfValidators.values.sum
     val absoluteFTT: Weight = math.ceil(relativeFTT * totalWeight).toLong
     val quorum: Weight = {
       val q: Double = (absoluteFTT.toDouble / (1 - math.pow(2, - ackLevel)) + totalWeight.toDouble) / 2
@@ -204,7 +206,7 @@ class AccReferenceImpl[MessageId,ValidatorId,Con] extends AbstractCasperConsensu
       }
     }
 
-    private def sumOfWeights(validators: Iterable[ValidatorId]): Weight = validators.map(v => weightsOfValidators(v)).sum
+    private def sumOfWeights(validators: Iterable[ValidatorId]): Weight = validators.map(weightsOfValidators).sum
 
   }
 

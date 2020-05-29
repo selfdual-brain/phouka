@@ -5,6 +5,7 @@ import com.selfdualbrain.time.TimeDelta
 trait ValidatorContext {
   def validatorId: ValidatorId
   def weightsOfValidators: ValidatorId => Ether
+  def totalWeight: Ether
   def generateBrickId(): VertexId
   def genesis: Genesis
   def relativeFTT: Double

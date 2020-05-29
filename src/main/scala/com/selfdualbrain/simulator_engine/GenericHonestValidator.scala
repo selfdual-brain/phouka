@@ -1,26 +1,33 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{Acc, VertexId, Brick, Ether, Validator, ValidatorContext, ValidatorId, BlockchainVertex}
-import com.selfdualbrain.data_structures.{BinaryRelation, Dag}
+import com.selfdualbrain.blockchain_structure._
+import com.selfdualbrain.data_structures.{BinaryRelation, Dag, DagImpl, SymmetricTwoWayIndexer}
 
 import scala.collection.mutable
 
 class GenericHonestValidator(context: ValidatorContext) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
-  val messagesBuffer: BinaryRelation[Brick, Brick]
-  val jdagGraph: Dag[BlockchainVertex]
+  val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[]
+  val jdagGraph: Dag[Brick] = new DagImpl[Brick](_.directJustifications)
   var globalPanorama: Acc.Panorama = Acc.Panorama.empty
-  val message2panorama: mutable.Map[Brick,Acc.Panorama]
+  val message2panorama = new mutable.HashMap[Brick,Acc.Panorama]
   var myLastMessagePublished: Option[Brick] = None
+  val block2bgame = new mutable.HashMap[Block, BGame]
+  var lastFinalizedBlock: Block = context.genesis
+  var currentFinalityDetector: Acc.FinalityDetector = createFinalityDetector(context.genesis)
 
-//  val finalityDetector: Acc.FinalityDetector = new Acc.ReferenceFinalityDetector(
-//    relativeFTT,
-//    ackLevel,
-//    weightsOfValidators,
-//    jdagGraph,
-//    messageIdToMessage,
-//    message2panorama,
-//    estimator)
+  def createFinalityDetector(bgameAnchor: Block): Acc.FinalityDetector = {
+    new Acc.ReferenceFinalityDetector(
+      relativeFTT = context.relativeFTT,
+      ackLevel = context.ackLevel,
+      weightsOfValidators = context.weightsOfValidators,
+      totalWeight = context.totalWeight,
+      jDag = ,
+      id2msg: MessageId => ConsensusMessage,
+      vote: ConsensusMessage => Option[Con],
+      message2panorama: ConsensusMessage => Panorama,
+      estimator: Estimator)
 
+  }
 
   //#################### HANDLING OF INCOMING MESSAGES ############################
 
@@ -28,7 +35,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
     //todo
   }
 
-  def handleBrickReceivedFromNetwork(msg: Brick): Unit = {
+  def onNewBrickArrived(msg: Brick): Unit = {
     val missingDependencies: Seq[Brick] = msg.directJustifications.filter(j => ! jdagGraph.contains(j))
 
     if (missingDependencies.isEmpty)
@@ -38,8 +45,8 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
         messagesBuffer.addPair(msg,j)
   }
 
-  override def proposeNewBrickTimer(): Unit = {
-
+  override def onScheduledBrickCreation(): Unit = {
+    //todo
   }
 
   def runBufferPruningCascadeFor(msg: Brick): Unit = {

@@ -38,7 +38,9 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   private val validators = new Array[Validator[ValidatorId, NodeEventPayload, OutputEventPayload]](config.numberOfValidators)
   for (i <- validators.indices) {
     val context = new ValidatorContextImpl(i)
-    validators(i) = new GenericHonestValidator(context)
+    val newValidator = new GenericHonestValidator(context)
+    newValidator.startup()
+    validators(i) = newValidator
   }
 
   //################################# PUBLIC ##################################
@@ -65,20 +67,20 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
 
   //################################# PRIVATE ##################################
 
-  def handleMessagePassing(id: Long, timepoint: SimTimepoint, source: ValidatorId, destination: ValidatorId, payload: NodeEventPayload): Unit = {
+  protected def handleMessagePassing(id: Long, timepoint: SimTimepoint, source: ValidatorId, destination: ValidatorId, payload: NodeEventPayload): Unit = {
     payload match {
-      case NodeEventPayload.BallotDelivered(ballot) => validators(destination).handleBrickReceivedFromNetwork(ballot)
-      case NodeEventPayload.BlockDelivered(block) => validators(destination).handleBrickReceivedFromNetwork(block)
-      case NodeEventPayload.WakeUpForCreatingNewBrick => validators(destination).proposeNewBrickTimer()
+      case NodeEventPayload.BallotDelivered(ballot) => validators(destination).onNewBrickArrived(ballot)
+      case NodeEventPayload.BlockDelivered(block) => validators(destination).onNewBrickArrived(block)
+      case NodeEventPayload.WakeUpForCreatingNewBrick => validators(destination).onScheduledBrickCreation()
     }
   }
 
-  def nextBrickId(): VertexId = {
+  protected def nextBrickId(): VertexId = {
     lastBrickId += 1
     return lastBrickId
   }
 
-  private def broadcast(sender: ValidatorId, localClock: TimeDelta, brick: Brick): Unit = {
+  protected  def broadcast(sender: ValidatorId, localClock: TimeDelta, brick: Brick): Unit = {
     globalJDag.insert(brick)
     for (i <- 0 until config.numberOfValidators if i != sender) {
       val qf: Long = random.between(-500, 500).toLong //quantum fluctuation
