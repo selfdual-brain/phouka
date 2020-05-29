@@ -14,10 +14,10 @@ class ClassicDesQueue[A,AP,OP] extends SimEventsQueue[A,AP,OP] {
   private val queue = new mutable.PriorityQueue[Event[A]]()(Ordering[Event[A]].reverse)
 
   override def addAgentEvent(timepoint: SimTimepoint, destination: A, payload: AP): Event[A] =
-    this addEvent {id => Event.ForAgent(id, timepoint, destination, payload)}
+    this addEvent {id => Event.MessagePassing(id, timepoint, destination, payload)}
 
   override def addOutputEvent(timepoint: SimTimepoint, source: A, payload: OP): Event[A] =
-    this addEvent {id => Event.Output(id, timepoint, source, payload)}
+    this addEvent {id => Event.Semantic(id, timepoint, source, payload)}
 
   override def pullNextEvent(): Option[Event[A]] =
     if (queue.isEmpty)
@@ -30,10 +30,9 @@ class ClassicDesQueue[A,AP,OP] extends SimEventsQueue[A,AP,OP] {
 
   def currentTime: SimTimepoint = clock
 
-  override def iterator: Iterator[Event[A]] = new Iterator[Event[A]] {
-    override def hasNext: Boolean = queue.nonEmpty
-    override def next(): Event[A] = pullNextEvent().get
-  }
+  override def hasNext: Boolean = queue.nonEmpty
+
+  override def next(): Event[A] = pullNextEvent().get
 
   private def addEvent(f: Long => Event[A]): Event[A] = {
     val newEvent = f(lastEventId+1)

@@ -1,13 +1,13 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{Acc, BlockdagVertexId, Brick, Ether, Validator, ValidatorContext, ValidatorId, VertexInDag}
+import com.selfdualbrain.blockchain_structure.{Acc, VertexId, Brick, Ether, Validator, ValidatorContext, ValidatorId, BlockchainVertex}
 import com.selfdualbrain.data_structures.{BinaryRelation, Dag}
 
 import scala.collection.mutable
 
-class GenericHonestValidator(context: ValidatorContext) extends Validator {
+class GenericHonestValidator(context: ValidatorContext) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
   val messagesBuffer: BinaryRelation[Brick, Brick]
-  val jdagGraph: Dag[VertexInDag]
+  val jdagGraph: Dag[BlockchainVertex]
   var globalPanorama: Acc.Panorama = Acc.Panorama.empty
   val message2panorama: mutable.Map[Brick,Acc.Panorama]
   var myLastMessagePublished: Option[Brick] = None
@@ -36,6 +36,10 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator {
     else
       for (j <- missingDependencies)
         messagesBuffer.addPair(msg,j)
+  }
+
+  override def proposeNewBrickTimer(): Unit = {
+
   }
 
   def runBufferPruningCascadeFor(msg: Brick): Unit = {
@@ -73,7 +77,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator {
 
   def createNewBrick(shouldBeBlock: Boolean): Brick = {
     val creator: ValidatorId = context.validatorId
-    val justifications: Seq[BlockdagVertexId] = globalPanorama.honestSwimlanesTips.values.map(msg => msg.id).toSeq
+    val justifications: Seq[VertexId] = globalPanorama.honestSwimlanesTips.values.map(msg => msg.id).toSeq
     val forkChoiceWinner: Block = forkChoice()
     val consensusValue: Option[Con] =
       if (shouldCurrentVoteBeEmpty())

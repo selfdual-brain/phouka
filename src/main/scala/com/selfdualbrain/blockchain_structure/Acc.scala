@@ -6,6 +6,6 @@ import com.selfdualbrain.abstract_consensus.AccReferenceImpl
 //here:
 // - we pick abstract consensus variant to be used in the blockchain model
 // - we fill-in the extension points of abstract consensus implementation (like assigning concrete values to type params)
-object Acc extends AccReferenceImpl[BlockdagVertexId,ValidatorId,NormalBlock]{
+object Acc extends AccReferenceImpl[VertexId,ValidatorId,NormalBlock]{
   type ConsensusMessage = Brick
 }

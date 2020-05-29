@@ -1,8 +1,7 @@
 package com.selfdualbrain.blockchain_structure
 
-trait Validator {
+trait Validator[A,AP,EP] {
   def startup(): Unit
-  def handleBrickReceivedFromNetwork(msg: Brick): Unit
-  def publishNewBlock(): Unit
-  def publishNewBallot(): Unit
+  def handleBrickReceivedFromNetwork(brick: Brick): Unit
+  def proposeNewBrickTimer(): Unit
 }
