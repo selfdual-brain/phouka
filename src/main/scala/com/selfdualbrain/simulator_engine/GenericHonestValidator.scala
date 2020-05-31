@@ -6,7 +6,7 @@ import com.selfdualbrain.data_structures.{BinaryRelation, Dag, DagImpl, Symmetri
 import scala.collection.mutable
 
 class GenericHonestValidator(context: ValidatorContext) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
-  val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[]
+  val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[Brick,Brick]
   val jdagGraph: Dag[Brick] = new DagImpl[Brick](_.directJustifications)
   var globalPanorama: Acc.Panorama = Acc.Panorama.empty
   val message2panorama = new mutable.HashMap[Brick,Acc.Panorama]
@@ -15,15 +15,15 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   var lastFinalizedBlock: Block = context.genesis
   var currentFinalityDetector: Acc.FinalityDetector = createFinalityDetector(context.genesis)
 
-  def createFinalityDetector(bgameAnchor: Block): Acc.FinalityDetector = {
+  def createFinalityDetector(bGameAnchor: Block): Acc.FinalityDetector = {
+    val bgame: BGame = block2bgame(bGameAnchor)
     new Acc.ReferenceFinalityDetector(
       relativeFTT = context.relativeFTT,
       ackLevel = context.ackLevel,
       weightsOfValidators = context.weightsOfValidators,
       totalWeight = context.totalWeight,
-      jDag = ,
-      id2msg: MessageId => ConsensusMessage,
-      vote: ConsensusMessage => Option[Con],
+      jDag = jdagGraph,
+      vote = brick => bgame.checkVote() ConsensusMessage => Option[Con],
       message2panorama: ConsensusMessage => Panorama,
       estimator: Estimator)
 

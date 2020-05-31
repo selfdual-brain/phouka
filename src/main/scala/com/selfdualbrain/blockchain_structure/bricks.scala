@@ -1,5 +1,6 @@
 package com.selfdualbrain.blockchain_structure
 
+import com.selfdualbrain.hashing.Hash
 import com.selfdualbrain.time.SimTimepoint
 
 //any vertex in the dag
@@ -47,7 +48,8 @@ case class NormalBlock(
                         explicitJustifications: Seq[Brick],
                         creator: ValidatorId,
                         prevInSwimlane: Option[Brick],
-                        parent: Block
+                        parent: Block,
+                        hash: Hash
  ) extends Block with Brick {
 
   override val generation: ValidatorId = parent.generation + 1

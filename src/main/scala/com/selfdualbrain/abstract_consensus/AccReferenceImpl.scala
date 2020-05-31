@@ -69,7 +69,6 @@ class AccReferenceImpl[MessageId,ValidatorId,Con] extends AbstractCasperConsensu
                                    weightsOfValidators: ValidatorId => Weight,
                                    totalWeight: Weight,
                                    jDag: Dag[ConsensusMessage],
-                                   id2msg: MessageId => ConsensusMessage,
                                    vote: ConsensusMessage => Option[Con],
                                    message2panorama: ConsensusMessage => Panorama,
                                    estimator: Estimator
