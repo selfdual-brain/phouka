@@ -1,11 +1,11 @@
 package com.selfdualbrain.blockchain_structure
 
-import com.selfdualbrain.abstract_consensus.AccReferenceImpl
+import com.selfdualbrain.abstract_consensus.{PanoramaBuilderComponent, ReferenceFinalityDetectorComponent}
 
 //concrete instance of abstract casper consensus that we use for the blockchain
 //here:
 // - we pick abstract consensus variant to be used in the blockchain model
 // - we fill-in the extension points of abstract consensus implementation (like assigning concrete values to type params)
-object Acc extends AccReferenceImpl[VertexId,ValidatorId,NormalBlock]{
+object ACC extends ReferenceFinalityDetectorComponent[VertexId,ValidatorId,NormalBlock] with PanoramaBuilderComponent[VertexId,ValidatorId,NormalBlock] {
   type ConsensusMessage = Brick
 }

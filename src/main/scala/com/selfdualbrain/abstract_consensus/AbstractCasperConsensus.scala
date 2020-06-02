@@ -1,6 +1,7 @@
 package com.selfdualbrain.abstract_consensus
 
-trait AbstractCasperConsensus[MessageId,ValidatorId,Con<:Ordered[Con]] {
+trait AbstractCasperConsensus[MessageId, ValidatorId, Con] {
+  type Ether = Long
 
   //Messages exchanged by validators.
   type ConsensusMessage <:{
@@ -39,25 +40,14 @@ trait AbstractCasperConsensus[MessageId,ValidatorId,Con<:Ordered[Con]] {
     def validatorsSet: Set[ValidatorId] = validators.toSet
   }
 
-  case class Summit(
-                     relativeFtt: Double,
-                     level: Int,
-                     committees: Array[Trimmer]
-                   )
+  case class Summit(relativeFtt: Double, level: Int, committees: Array[Trimmer])
 
   trait Estimator {
-
-    //calculates correct consensus value to be voted for, given the j-dag snapshot (represented as a panorama)
-    def deriveConsensusValueFrom(panorama: Panorama): Option[Con]
-
-    //convert panorama to votes
-    //this involves traversing down every corresponding swimlane so to find latest non-empty vote
-    def extractVotesFrom(panorama: Panorama): Map[ValidatorId, Con]
-
+    def winnerConsensusValue: Option[Con]
+    def supportersOfTheWinnerValue: Iterable[ValidatorId]
   }
 
   trait FinalityDetector {
     def onLocalJDagUpdated(latestPanorama: Panorama): Option[Summit]
   }
-
 }

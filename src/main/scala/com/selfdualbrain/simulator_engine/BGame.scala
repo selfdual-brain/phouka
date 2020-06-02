@@ -1,6 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{Block, Brick, Ether, NormalBlock, ValidatorId}
+import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, Con, Ether, NormalBlock, ValidatorId}
 import com.selfdualbrain.simulator_engine.BGame.IndexedArrayOfAccumulators
 
 import scala.collection.mutable
@@ -19,9 +20,9 @@ import scala.collection.mutable
   * possibly with some optimizations via skip-lists. Again - here in this simulator we aim for
   * simplicity, so we just do pretty straightforward memoization (which is quite memory-consuming in fact).
   */
-class BGame(anchor: Block, weight: ValidatorId => Ether) {
+class BGame(anchor: Block, weight: ValidatorId => Ether) extends ACC.Estimator {
   //brick -> consensus value
-  val brick2con = new mutable.HashMap[Brick, Block]
+  val brick2con = new mutable.HashMap[Brick, NormalBlock]
   //consensus value -> sum of votes
   val con2sum = new IndexedArrayOfAccumulators[NormalBlock]
   //last votes
@@ -29,8 +30,8 @@ class BGame(anchor: Block, weight: ValidatorId => Ether) {
   //equivocators
   val equivocators = new mutable.HashSet[ValidatorId]
   //current fork choice winner
-  var currentForkChoiceWinner: Option[Block] = None
-  var isForChoiceValid: Boolean = false
+  var forkChoiceWinnerMemoized: Option[NormalBlock] = None
+  var isFcMemoValid: Boolean = false
 
   def addVote(votingBrick: Brick, consensusValue: NormalBlock): Unit = {
     brick2con += votingBrick -> consensusValue
@@ -47,11 +48,13 @@ class BGame(anchor: Block, weight: ValidatorId => Ether) {
           //this validator is just changing its vote in this b-game
           con2sum.transferValue(old, consensusValue, weight(validator))
           validator2con += validator -> consensusValue
+          isFcMemoValid = false
         }
       case None =>
         //this validator places his first vote in this b-game
         con2sum.increase(consensusValue, weight(validator))
         validator2con += validator -> consensusValue
+        isFcMemoValid = false
     }
 
   }
@@ -63,26 +66,35 @@ class BGame(anchor: Block, weight: ValidatorId => Ether) {
         val consensusValueHeIsVotingFor = validator2con(validator)
         con2sum.decrease(consensusValueHeIsVotingFor, weight(validator))
         validator2con.remove(validator)
-        isForChoiceValid = false
+        isFcMemoValid = false
       }
     }
   }
 
-  def forkChoice(): Option[Block] =
+  override def winnerConsensusValue: Option[Con] = {
     if (con2sum.isEmpty)
       None
     else {
-      if (! isForChoiceValid) {
-        currentForkChoiceWinner = Some(this.findForkChoiceWinner)
-        isForChoiceValid = true
+      if (! isFcMemoValid) {
+        forkChoiceWinnerMemoized = Some(this.findForkChoiceWinner)
+        isFcMemoValid = true
       }
-      currentForkChoiceWinner
+      forkChoiceWinnerMemoized
+    }
+  }
+
+  override def supportersOfTheWinnerValue: Iterable[ValidatorId] = {
+    this.winnerConsensusValue match {
+      case None => Iterable.empty
+      case Some(x) => validator2con.filter{case (vid,con) => con == x}.keys
     }
 
-  def decodeVote(votingBrick: Brick): Option[Block] = brick2con.get(votingBrick)
+  }
 
-  private def findForkChoiceWinner: Block = {
-    val (winnerConsensusValue: Block, winnerTotalWeight: Ether) = con2sum.iteratorOfPairs maxBy { case (c,w) => (w, c.hash) }
+  def decodeVote(votingBrick: Brick): Option[NormalBlock] = brick2con.get(votingBrick)
+
+  private def findForkChoiceWinner: NormalBlock = {
+    val (winnerConsensusValue: NormalBlock, winnerTotalWeight: Ether) = con2sum.iteratorOfPairs maxBy { case (c,w) => (w, c.hash) }
     return winnerConsensusValue
   }
 }
