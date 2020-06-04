@@ -101,6 +101,10 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
 
     override def weightsOfValidators: ValidatorId => Ether = self.validatorId2Weight
 
+    override def numberOfValidators: VertexId = config.numberOfValidators
+
+    override def totalWeight: Ether = self.totalWeight
+
     override def generateBrickId(): VertexId = self.nextBrickId()
 
     override def genesis: Genesis = self.genesis
@@ -120,8 +124,8 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
       self.broadcast(validatorId, localClock, brick)
     }
 
-    override def finalized(block: NormalBlock): Unit = {
-      desQueue.addOutputEvent(desQueue.currentTime + localClock, vid, OutputEventPayload.BlockFinalized(block))
+    override def finalized(block: NormalBlock, summit: ACC.Summit): Unit = {
+      desQueue.addOutputEvent(desQueue.currentTime + localClock, vid, OutputEventPayload.BlockFinalized(block, summit))
     }
 
     override def equivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit = {

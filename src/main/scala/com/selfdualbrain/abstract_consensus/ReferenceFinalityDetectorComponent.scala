@@ -45,7 +45,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con] extends Ab
                 committeesFound(k) = levelKCommittee.get
             }
 
-            return Some(Summit(relativeFTT, ackLevel, committeesFound))
+            return Some(Summit(winnerConsensusValue, relativeFTT, ackLevel, committeesFound))
           }
       }
     }

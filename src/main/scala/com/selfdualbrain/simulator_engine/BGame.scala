@@ -1,13 +1,13 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, Con, Ether, NormalBlock, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, Ether, NormalBlock, ValidatorId}
 import com.selfdualbrain.simulator_engine.BGame.IndexedArrayOfAccumulators
 
 import scala.collection.mutable
 
 /**
   * Cache of voting data for a single b-game anchored at the given block.
+  * We do here incremental calculation of fork-choice on the level of a single b-game.
   *
   * Remark 1: This makes fork-choice pretty fast, while keeping the implementation super-simplistic.
   * Would not be that good idea in real implementation of a blockchain, where fork-choice validation
@@ -19,16 +19,19 @@ import scala.collection.mutable
   * finality detection. This could be avoided completely - falling back to just jdag traversing,
   * possibly with some optimizations via skip-lists. Again - here in this simulator we aim for
   * simplicity, so we just do pretty straightforward memoization (which is quite memory-consuming in fact).
+  *
+  * Remark 3: This was written with "fork-choice that starts always from genesis" in mind.
+  * The point is that we want to use the simulator to "manually" validate the consensus theory.
   */
-class BGame(anchor: Block, weight: ValidatorId => Ether) extends ACC.Estimator {
+class BGame(anchor: Block, weight: ValidatorId => Ether, equivocatorsRegistry: EquivocatorsRegistry) extends ACC.Estimator {
   //brick -> consensus value
   val brick2con = new mutable.HashMap[Brick, NormalBlock]
   //consensus value -> sum of votes
   val con2sum = new IndexedArrayOfAccumulators[NormalBlock]
   //last votes
   val validator2con = new mutable.HashMap[ValidatorId, NormalBlock]
-  //equivocators
-  val equivocators = new mutable.HashSet[ValidatorId]
+  //references the stream of equivocators published by the registry
+  var lastKnownEquivocator: Int = -1
   //current fork choice winner
   var forkChoiceWinnerMemoized: Option[NormalBlock] = None
   var isFcMemoValid: Boolean = false
@@ -37,7 +40,7 @@ class BGame(anchor: Block, weight: ValidatorId => Ether) extends ACC.Estimator {
     brick2con += votingBrick -> consensusValue
     val validator = votingBrick.creator
 
-    if (equivocators.contains(validator))
+    if (equivocatorsRegistry.isKnownEquivocator(validator))
       return
 
     validator2con.get(validator) match {
@@ -59,39 +62,45 @@ class BGame(anchor: Block, weight: ValidatorId => Ether) extends ACC.Estimator {
 
   }
 
-  def addEquivocator(validator: ValidatorId): Unit = {
-    if (!equivocators.contains(validator)) {
-      equivocators += validator
-      if (validator2con.contains(validator)) {
-        val consensusValueHeIsVotingFor = validator2con(validator)
-        con2sum.decrease(consensusValueHeIsVotingFor, weight(validator))
-        validator2con.remove(validator)
-        isFcMemoValid = false
-      }
-    }
-  }
-
-  override def winnerConsensusValue: Option[Con] = {
+  override def winnerConsensusValue: Option[NormalBlock] =
     if (con2sum.isEmpty)
       None
     else {
+      this.syncWithEquivocatorsRegistry()
       if (! isFcMemoValid) {
         forkChoiceWinnerMemoized = Some(this.findForkChoiceWinner)
         isFcMemoValid = true
       }
       forkChoiceWinnerMemoized
     }
-  }
 
-  override def supportersOfTheWinnerValue: Iterable[ValidatorId] = {
+  override def supportersOfTheWinnerValue: Iterable[ValidatorId] =
     this.winnerConsensusValue match {
       case None => Iterable.empty
       case Some(x) => validator2con.filter{case (vid,con) => con == x}.keys
     }
 
-  }
 
   def decodeVote(votingBrick: Brick): Option[NormalBlock] = brick2con.get(votingBrick)
+
+  private def syncWithEquivocatorsRegistry(): Unit = {
+    if (lastKnownEquivocator == equivocatorsRegistry.lastSeqNumber)
+      return
+
+    for (equivocator <- equivocatorsRegistry.getNewEquivocators(lastKnownEquivocator))
+      handleNewEquivocatorGotDiscovered(equivocator)
+
+    lastKnownEquivocator = equivocatorsRegistry.lastSeqNumber
+  }
+
+  private def handleNewEquivocatorGotDiscovered(equivocator: ValidatorId): Unit = {
+    if (validator2con.contains(equivocator)) {
+      val consensusValueHeIsVotingFor = validator2con(equivocator)
+      con2sum.decrease(consensusValueHeIsVotingFor, weight(equivocator))
+      validator2con.remove(equivocator)
+      isFcMemoValid = false
+    }
+  }
 
   private def findForkChoiceWinner: NormalBlock = {
     val (winnerConsensusValue: NormalBlock, winnerTotalWeight: Ether) = con2sum.iteratorOfPairs maxBy { case (c,w) => (w, c.hash) }

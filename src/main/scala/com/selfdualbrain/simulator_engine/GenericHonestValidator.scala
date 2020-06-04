@@ -3,6 +3,7 @@ package com.selfdualbrain.simulator_engine
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{BinaryRelation, Dag, DagImpl, SymmetricTwoWayIndexer}
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 class GenericHonestValidator(context: ValidatorContext) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
@@ -14,6 +15,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   var currentFinalityDetector: ACC.FinalityDetector = createFinalityDetector(context.genesis)
   var globalPanorama: ACC.Panorama = ACC.Panorama.empty
   val panoramasBuilder = new ACC.PanoramaBuilder
+  val equivocatorsRegistry = new EquivocatorsRegistry(context.numberOfValidators)
 
   def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
     val bgame: BGame = block2bgame(bGameAnchor)
@@ -45,7 +47,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   }
 
   override def onScheduledBrickCreation(): Unit = {
-    //todo
+    //
   }
 
   def runBufferPruningCascadeFor(msg: Brick): Unit = {
@@ -113,34 +115,48 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
     )
   }
 
-  //##################### ABSTRACT METHODS #################################
-
-  //decides whether current vote should be empty (as opposed to voting for whatever estimator tells)
-  def shouldCurrentVoteBeEmpty(): Boolean
-
-  //"empty" hash value needed for message hash calculation
-  def placeholderHash: Hash
-
-  //hashing of messages
-  def generateMessageIdFor(message: Message): Hash
-
-  //do whatever is needed after consensus (= summit) has been discovered
-  def consensusHasBeenReached(summit: Summit): Unit
-
-  //we received an invalid message; a policy for handling such situations can be plugged-in here
-  def gotInvalidMessage(message: Message): Unit
-
-
   //########################## J-DAG ##########################################
 
   def addToLocalJdag(msg: Brick): Unit = {
-    globalPanorama = mergePanoramas(globalPanorama, panoramaOf(msg))
     jdagGraph insert msg
-    messageIdToMessage += msg.id -> msg
+    globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(msg))
+    equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(globalPanorama.equivocators)
 
-    finalityDetector.onLocalJDagUpdated(globalPanorama) match {
-      case Some(summit) => consensusHasBeenReached(summit)
-      case None => //no consensus yet, do nothing
+    msg match {
+      case x: NormalBlock =>
+        val newBGame = new BGame(x, context.weightsOfValidators, equivocatorsRegistry)
+        block2bgame += x -> newBGame
+        newBGame.addVote(x,x)
+        applyNewVoteToBGamesChain(msg, x)
+      case x: Ballot =>
+        applyNewVoteToBGamesChain(msg, x.targetBlock)
+    }
+  }
+
+  @tailrec
+  private def advanceLfbChainAsManyStepsAsPossible(): Unit = {
+    currentFinalityDetector.onLocalJDagUpdated(globalPanorama) match {
+      case Some(summit) =>
+        context.finalized(lastFinalizedBlock, summit)
+        lastFinalizedBlock = summit.consensusValue
+        currentFinalityDetector = createFinalityDetector(lastFinalizedBlock)
+        advanceLfbChainAsManyStepsAsPossible()
+
+      case None =>
+        //no consensus yet, do nothing
+    }
+  }
+
+  @tailrec
+  private def applyNewVoteToBGamesChain(vote: Brick, tipOfTheChain: Block): Unit = {
+    tipOfTheChain match {
+      case g: Genesis =>
+        return
+      case b: NormalBlock =>
+        val p = b.parent
+        val bgame: BGame = block2bgame(p)
+        bgame.addVote(vote, b)
+        applyNewVoteToBGamesChain(vote, p)
     }
   }
 
@@ -149,7 +165,5 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   def forkChoice(): Unit = {
     //todo
   }
-
-
 
 }
