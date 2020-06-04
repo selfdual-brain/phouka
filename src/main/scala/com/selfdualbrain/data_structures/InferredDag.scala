@@ -1,8 +1,8 @@
 package com.selfdualbrain.data_structures
 
-//Abstraction of directed acyclic graph.
+//Abstraction of directed acyclic graph, where the structure is inferred from vertices.
 //We use this to represent the j-dag.
-trait Dag[Vertex] {
+trait InferredDag[Vertex] {
 
   /**
    * Returns targets reachable (in one step) from given vertex by going along the arrows.

@@ -50,7 +50,7 @@ class RealSha256Digester extends CryptographicDigester {
     if (boolean)
       update(1.toByte)
     else
-      (0.toByte)
+      update(0.toByte)
   }
 
   def field(bytearray: Array[Byte]): Unit = internalDigester.update(bytearray)

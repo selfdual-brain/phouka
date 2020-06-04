@@ -13,8 +13,11 @@ class ClassicDesQueue[A,AP,OP] extends SimEventsQueue[A,AP,OP] {
   private var clock: SimTimepoint = SimTimepoint.zero
   private val queue = new mutable.PriorityQueue[Event[A]]()(Ordering[Event[A]].reverse)
 
-  override def addAgentEvent(timepoint: SimTimepoint, destination: A, payload: AP): Event[A] =
-    this addEvent {id => Event.MessagePassing(id, timepoint, destination, payload)}
+  override def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: AP): Event[A] =
+    this addEvent {id => Event.External(id, timepoint, destination, payload)}
+
+  override def addMessagePassingEvent(timepoint: SimTimepoint, source: A, destination: A, payload: AP): Event[A] =
+    this addEvent {id => Event.MessagePassing(id, timepoint, source, destination, payload)}
 
   override def addOutputEvent(timepoint: SimTimepoint, source: A, payload: OP): Event[A] =
     this addEvent {id => Event.Semantic(id, timepoint, source, payload)}

@@ -1,6 +1,6 @@
 package com.selfdualbrain.abstract_consensus
 
-import com.selfdualbrain.data_structures.Dag
+import com.selfdualbrain.data_structures.InferredDag
 
 import scala.annotation.tailrec
 
@@ -12,7 +12,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con] extends Ab
                                    ackLevel: Int,
                                    weightsOfValidators: ValidatorId => Ether,
                                    totalWeight: Ether,
-                                   jDag: Dag[ConsensusMessage],
+                                   jDag: InferredDag[ConsensusMessage],
                                    vote: ConsensusMessage => Option[Con],
                                    message2panorama: ConsensusMessage => Panorama,
                                    estimator: Estimator
@@ -54,8 +54,8 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con] extends Ab
       val pairs: Iterable[(ValidatorId, ConsensusMessage)] =
         for {
           validator <- validatorsSubset
-          swimlaneTip: ConsensusMessage = latestPanorama.honestSwimlanesTips(validator)
-          oldestZeroLevelMessageOption: Option[ConsensusMessage] = swimlaneIterator(swimlaneTip)
+          swimlaneTip = latestPanorama.honestSwimlanesTips(validator)
+          oldestZeroLevelMessageOption = swimlaneIterator(swimlaneTip)
             .filter(m => vote(m).isDefined)
             .takeWhile(m => vote(m).get == consensusValue)
             .toSeq

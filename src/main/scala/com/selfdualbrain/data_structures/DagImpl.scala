@@ -2,7 +2,7 @@ package com.selfdualbrain.data_structures
 
 import scala.collection.mutable
 
-class DagImpl[Vertex](getTargets: Vertex => Iterable[Vertex]) extends Dag[Vertex] {
+class DagImpl[Vertex](getTargets: Vertex => Iterable[Vertex]) extends InferredDag[Vertex] {
   type Buffer = mutable.ListBuffer[Vertex]
 
   private def empty: Buffer = mutable.ListBuffer.empty[Vertex]

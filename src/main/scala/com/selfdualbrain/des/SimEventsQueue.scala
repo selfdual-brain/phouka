@@ -14,7 +14,12 @@ trait SimEventsQueue[A,AP,OP] extends Iterator[Event[A]] {
   /**
     * Adds an event to the timeline.
     */
-  def addAgentEvent(timepoint: SimTimepoint, destination: A, payload: AP): Event[A]
+  def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: AP): Event[A]
+
+  /**
+    * Adds an event to the timeline.
+    */
+  def addMessagePassingEvent(timepoint: SimTimepoint, source: A, destination: A, payload: AP): Event[A]
 
   /**
     * Adds an event to the timeline.

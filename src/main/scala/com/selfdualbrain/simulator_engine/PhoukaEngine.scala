@@ -2,8 +2,8 @@ package com.selfdualbrain.simulator_engine
 
 import java.io.File
 
-import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.data_structures.{Dag, DagImpl}
+import com.selfdualbrain.blockchain_structure.{ACC, _}
+import com.selfdualbrain.data_structures.{DagImpl, InferredDag}
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
 import com.selfdualbrain.randomness.IntSequenceGenerator
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -21,7 +21,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   val totalWeight: Ether = weightsArray.sum
   val absoluteFtt: Ether = math.floor(totalWeight * config.relativeFtt).toLong
   val genesis: Genesis = new Genesis(0)
-  val globalJDag: Dag[Brick] = new DagImpl[Brick](b => b.directJustifications)
+  val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
   val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, random)
   val desQueue: SimEventsQueue[ValidatorId, NodeEventPayload, OutputEventPayload] = new ClassicDesQueue[ValidatorId, NodeEventPayload, OutputEventPayload]
   val validatorId2Weight: ValidatorId => Ether = vid => weightsArray(vid)
@@ -90,7 +90,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
         case x: NormalBlock => NodeEventPayload.BlockDelivered(x)
         case x: Ballot => NodeEventPayload.BallotDelivered(x)
       }
-      desQueue.addAgentEvent(targetTimepoint, i, payload)
+      desQueue.addMessagePassingEvent(targetTimepoint, sender, i, payload)
     }
   }
 
@@ -109,6 +109,18 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
 
     override def genesis: Genesis = self.genesis
 
+    override def random: Random = self.random
+
+    override def blocksFraction: Double = config.blocksFractionAsPercentage / 100
+
+    override def runForkChoiceFromGenesis: Boolean = config.runForkChoiceFromGenesis
+
+    override def time: SimTimepoint = desQueue.currentTime + localClock
+
+    override def finalized(bGameAnchor: Block, summit: ACC.Summit): Unit = {
+      desQueue.addOutputEvent(desQueue.currentTime + localClock, vid, OutputEventPayload.BlockFinalized(bGameAnchor, summit))
+    }
+
     override def relativeFTT: Double = config.relativeFtt
 
     override def absoluteFTT: Ether = self.absoluteFtt
@@ -122,10 +134,6 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     override def broadcast(brick: Brick): Unit = {
       assert(brick.creator == validatorId)
       self.broadcast(validatorId, localClock, brick)
-    }
-
-    override def finalized(block: NormalBlock, summit: ACC.Summit): Unit = {
-      desQueue.addOutputEvent(desQueue.currentTime + localClock, vid, OutputEventPayload.BlockFinalized(block, summit))
     }
 
     override def equivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit = {
