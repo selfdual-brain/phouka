@@ -11,6 +11,7 @@ import scala.collection.mutable
 class GenericHonestValidator(context: ValidatorContext) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
   val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[Brick,Brick]
   val jdagGraph: InferredDag[Brick] = new DagImpl[Brick](_.directJustifications)
+  //todo: consider removing explicit main-tree representation
   val mainTree: InferredTree[Block] = new InferredTreeImpl[Block](context.genesis, getParent = {
     case b: NormalBlock => Some(b.parent)
     case g: Genesis => None
@@ -122,6 +123,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   //########################## J-DAG ##########################################
 
   def addToLocalJdag(msg: Brick): Unit = {
+    context.registerProcessingTime(1L)
     jdagGraph insert msg
     globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(msg))
     equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(globalPanorama.equivocators)
