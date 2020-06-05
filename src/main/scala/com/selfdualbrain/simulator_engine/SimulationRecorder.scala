@@ -43,7 +43,7 @@ class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
         }
     }
 
-    outputMsg(description)
+    outputMsg(s"$prefix$description")
   }
 
   def close(): Unit = {

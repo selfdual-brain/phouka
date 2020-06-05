@@ -1,10 +1,8 @@
 package com.selfdualbrain.abstract_consensus
 
-import com.selfdualbrain.data_structures.InferredDag
-
 import scala.annotation.tailrec
 
-trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con] extends AbstractCasperConsensus[MessageId, ValidatorId, Con] {
+trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusMessage] extends AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
 
   //Implementation of finality criterion based on summits theory.
   class ReferenceFinalityDetector(
@@ -12,7 +10,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con] extends Ab
                                    ackLevel: Int,
                                    weightsOfValidators: ValidatorId => Ether,
                                    totalWeight: Ether,
-                                   jDag: InferredDag[ConsensusMessage],
+                                   nextInSwimlane: ConsensusMessage => Option[ConsensusMessage],
                                    vote: ConsensusMessage => Option[Con],
                                    message2panorama: ConsensusMessage => Panorama,
                                    estimator: Estimator
@@ -97,7 +95,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con] extends Ab
 
         override def next(): ConsensusMessage = {
           val result = nextElement.get
-          nextElement = nextElement.get.prevInSwimlane
+          nextElement = cmApi.prevInSwimlane(nextElement.get)
           return result
         }
       }
@@ -121,13 +119,12 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con] extends Ab
                                            message: ConsensusMessage): Option[ConsensusMessage] = {
 
       val relevantSubPanorama: Map[ValidatorId, ConsensusMessage] =
-        message2panorama(message).honestSwimlanesTips filter {case (v,msg) => candidatesConsidered.contains(v) && msg.daglevel >= context.entries(v).daglevel}
+        message2panorama(message).honestSwimlanesTips filter {case (v,msg) => candidatesConsidered.contains(v) && cmApi.daglevel(msg) >= cmApi.daglevel(context.entries(v))}
 
       if (sumOfWeights(relevantSubPanorama.keys) >= quorum)
         return Some(message)
 
-      val nextMessageInThisSwimlane: Option[ConsensusMessage] = jDag.sourcesOf(message).find(m => m.creator == validator)
-      nextMessageInThisSwimlane match {
+      nextInSwimlane(message) match {
         case Some(m) => findNextLevelMsgRecursive(validator, context, candidatesConsidered, m)
         case None => None
       }
@@ -136,6 +133,5 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con] extends Ab
     private def sumOfWeights(validators: Iterable[ValidatorId]): Ether = validators.map(weightsOfValidators).sum
 
   }
-
 
 }

@@ -8,6 +8,15 @@ trait BlockchainVertex {
   def id: VertexId
   def timepoint: SimTimepoint
   def daglevel: Int
+
+  override def equals(obj: Any): Boolean =
+    obj match {
+      case v: BlockchainVertex => this.id == v.id
+      case _ => false
+    }
+
+  override def hashCode(): Int = id.hashCode
+
 }
 
 //vertex created by a validator
@@ -18,6 +27,7 @@ trait Brick extends BlockchainVertex {
   def prevInSwimlane: Option[Brick]
   def directJustifications: Seq[Brick]
   def explicitJustifications: Seq[Brick]
+  def positionInSwimlane: Int
 
   override lazy val daglevel: Int =
     if (directJustifications.isEmpty)
@@ -32,6 +42,7 @@ trait Block extends BlockchainVertex {
 
 case class Ballot(
                    id: VertexId,
+                   positionInSwimlane: Int,
                    timepoint: SimTimepoint,
                    explicitJustifications: Seq[Brick],
                    creator: ValidatorId,
@@ -44,6 +55,7 @@ case class Ballot(
 
 case class NormalBlock(
                         id: VertexId,
+                        positionInSwimlane: Int,
                         timepoint: SimTimepoint,
                         explicitJustifications: Seq[Brick],
                         creator: ValidatorId,

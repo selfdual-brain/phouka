@@ -3,7 +3,6 @@ package com.selfdualbrain.simulator_engine
 import java.io.File
 
 import com.selfdualbrain.blockchain_structure.{ACC, _}
-import com.selfdualbrain.data_structures.{DagImpl, InferredDag}
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
 import com.selfdualbrain.randomness.IntSequenceGenerator
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -23,7 +22,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   val totalWeight: Ether = weightsArray.sum
   val absoluteFtt: Ether = math.floor(totalWeight * config.relativeFtt).toLong
   val genesis: Genesis = Genesis(0)
-  val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
+//  val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
   val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, random)
   val desQueue: SimEventsQueue[ValidatorId, NodeEventPayload, OutputEventPayload] = new ClassicDesQueue[ValidatorId, NodeEventPayload, OutputEventPayload]
   val validatorId2Weight: ValidatorId => Ether = vid => weightsArray(vid)
@@ -49,12 +48,15 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
 
   //################################# PUBLIC ##################################
 
-  override def hasNext: Boolean = desQueue.hasNext
+  override def hasNext: Boolean = desQueue.hasNext && stepId < config.cyclesLimit
 
   override def next(): Event[ValidatorId] = {
+    if (stepId >= config.cyclesLimit)
+      throw new RuntimeException(s"cycles limit exceeded: ${config.cyclesLimit}")
+
     stepId += 1
     val event: Event[ValidatorId] = desQueue.next()
-    if (log.isDebugEnabled() && stepId % 10 == 0)
+    if (log.isDebugEnabled() && stepId % 1000 == 0)
       log.debug(s"step $stepId")
     event match {
       case Event.External(id, timepoint, destination, payload) =>
@@ -87,7 +89,13 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   }
 
   protected  def broadcast(sender: ValidatorId, localClock: TimeDelta, brick: Brick): Unit = {
-    globalJDag.insert(brick)
+//    globalJDag.insert(brick)
+    val payload = brick match {
+      case x: NormalBlock => OutputEventPayload.BlockProposed(x)
+      case x: Ballot => OutputEventPayload.BallotProposed(x)
+    }
+    desQueue.addOutputEvent(desQueue.currentTime + localClock, sender, payload)
+
     for (i <- 0 until config.numberOfValidators if i != sender) {
       val qf: Long = random.between(-500, 500).toLong //quantum fluctuation
       val effectiveDelay: Long = math.max(1, networkDelayGenerator.next() * 1000 + qf) // we enforce minimum delay = 1 microsecond

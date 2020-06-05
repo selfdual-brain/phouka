@@ -2,7 +2,7 @@ package com.selfdualbrain.abstract_consensus
 
 import scala.collection.mutable
 
-trait PanoramaBuilderComponent[MessageId, ValidatorId, Con] extends AbstractCasperConsensus[MessageId, ValidatorId, Con] {
+trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] extends AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
 
   class PanoramaBuilder {
 
@@ -16,7 +16,7 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con] extends AbstractCasp
         case Some(p) => p
         case None =>
           val result =
-            msg.directJustifications.foldLeft(Panorama.empty){case (acc,j) =>
+            cmApi.directJustifications(msg).foldLeft(Panorama.empty){case (acc,j) =>
               val tmp = mergePanoramas(panoramaOf(j), Panorama.atomic(j))
               mergePanoramas(acc, tmp)}
           message2panorama += (msg -> result)
@@ -44,11 +44,11 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con] extends AbstractCasp
             case (Some(m1), Some(m2)) =>
               if (m1 == m2)
                 mergedTips += (validatorId -> m1)
-              else if (m1.daglevel == m2.daglevel)
+              else if (cmApi.daglevel(m1) == cmApi.daglevel(m2))
                 mergedEquivocators += validatorId
               else {
-                val higher: ConsensusMessage = if (m1.daglevel > m2.daglevel) m1 else m2
-                val lower: ConsensusMessage = if (m1.daglevel < m2.daglevel) m1 else m2
+                val higher: ConsensusMessage = if (cmApi.daglevel(m1) > cmApi.daglevel(m2)) m1 else m2
+                val lower: ConsensusMessage = if (cmApi.daglevel(m1) < cmApi.daglevel(m2)) m1 else m2
                 if (isEquivocation(higher, lower))
                   mergedEquivocators += validatorId
                 else
@@ -64,16 +64,16 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con] extends AbstractCasp
     //tests if given messages pair from the same swimlane is an equivocation
     //caution: we assume that msg.previous and msg.daglevel are correct (= were validated before)
     def isEquivocation(higher: ConsensusMessage, lower: ConsensusMessage): Boolean = {
-      require(lower.creator == higher.creator)
+      require(cmApi.creator(lower) == cmApi.creator(higher))
 
       if (higher == lower)
         false
-      else if (higher.daglevel <= lower.daglevel)
+      else if (cmApi.daglevel(higher) <= cmApi.daglevel(lower))
         true
-      else if (higher.prevInSwimlane.isEmpty)
+      else if (cmApi.prevInSwimlane(higher).isEmpty)
         true
       else
-        isEquivocation(higher.prevInSwimlane.get, lower)
+        isEquivocation(cmApi.prevInSwimlane(higher).get, lower)
     }
 
   }

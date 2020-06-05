@@ -7,15 +7,19 @@ import com.selfdualbrain.randomness.Picker
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 class GenericHonestValidator(context: ValidatorContext) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
   val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[Brick,Brick]
-  val jdagGraph: InferredDag[Brick] = new DagImpl[Brick](_.directJustifications)
-  //todo: consider removing explicit main-tree representation
-  val mainTree: InferredTree[Block] = new InferredTreeImpl[Block](context.genesis, getParent = {
-    case b: NormalBlock => Some(b.parent)
-    case g: Genesis => None
-  })
+//  val jdagGraph: InferredDag[Brick] = new DagImpl[Brick](_.directJustifications)
+  val knownBricks = new mutable.HashSet[Brick](1000, 0.75)
+//  val mainTree: InferredTree[Block] = new InferredTreeImpl[Block](context.genesis, getParent = {
+//    case b: NormalBlock => Some(b.parent)
+//    case g: Genesis => None
+//  })
+
+  var mySwimlaneLastMessageSequenceNumber: Int = -1
+  val mySwimlane = new ArrayBuffer[Brick](1000)
   var myLastMessagePublished: Option[Brick] = None
   val block2bgame = new mutable.HashMap[Block, BGame]
   var lastFinalizedBlock: Block = context.genesis
@@ -33,7 +37,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
       ackLevel = context.ackLevel,
       weightsOfValidators = context.weightsOfValidators,
       totalWeight = context.totalWeight,
-      jDag = jdagGraph,
+      nextInSwimlane,
       vote = brick => bgame.decodeVote(brick),
       message2panorama = panoramasBuilder.panoramaOf,
       estimator = bgame)
@@ -49,7 +53,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   }
 
   def onNewBrickArrived(msg: Brick): Unit = {
-    val missingDependencies: Seq[Brick] = msg.directJustifications.filter(j => ! jdagGraph.contains(j))
+    val missingDependencies: Seq[Brick] = msg.directJustifications.filter(j => ! knownBricks.contains(j))
 
     if (missingDependencies.isEmpty)
       runBufferPruningCascadeFor(msg)
@@ -72,7 +76,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
 
     while (queue.nonEmpty) {
       val nextMsg = queue.dequeue()
-      if (! jdagGraph.contains(nextMsg)) {
+      if (! knownBricks.contains(nextMsg)) {
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(nextMsg))
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextMsg))
         addToLocalJdag(nextMsg)
@@ -97,6 +101,8 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   def createNewBrick(shouldBeBlock: Boolean): Brick = {
     val creator: ValidatorId = context.validatorId
     val justifications: Seq[Brick] = globalPanorama.honestSwimlanesTips.values.toSeq
+    mySwimlaneLastMessageSequenceNumber += 1
+
     val forkChoiceWinner: Block =
       if (context.runForkChoiceFromGenesis)
         forkChoice(context.genesis)
@@ -107,6 +113,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
       if (shouldBeBlock || forkChoiceWinner == context.genesis)
         NormalBlock(
           id = context.generateBrickId(),
+          positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
           timepoint = context.time,
           justifications,
           creator,
@@ -117,6 +124,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
       else
         Ballot(
           id = context.generateBrickId(),
+          positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
           timepoint = context.time,
           justifications,
           creator,
@@ -124,19 +132,20 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
           targetBlock = forkChoiceWinner.asInstanceOf[NormalBlock]
         )
 
-      return brick
+    mySwimlane.append(brick)
+    return brick
   }
 
   //########################## J-DAG ##########################################
 
   def addToLocalJdag(msg: Brick): Unit = {
     context.registerProcessingTime(1L)
-    jdagGraph insert msg
+    knownBricks += msg
     equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(globalPanorama.equivocators)
 
     msg match {
       case x: NormalBlock =>
-        mainTree insert x
+//        mainTree insert x
         val newBGame = new BGame(x, context.weightsOfValidators, equivocatorsRegistry)
         block2bgame += x -> newBGame
         applyNewVoteToBGamesChain(msg, x)
@@ -181,6 +190,14 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
     block2bgame(startingBlock).winnerConsensusValue match {
       case Some(child) => forkChoice(child)
       case None => startingBlock
+  }
+
+  private def nextInSwimlane(brick: Brick): Option[Brick] = {
+    val pos = brick.positionInSwimlane
+    return if (mySwimlane.size < pos + 2)
+      None
+    else
+      Some(mySwimlane(pos + 1))
   }
 
 }
