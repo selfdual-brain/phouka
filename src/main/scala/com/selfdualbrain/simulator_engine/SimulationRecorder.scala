@@ -49,6 +49,11 @@ class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
     bufferedWriter.close()
   }
 
+  override def finalize(): Unit = {
+    this.close()
+    super.finalize()
+  }
+
   def describeStorageLocation: String = s"text file: ${file.getAbsolutePath}"
 
   //################################## PRIVATE ########################################

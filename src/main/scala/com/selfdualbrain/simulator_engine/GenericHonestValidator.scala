@@ -3,7 +3,7 @@ package com.selfdualbrain.simulator_engine
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{BinaryRelation, DagImpl, InferredDag, InferredTree, InferredTreeImpl, SymmetricTwoWayIndexer}
 import com.selfdualbrain.hashing.FakeSha256Digester
-import com.selfdualbrain.randomness.Picker
+import com.selfdualbrain.randomness.{IntSequenceGenerator, Picker}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -19,12 +19,12 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   var myLastMessagePublished: Option[Brick] = None
   val block2bgame = new mutable.HashMap[Block, BGame]
   var lastFinalizedBlock: Block = context.genesis
-  var currentFinalityDetector: ACC.FinalityDetector = createFinalityDetector(context.genesis)
   var globalPanorama: ACC.Panorama = ACC.Panorama.empty
   val panoramasBuilder = new ACC.PanoramaBuilder
   val equivocatorsRegistry = new EquivocatorsRegistry(context.numberOfValidators)
   val blockVsBallot = new Picker[String](context.random, Map("block" -> context.blocksFraction, "ballot" -> (1 - context.blocksFraction)))
   val brickHashGenerator = new FakeSha256Digester(context.random, 8)
+  var currentFinalityDetector: ACC.FinalityDetector = _
 
   def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
     val bgame: BGame = block2bgame(bGameAnchor)
@@ -42,7 +42,10 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   //#################### HANDLING OF INCOMING MESSAGES ############################
 
   override def startup(): Unit = {
-    //todo
+    val newBGame = new BGame(context.genesis, context.weightsOfValidators, equivocatorsRegistry)
+    block2bgame += context.genesis -> newBGame
+    currentFinalityDetector = createFinalityDetector(context.genesis)
+    context.setNextWakeUp(context.proposeScheduler.next() * 1000)
   }
 
   def onNewBrickArrived(msg: Brick): Unit = {
@@ -60,6 +63,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)
     }
+    context.setNextWakeUp(context.proposeScheduler.next() * 1000) //converting milliseconds to microseconds
   }
 
   def runBufferPruningCascadeFor(msg: Brick): Unit = {

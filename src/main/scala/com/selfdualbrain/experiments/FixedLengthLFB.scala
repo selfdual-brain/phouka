@@ -45,15 +45,18 @@ object FixedLengthLFB {
             if (bricksCounter % 100 == 0)
               println(s"$bricksCounter bricks created")
           }
-        case Event.Semantic(id, timepoint: SimTimepoint, source, payload) =>
+        case Event.Semantic(id, timepoint, source, payload) =>
           payload match {
             case OutputEventPayload.BlockProposed(block) =>
               //ignore
             case OutputEventPayload.BallotProposed(ballot) =>
               //ignore
             case OutputEventPayload.BlockFinalized(bGameAnchor, summit) =>
-              if (summit.consensusValue.generation == lfbChainDesiredLength)
-                return
+              if (source == 0) {
+                println(s"validator 0 extended LFB chain to generation ${summit.consensusValue.generation}")
+                if (summit.consensusValue.generation == lfbChainDesiredLength)
+                  return
+              }
 
             case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
               //ignore

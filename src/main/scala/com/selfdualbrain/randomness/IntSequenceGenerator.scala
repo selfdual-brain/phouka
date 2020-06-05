@@ -12,8 +12,8 @@ object IntSequenceGenerator {
 
     config match {
       case IntSequenceConfig.Fixed(value) => new FixedGen(value)
-      case IntSequenceConfig.Linear(start, growth) => ???
-      case IntSequenceConfig.Exponential(start, growth) => ???
+      case IntSequenceConfig.Linear(start, growth) => new LinearGen(start, growth)
+      case IntSequenceConfig.Exponential(start, growth) => new ExponentialGen(start, growth)
       case IntSequenceConfig.Uniform(min, max) => new UniformGen(random, min, max)
       case IntSequenceConfig.Gaussian(mean, standardDeviation) => new GaussianGen(random, mean, standardDeviation)
       case IntSequenceConfig.PseudoGaussian(min, max) => new PseudoGaussianGen(random, min, max)

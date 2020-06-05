@@ -7,11 +7,13 @@ import com.selfdualbrain.data_structures.{DagImpl, InferredDag}
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
 import com.selfdualbrain.randomness.IntSequenceGenerator
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import org.slf4j.LoggerFactory
 
 import scala.util.Random
 
 class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   self =>
+  private val log = LoggerFactory.getLogger("** sim-engine")
   val randomSeed: Long = config.randomSeed.getOrElse(new Random().nextLong())
   val random: Random = new Random(randomSeed)
   val weightsGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.validatorsWeights, random)
@@ -20,7 +22,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     weightsArray(i) = weightsGenerator.next()
   val totalWeight: Ether = weightsArray.sum
   val absoluteFtt: Ether = math.floor(totalWeight * config.relativeFtt).toLong
-  val genesis: Genesis = new Genesis(0)
+  val genesis: Genesis = Genesis(0)
   val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
   val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, random)
   val desQueue: SimEventsQueue[ValidatorId, NodeEventPayload, OutputEventPayload] = new ClassicDesQueue[ValidatorId, NodeEventPayload, OutputEventPayload]
@@ -84,7 +86,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     globalJDag.insert(brick)
     for (i <- 0 until config.numberOfValidators if i != sender) {
       val qf: Long = random.between(-500, 500).toLong //quantum fluctuation
-      val effectiveDelay: Long = math.max(1, networkDelayGenerator.next().toInt * 1000 + qf) // we enforce minimum delay = 1 microsecond
+      val effectiveDelay: Long = math.max(1, networkDelayGenerator.next() * 1000 + qf) // we enforce minimum delay = 1 microsecond
       val targetTimepoint: SimTimepoint = desQueue.currentTime + localClock + effectiveDelay
       val payload = brick match {
         case x: NormalBlock => NodeEventPayload.BlockDelivered(x)
@@ -95,7 +97,13 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   }
 
   private class ValidatorContextImpl(vid: ValidatorId) extends ValidatorContext {
-    var localClock: TimeDelta = 0L
+    private var localTimeOffset: TimeDelta = 0L
+
+    /**
+      * Simulation time to be seen by this validator.
+      * This takes into account all "manually" registered amounts (that represent the cost of processing inside the validator's logic).
+      */
+    private def localTime: SimTimepoint = desQueue.currentTime + localTimeOffset
 
     override def validatorId: ValidatorId = vid
 
@@ -115,10 +123,10 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
 
     override def runForkChoiceFromGenesis: Boolean = config.runForkChoiceFromGenesis
 
-    override def time: SimTimepoint = desQueue.currentTime + localClock
+    override def time: SimTimepoint = localTime
 
     override def finalized(bGameAnchor: Block, summit: ACC.Summit): Unit = {
-      desQueue.addOutputEvent(desQueue.currentTime + localClock, vid, OutputEventPayload.BlockFinalized(bGameAnchor, summit))
+      desQueue.addOutputEvent(localTime, vid, OutputEventPayload.BlockFinalized(bGameAnchor, summit))
     }
 
     override def relativeFTT: Double = config.relativeFtt
@@ -128,20 +136,26 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     override def ackLevel: ValidatorId = config.finalizerAckLevel
 
     override def registerProcessingTime(t: TimeDelta): Unit = {
-      localClock += t
+      localTimeOffset += t
     }
 
     override def broadcast(brick: Brick): Unit = {
       assert(brick.creator == validatorId)
-      self.broadcast(validatorId, localClock, brick)
+      self.broadcast(validatorId, localTimeOffset, brick)
     }
 
+    override def setNextWakeUp(relativeTime: TimeDelta): Unit = {
+      desQueue.addMessagePassingEvent(localTime + relativeTime, vid, vid, NodeEventPayload.WakeUpForCreatingNewBrick)
+    }
+
+    override def proposeScheduler: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.brickProposeDelays, random)
+
     override def equivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit = {
-      desQueue.addOutputEvent(desQueue.currentTime + localClock, vid, OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2))
+      desQueue.addOutputEvent(localTime, vid, OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2))
     }
 
     override def equivocationCatastrophe(equivocators: Iterable[ValidatorId], fttExceededBy: Ether): Unit = {
-      desQueue.addOutputEvent(desQueue.currentTime + localClock, vid, OutputEventPayload.EquivocationCatastrophe(equivocators, fttExceededBy))
+      desQueue.addOutputEvent(localTime, vid, OutputEventPayload.EquivocationCatastrophe(equivocators, fttExceededBy))
     }
   }
 
