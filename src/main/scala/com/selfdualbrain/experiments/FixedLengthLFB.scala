@@ -42,7 +42,7 @@ object FixedLengthLFB {
         case Event.MessagePassing(id, timepoint, source, destination, payload) =>
           if (payload == NodeEventPayload.WakeUpForCreatingNewBrick) {
             bricksCounter += 1
-            if (bricksCounter % 100 == 0)
+            if (bricksCounter % 10 == 0)
               println(s"$bricksCounter bricks created")
           }
         case Event.Semantic(id, timepoint, source, payload) =>

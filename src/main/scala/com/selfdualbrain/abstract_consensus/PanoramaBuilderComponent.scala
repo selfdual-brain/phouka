@@ -33,7 +33,7 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con] extends AbstractCasp
       mergedEquivocators ++= p2.equivocators
 
       for (validatorId <- p1.honestValidatorsWithNonEmptySwimlane ++ p2.honestValidatorsWithNonEmptySwimlane) {
-        if (! mergedEquivocators.contains(validatorId)) {
+        if (! mergedEquivocators.contains(validatorId) && ! mergedTips.contains(validatorId)) {
           val msg1opt: Option[ConsensusMessage] = p1.honestSwimlanesTips.get(validatorId)
           val msg2opt: Option[ConsensusMessage] = p2.honestSwimlanesTips.get(validatorId)
 

@@ -19,7 +19,7 @@ trait Brick extends BlockchainVertex {
   def directJustifications: Seq[Brick]
   def explicitJustifications: Seq[Brick]
 
-  override val daglevel: Int =
+  override lazy val daglevel: Int =
     if (directJustifications.isEmpty)
       0
     else

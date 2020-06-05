@@ -1,9 +1,9 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.data_structures.{BinaryRelation, DagImpl, InferredDag, InferredTree, InferredTreeImpl, SymmetricTwoWayIndexer}
+import com.selfdualbrain.data_structures._
 import com.selfdualbrain.hashing.FakeSha256Digester
-import com.selfdualbrain.randomness.{IntSequenceGenerator, Picker}
+import com.selfdualbrain.randomness.Picker
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -73,6 +73,8 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
     while (queue.nonEmpty) {
       val nextMsg = queue.dequeue()
       if (! jdagGraph.contains(nextMsg)) {
+        globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(nextMsg))
+        globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextMsg))
         addToLocalJdag(nextMsg)
         val waitingForThisOne = messagesBuffer.findSourcesFor(nextMsg)
         messagesBuffer.removeTarget(nextMsg)
@@ -86,6 +88,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
 
   def publishNewBrick(shouldBeBlock: Boolean): Unit = {
     val brick = createNewBrick(shouldBeBlock)
+    globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(brick))
     addToLocalJdag(brick)
     context.broadcast(brick)
     myLastMessagePublished = Some(brick)
@@ -129,7 +132,6 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   def addToLocalJdag(msg: Brick): Unit = {
     context.registerProcessingTime(1L)
     jdagGraph insert msg
-    globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(msg))
     equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(globalPanorama.equivocators)
 
     msg match {

@@ -45,6 +45,8 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     validators(i) = newValidator
   }
 
+  log.info(s"init completed")
+
   //################################# PUBLIC ##################################
 
   override def hasNext: Boolean = desQueue.hasNext
@@ -52,11 +54,13 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   override def next(): Event[ValidatorId] = {
     stepId += 1
     val event: Event[ValidatorId] = desQueue.next()
+    if (log.isDebugEnabled() && stepId % 10 == 0)
+      log.debug(s"step $stepId")
     event match {
       case Event.External(id, timepoint, destination, payload) =>
         throw new RuntimeException("feature not supported (yet)")
-      case Event.MessagePassing(id, timepoint, source, destination: ValidatorId, payload: NodeEventPayload) =>
-        handleMessagePassing(id, timepoint, source, destination, payload)
+      case Event.MessagePassing(id, timepoint, source, destination, payload) =>
+        handleMessagePassing(id, timepoint, source, destination, payload.asInstanceOf[NodeEventPayload])
       case Event.Semantic(id, timepoint, source, payload) =>
         //ignore
     }
