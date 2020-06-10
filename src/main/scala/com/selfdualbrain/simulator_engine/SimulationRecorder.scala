@@ -33,7 +33,7 @@ class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
             s"validator $source published block ${block.id}"
           case OutputEventPayload.BallotProposed(ballot) =>
             s"validator $source published ballot ${ballot.id}"
-          case OutputEventPayload.BlockFinalized(bGameAnchor, summit) =>
+          case OutputEventPayload.SummitEstablished(bGameAnchor, summit) =>
             val finalizedBlock = summit.consensusValue
             s"validator $source extended LFB chain to level ${finalizedBlock.generation} - block ${finalizedBlock.id}"
           case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>

@@ -42,7 +42,7 @@ trait AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
     def validatorsSet: Set[ValidatorId] = validators.toSet
   }
 
-  case class Summit(consensusValue: Con, relativeFtt: Double, level: Int, committees: Array[Trimmer])
+  case class Summit(consensusValue: Con, relativeFtt: Double, level: Int, committees: Array[Trimmer], isFinalized: Boolean)
 
   trait Estimator {
     def winnerConsensusValue: Option[Con]

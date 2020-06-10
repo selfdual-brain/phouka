@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="com.selfdualbrain.gui.ScopeItemPanel">
+  <grid id="27dc6" binding="panel1" default-binding="true" layout-manager="BorderLayout" hgap="0" vgap="0">
+    <constraints>
+      <xy x="20" y="20" width="500" height="29"/>
+    </constraints>
+    <properties/>
+    <border type="none"/>
+    <children>
+      <component id="314dc" class="javax.swing.JCheckBox" binding="a01CheckBox" default-binding="true">
+        <constraints border-constraint="West"/>
+        <properties>
+          <selected value="true"/>
+          <text value="01"/>
+        </properties>
+      </component>
+      <component id="4cadc" class="javax.swing.JRadioButton" binding="radioButton1" default-binding="true">
+        <constraints border-constraint="Center"/>
+        <properties>
+          <text value=""/>
+        </properties>
+      </component>
+    </children>
+  </grid>
+</form>

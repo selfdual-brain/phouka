@@ -160,10 +160,12 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
   private def advanceLfbChainAsManyStepsAsPossible(): Unit = {
     currentFinalityDetector.onLocalJDagUpdated(globalPanorama) match {
       case Some(summit) =>
-        context.finalized(lastFinalizedBlock, summit)
-        lastFinalizedBlock = summit.consensusValue
-        currentFinalityDetector = createFinalityDetector(lastFinalizedBlock)
-        advanceLfbChainAsManyStepsAsPossible()
+        context.summitEstablished(lastFinalizedBlock, summit)
+        if (summit.isFinalized) {
+          lastFinalizedBlock = summit.consensusValue
+          currentFinalityDetector = createFinalityDetector(lastFinalizedBlock)
+          advanceLfbChainAsManyStepsAsPossible()
+        }
 
       case None =>
         //no consensus yet, do nothing

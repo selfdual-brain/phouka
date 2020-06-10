@@ -23,7 +23,7 @@ trait ValidatorContext {
   def proposeScheduler: IntSequenceGenerator //delays as milliseconds values
   def broadcast(brick: Brick): Unit
   def setNextWakeUp(relativeTime: TimeDelta): Unit
-  def finalized(bGameAnchor: Block, summit: ACC.Summit): Unit
+  def summitEstablished(bGameAnchor: Block, summit: ACC.Summit): Unit
   def equivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit
   def equivocationCatastrophe(validators: Iterable[ValidatorId], fttExceededBy: Ether): Unit
 }

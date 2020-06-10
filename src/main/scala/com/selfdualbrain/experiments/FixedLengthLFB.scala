@@ -51,7 +51,7 @@ object FixedLengthLFB {
               //ignore
             case OutputEventPayload.BallotProposed(ballot) =>
               //ignore
-            case OutputEventPayload.BlockFinalized(bGameAnchor, summit) =>
+            case OutputEventPayload.SummitEstablished(bGameAnchor, summit) =>
               if (source == 0) {
                 println(s"validator 0 extended LFB chain to generation ${summit.consensusValue.generation}")
                 if (summit.consensusValue.generation == lfbChainDesiredLength)

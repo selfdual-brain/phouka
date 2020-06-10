@@ -1,6 +1,7 @@
 package com.selfdualbrain.abstract_consensus
 
 import scala.annotation.tailrec
+import scala.collection.mutable.ArrayBuffer
 
 trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusMessage] extends AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
 
@@ -33,17 +34,17 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
           if (sumOfWeights(baseTrimmer.validators) < quorum)
             return None
           else {
-            val committeesFound: Array[Trimmer] = new Array[Trimmer](ackLevel + 1)
-            committeesFound(0) = baseTrimmer
+            val committeesFound: ArrayBuffer[Trimmer] = new ArrayBuffer[Trimmer]
+            committeesFound.append(baseTrimmer)
             for (k <- 1 to ackLevel) {
               val levelKCommittee: Option[Trimmer] = findCommittee(committeesFound(k-1), committeesFound(k-1).validatorsSet)
               if (levelKCommittee.isEmpty)
-                return None
+                return Some(Summit(winnerConsensusValue, relativeFTT, k-1, committeesFound.toArray, isFinalized = false))
               else
-                committeesFound(k) = levelKCommittee.get
+                committeesFound.append(levelKCommittee.get)
             }
 
-            return Some(Summit(winnerConsensusValue, relativeFTT, ackLevel, committeesFound))
+            return Some(Summit(winnerConsensusValue, relativeFTT, ackLevel, committeesFound.toArray, isFinalized = true))
           }
       }
     }

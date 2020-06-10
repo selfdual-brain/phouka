@@ -73,6 +73,10 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     return event
   }
 
+  override def numberOfStepsExecuted: Long = stepId
+
+  override def currentTime: SimTimepoint = desQueue.currentTime
+
   //################################# PRIVATE ##################################
 
   protected def handleMessagePassing(id: Long, timepoint: SimTimepoint, source: ValidatorId, destination: ValidatorId, payload: NodeEventPayload): Unit = {
@@ -137,8 +141,8 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
 
     override def time: SimTimepoint = localTime
 
-    override def finalized(bGameAnchor: Block, summit: ACC.Summit): Unit = {
-      desQueue.addOutputEvent(localTime, vid, OutputEventPayload.BlockFinalized(bGameAnchor, summit))
+    override def summitEstablished(bGameAnchor: Block, summit: ACC.Summit): Unit = {
+      desQueue.addOutputEvent(localTime, vid, OutputEventPayload.SummitEstablished(bGameAnchor, summit))
     }
 
     override def relativeFTT: Double = config.relativeFtt
