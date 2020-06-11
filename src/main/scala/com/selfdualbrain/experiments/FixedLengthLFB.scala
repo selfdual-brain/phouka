@@ -3,9 +3,7 @@ package com.selfdualbrain.experiments
 import java.io.File
 
 import com.selfdualbrain.des.Event
-import com.selfdualbrain.simulator_engine.OutputEventPayload.BlockProposed
 import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload, PhoukaConfig, PhoukaEngine}
-import com.selfdualbrain.time.SimTimepoint
 
 /**
   * We run the simulation as long as the specified number of finalized blocks is achieved by validator 0.
@@ -35,7 +33,7 @@ object FixedLengthLFB {
   def simulationLoop(): Unit = {
     var bricksCounter: Long = 0L
 
-    for (event <- engine) {
+    for ((step,event) <- engine) {
       event match {
         case Event.External(id, timepoint, destination, payload) =>
           //ignore
@@ -47,20 +45,13 @@ object FixedLengthLFB {
           }
         case Event.Semantic(id, timepoint, source, payload) =>
           payload match {
-            case OutputEventPayload.BlockProposed(block) =>
-              //ignore
-            case OutputEventPayload.BallotProposed(ballot) =>
-              //ignore
-            case OutputEventPayload.SummitEstablished(bGameAnchor, summit) =>
+            case OutputEventPayload.BlockFinalized(bGameAnchor, block, summit) =>
               if (source == 0) {
                 println(s"validator 0 extended LFB chain to generation ${summit.consensusValue.generation}")
                 if (summit.consensusValue.generation == lfbChainDesiredLength)
                   return
               }
-
-            case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
-              //ignore
-            case OutputEventPayload.EquivocationCatastrophe(validators, fttExceededBy) =>
+            case other =>
               //ignore
           }
       }

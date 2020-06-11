@@ -1,7 +1,6 @@
 package com.selfdualbrain.abstract_consensus
 
 import scala.annotation.tailrec
-import scala.collection.mutable.ArrayBuffer
 
 trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusMessage] extends AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
 
@@ -34,17 +33,18 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
           if (sumOfWeights(baseTrimmer.validators) < quorum)
             return None
           else {
-            val committeesFound: ArrayBuffer[Trimmer] = new ArrayBuffer[Trimmer]
-            committeesFound.append(baseTrimmer)
-            for (k <- 1 to ackLevel) {
-              val levelKCommittee: Option[Trimmer] = findCommittee(committeesFound(k-1), committeesFound(k-1).validatorsSet)
-              if (levelKCommittee.isEmpty)
-                return Some(Summit(winnerConsensusValue, relativeFTT, k-1, committeesFound.toArray, isFinalized = false))
-              else
-                committeesFound.append(levelKCommittee.get)
-            }
+            @tailrec
+            def detectSummit(committeesStack: List[Trimmer], levelEstablished: Int): Summit =
+              findCommittee(committeesStack.head, committeesStack.head.validatorsSet) match {
+                case None => Summit(winnerConsensusValue, relativeFTT, levelEstablished, committeesStack.reverse.toArray, isFinalized = false)
+                case Some(trimmer) =>
+                  if (levelEstablished + 1 == ackLevel)
+                    Summit(winnerConsensusValue, relativeFTT, levelEstablished + 1, (trimmer :: committeesStack).reverse.toArray, isFinalized = true)
+                  else
+                    detectSummit(trimmer :: committeesStack, levelEstablished + 1)
+              }
 
-            return Some(Summit(winnerConsensusValue, relativeFTT, ackLevel, committeesFound.toArray, isFinalized = true))
+            return Some(detectSummit(List(baseTrimmer), levelEstablished = 0))
           }
       }
     }

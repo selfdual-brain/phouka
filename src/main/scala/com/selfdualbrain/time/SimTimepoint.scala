@@ -22,6 +22,8 @@ case class SimTimepoint(micros: Long) extends AnyVal with Ordered[SimTimepoint] 
 
 object SimTimepoint {
   val zero: SimTimepoint = SimTimepoint(0L)
+
+  def max(t1: SimTimepoint, t2: SimTimepoint): SimTimepoint = if (t1 < t2) t2 else t1
 }
 
 object TimeDelta {

@@ -11,9 +11,10 @@ object NodeEventPayload {
 
 sealed trait OutputEventPayload
 object OutputEventPayload {
-  case class BlockProposed(block: NormalBlock) extends OutputEventPayload
-  case class BallotProposed(ballot: Ballot) extends OutputEventPayload
-  case class SummitEstablished(bGameAnchor: Block, summit: ACC.Summit) extends OutputEventPayload
+  case class BrickProposed(forkChoiceWinner: Block, brickJustCreated: Brick) extends OutputEventPayload
+  case class AddedIncomingBrickToLocalDag(brick: Brick) extends OutputEventPayload
+  case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends OutputEventPayload
+  case class BlockFinalized(bGameAnchor: Block, finalizedBlock: Block, summit: ACC.Summit) extends OutputEventPayload
   case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends OutputEventPayload
   case class EquivocationCatastrophe(validators: Iterable[ValidatorId], fttExceededBy: Ether) extends OutputEventPayload
 }

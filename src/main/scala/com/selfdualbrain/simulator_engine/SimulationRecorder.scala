@@ -22,24 +22,25 @@ class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
           case NodeEventPayload.WakeUpForCreatingNewBrick =>
             return //ignore
           case NodeEventPayload.BlockDelivered(block) =>
-            s"block ${block.id} delivered to validator $destination"
+            s"validator $destination: block ${block.id} delivered"
           case NodeEventPayload.BallotDelivered(ballot) =>
-            s"ballot ${ballot.id} delivered to validator $destination"
+            s"validator $destination: ballot ${ballot.id} delivered"
         }
 
       case Event.Semantic(id, timepoint, source, payload) =>
         payload match {
-          case OutputEventPayload.BlockProposed(block) =>
-            s"validator $source published block ${block.id}"
-          case OutputEventPayload.BallotProposed(ballot) =>
-            s"validator $source published ballot ${ballot.id}"
-          case OutputEventPayload.SummitEstablished(bGameAnchor, summit) =>
-            val finalizedBlock = summit.consensusValue
-            s"validator $source extended LFB chain to level ${finalizedBlock.generation} - block ${finalizedBlock.id}"
+          case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) =>
+            s"validator $source: published $brick"
+          case OutputEventPayload.AddedIncomingBrickToLocalDag(brick) =>
+            s"validator $source: added $brick to local blockdag"
+          case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
+            s"validator $source: pre-finality - level ${partialSummit.level}"
+          case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+            s"validator $source: finalized $finalizedBlock - generation=${finalizedBlock.generation}"
           case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
-            s"validator $source detected equivocation by $evilValidator - conflicting bricks are ${brick1.id} and ${brick2.id}"
+            s"validator $source: detected equivocation by $evilValidator - conflicting bricks are ${brick1.id} and ${brick2.id}"
           case OutputEventPayload.EquivocationCatastrophe(validators, fttExceededBy) =>
-            s"validator $source detected equivocation catastrophe - evil validators are ${validators.mkString(",")} absolute ftt exceeded by $fttExceededBy"
+            s"validator $source: detected equivocation catastrophe - evil validators are ${validators.mkString(",")} absolute ftt exceeded by $fttExceededBy"
         }
     }
 

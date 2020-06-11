@@ -4,15 +4,18 @@ import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures._
 import com.selfdualbrain.hashing.FakeSha256Digester
 import com.selfdualbrain.randomness.Picker
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class GenericHonestValidator(context: ValidatorContext) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
+class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
+  private var localClock: SimTimepoint = SimTimepoint.zero
   val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[Brick,Brick]
-//  val jdagGraph: InferredDag[Brick] = new DagImpl[Brick](_.directJustifications)
   val knownBricks = new mutable.HashSet[Brick](1000, 0.75)
+
+//  val jdagGraph: InferredDag[Brick] = new DagImpl[Brick](_.directJustifications)
 //  val mainTree: InferredTree[Block] = new InferredTreeImpl[Block](context.genesis, getParent = {
 //    case b: NormalBlock => Some(b.parent)
 //    case g: Genesis => None
@@ -43,16 +46,18 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
       estimator = bgame)
   }
 
-  //#################### HANDLING OF INCOMING MESSAGES ############################
+  //#################### PUBLIC API ############################
 
-  override def startup(): Unit = {
+  override def startup(time: SimTimepoint): Unit = {
+    localClock = SimTimepoint.max(time, localClock)
     val newBGame = new BGame(context.genesis, context.weightsOfValidators, equivocatorsRegistry)
     block2bgame += context.genesis -> newBGame
     currentFinalityDetector = createFinalityDetector(context.genesis)
-    context.setNextWakeUp(context.proposeScheduler.next() * 1000)
+    scheduleNextWakeup()
   }
 
-  def onNewBrickArrived(msg: Brick): Unit = {
+  def onNewBrickArrived(time: SimTimepoint, msg: Brick): Unit = {
+    localClock = SimTimepoint.max(time, localClock)
     val missingDependencies: Seq[Brick] = msg.directJustifications.filter(j => ! knownBricks.contains(j))
 
     if (missingDependencies.isEmpty)
@@ -62,26 +67,33 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
         messagesBuffer.addPair(msg,j)
   }
 
-  override def onScheduledBrickCreation(): Unit = {
+  override def onScheduledBrickCreation(time: SimTimepoint): Unit = {
+    localClock = SimTimepoint.max(time, localClock)
     blockVsBallot.select() match {
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)
     }
-    context.setNextWakeUp(context.proposeScheduler.next() * 1000) //converting milliseconds to microseconds
+    scheduleNextWakeup()
   }
+
+  override def localTime: SimTimepoint = localClock
+
+  //#################### HANDLING OF INCOMING MESSAGES ############################
 
   def runBufferPruningCascadeFor(msg: Brick): Unit = {
     val queue = new mutable.Queue[Brick]()
     queue enqueue msg
 
     while (queue.nonEmpty) {
-      val nextMsg = queue.dequeue()
-      if (! knownBricks.contains(nextMsg)) {
-        globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(nextMsg))
-        globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextMsg))
-        addToLocalJdag(nextMsg)
-        val waitingForThisOne = messagesBuffer.findSourcesFor(nextMsg)
-        messagesBuffer.removeTarget(nextMsg)
+      val nextBrick = queue.dequeue()
+      if (! knownBricks.contains(nextBrick)) {
+        globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(nextBrick))
+        globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextBrick))
+        addToLocalJdag(nextBrick)
+        if (sherlockMode)
+          context.addOutputEvent(localTime, OutputEventPayload.AddedIncomingBrickToLocalDag(nextBrick))
+        val waitingForThisOne = messagesBuffer.findSourcesFor(nextBrick)
+        messagesBuffer.removeTarget(nextBrick)
         val unblockedMessages = waitingForThisOne.filterNot(b => messagesBuffer.hasSource(b))
         queue enqueueAll unblockedMessages
       }
@@ -94,11 +106,12 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
     val brick = createNewBrick(shouldBeBlock)
     globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(brick))
     addToLocalJdag(brick)
-    context.broadcast(brick)
+    context.broadcast(localTime, brick)
     myLastMessagePublished = Some(brick)
   }
 
   def createNewBrick(shouldBeBlock: Boolean): Brick = {
+    registerProcessingTime(5L)
     val creator: ValidatorId = context.validatorId
     val justifications: Seq[Brick] = globalPanorama.honestSwimlanesTips.values.toSeq
     mySwimlaneLastMessageSequenceNumber += 1
@@ -114,7 +127,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
         NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
-          timepoint = context.time,
+          timepoint = localClock,
           justifications,
           creator,
           prevInSwimlane = myLastMessagePublished,
@@ -125,7 +138,7 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
         Ballot(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
-          timepoint = context.time,
+          timepoint = localClock,
           justifications,
           creator,
           prevInSwimlane = myLastMessagePublished,
@@ -136,10 +149,14 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
     return brick
   }
 
+  def scheduleNextWakeup(): Unit = {
+    context.addPrivateEvent(localClock + context.brickProposeDelaysGenerator.next() * 1000, NodeEventPayload.WakeUpForCreatingNewBrick)
+  }
+
   //########################## J-DAG ##########################################
 
   def addToLocalJdag(msg: Brick): Unit = {
-    context.registerProcessingTime(1L)
+    registerProcessingTime(1L)
     knownBricks += msg
     equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(globalPanorama.equivocators)
 
@@ -158,10 +175,13 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
 
   @tailrec
   private def advanceLfbChainAsManyStepsAsPossible(): Unit = {
+    registerProcessingTime(1L)
     currentFinalityDetector.onLocalJDagUpdated(globalPanorama) match {
       case Some(summit) =>
-        context.summitEstablished(lastFinalizedBlock, summit)
+        if (sherlockMode && ! summit.isFinalized)
+          context.addOutputEvent(localTime, OutputEventPayload.PreFinality(lastFinalizedBlock, summit))
         if (summit.isFinalized) {
+          context.addOutputEvent(localTime, OutputEventPayload.BlockFinalized(lastFinalizedBlock, summit.consensusValue, summit))
           lastFinalizedBlock = summit.consensusValue
           currentFinalityDetector = createFinalityDetector(lastFinalizedBlock)
           advanceLfbChainAsManyStepsAsPossible()
@@ -200,6 +220,12 @@ class GenericHonestValidator(context: ValidatorContext) extends Validator[Valida
       None
     else
       Some(mySwimlane(pos + 1))
+  }
+
+  //########################## LOCAL TIME #######################################
+
+  protected def registerProcessingTime(t: TimeDelta): Unit = {
+    localClock += t
   }
 
 }

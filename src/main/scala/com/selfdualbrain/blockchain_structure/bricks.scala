@@ -51,6 +51,8 @@ case class Ballot(
  ) extends Brick {
 
   override val directJustifications: Seq[Brick] = (explicitJustifications :+ targetBlock) ++ prevInSwimlane
+
+  override def toString: String = s"Ballot-$id"
 }
 
 case class NormalBlock(
@@ -71,10 +73,14 @@ case class NormalBlock(
       case g: Genesis => explicitJustifications ++ prevInSwimlane
       case nb: NormalBlock => (explicitJustifications :+ nb) ++ prevInSwimlane
     }
+
+  override def toString: String = s"Block-$id"
 }
 
 case class Genesis(id: VertexId) extends Block {
   override def timepoint: SimTimepoint = SimTimepoint.zero
   override def generation: Int = 0
   override def daglevel: Int = 0
+
+  override def toString: String = "Genesis"
 }
