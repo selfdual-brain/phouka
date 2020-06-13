@@ -36,6 +36,8 @@ class BGame(anchor: Block, weight: ValidatorId => Ether, equivocatorsRegistry: E
   var forkChoiceWinnerMemoized: Option[NormalBlock] = None
   var isFcMemoValid: Boolean = false
 
+  override def toString: String = s"BGame-${anchor.id}"
+
   def addVote(votingBrick: Brick, consensusValue: NormalBlock): Unit = {
     brick2con += votingBrick -> consensusValue
     val validator = votingBrick.creator

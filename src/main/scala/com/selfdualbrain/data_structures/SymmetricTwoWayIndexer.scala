@@ -42,17 +42,17 @@ class SymmetricTwoWayIndexer[A,B] extends BinaryRelation[A,B] {
 
   def containsPair(a: A, b: B): Boolean = ab.containsEntry(a,b)
 
-  def findTargetsFor(source: A): Iterable[B] = ab.get(source)
+  def findTargetsFor(source: A): Iterable[B] = ab.get(source).toSeq //"toSeq" is needed to create a snapshot detached from the master
 
-  def findSourcesFor(target: B): Iterable[A] = ba.get(target)
+  def findSourcesFor(target: B): Iterable[A] = ba.get(target).toSeq //"toSeq" is needed to create a snapshot detached from the master
 
   def hasSource(a: A): Boolean = ab.containsKey(a)
 
   def hasTarget(b: B): Boolean = ba.containsKey(b)
 
-  def sources: Iterable[A] = ab.keySet
+  def sources: Iterable[A] = ab.keySet.toSeq
 
-  def targets: Iterable[B] = ba.keySet
+  def targets: Iterable[B] = ba.keySet.toSeq
 
   /**
     * Number of pairs in the relation.

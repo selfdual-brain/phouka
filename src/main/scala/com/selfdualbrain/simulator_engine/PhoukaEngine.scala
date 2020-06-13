@@ -40,7 +40,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   private val validators = new Array[Validator[ValidatorId, NodeEventPayload, OutputEventPayload]](config.numberOfValidators)
   for (i <- validators.indices) {
     val context = new ValidatorContextImpl(i)
-    val newValidator = new GenericHonestValidator(context, true)
+    val newValidator = new GenericHonestValidator(i, context, true)
     newValidator.startup(desQueue.currentTime)
     validators(i) = newValidator
   }

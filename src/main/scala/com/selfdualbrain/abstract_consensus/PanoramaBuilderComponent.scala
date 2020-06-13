@@ -16,7 +16,7 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] ex
         case Some(p) => p
         case None =>
           val result =
-            cmApi.directJustifications(msg).foldLeft(Panorama.empty){case (acc,j) =>
+            cmApi.justifications(msg).foldLeft(Panorama.empty){case (acc,j) =>
               val tmp = mergePanoramas(panoramaOf(j), Panorama.atomic(j))
               mergePanoramas(acc, tmp)}
           message2panorama += (msg -> result)

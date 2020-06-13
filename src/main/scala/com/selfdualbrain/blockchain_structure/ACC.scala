@@ -15,7 +15,7 @@ object ACC extends ReferenceFinalityDetectorComponent[VertexId,ValidatorId,Norma
 
     override def prevInSwimlane(m: Brick): Option[Brick] = m.prevInSwimlane
 
-    override def directJustifications(m: Brick): Seq[Brick] = m.directJustifications
+    override def justifications(m: Brick): Iterable[Brick] = m.justifications
 
     override def daglevel(m: Brick): VertexId = m.daglevel
   }

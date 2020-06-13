@@ -8,7 +8,7 @@ trait AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
     def id(m: ConsensusMessage): MessageId
     def creator(m: ConsensusMessage): ValidatorId
     def prevInSwimlane(m: ConsensusMessage): Option[ConsensusMessage]
-    def directJustifications(m: ConsensusMessage): Seq[ConsensusMessage]
+    def justifications(m: ConsensusMessage): Iterable[ConsensusMessage]
     def daglevel(m: ConsensusMessage): Int
   }
 

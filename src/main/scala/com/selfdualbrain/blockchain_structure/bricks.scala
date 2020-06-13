@@ -25,15 +25,14 @@ trait BlockchainVertex {
 trait Brick extends BlockchainVertex {
   def creator: ValidatorId
   def prevInSwimlane: Option[Brick]
-  def directJustifications: Seq[Brick]
-  def explicitJustifications: Seq[Brick]
+  def justifications: Iterable[Brick]
   def positionInSwimlane: Int
 
   override lazy val daglevel: Int =
-    if (directJustifications.isEmpty)
+    if (justifications.isEmpty)
       0
     else
-      directJustifications.map(j => j.daglevel).max + 1
+      justifications.map(j => j.daglevel).max + 1
 }
 
 trait Block extends BlockchainVertex {
@@ -44,16 +43,14 @@ case class Ballot(
                    id: VertexId,
                    positionInSwimlane: Int,
                    timepoint: SimTimepoint,
-                   explicitJustifications: Seq[Brick],
+                   justifications: Iterable[Brick],
                    creator: ValidatorId,
                    prevInSwimlane: Option[Brick],
                    targetBlock: NormalBlock
  ) extends Brick {
 
-  override val directJustifications: Seq[Brick] = (explicitJustifications :+ targetBlock) ++ prevInSwimlane
-
   override lazy val toString: String =
-    s"Ballot-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,target=${targetBlock.id},j=[${directJustifications.map(_.id).mkString(",")}])"
+    s"Ballot-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,target=${targetBlock.id},j=[${justifications.map(_.id).mkString(",")}])"
 
 }
 
@@ -61,7 +58,7 @@ case class NormalBlock(
                         id: VertexId,
                         positionInSwimlane: Int,
                         timepoint: SimTimepoint,
-                        explicitJustifications: Seq[Brick],
+                        justifications: Iterable[Brick],
                         creator: ValidatorId,
                         prevInSwimlane: Option[Brick],
                         parent: Block,
@@ -70,14 +67,8 @@ case class NormalBlock(
 
   override val generation: ValidatorId = parent.generation + 1
 
-  override val directJustifications: Seq[Brick] =
-    parent match {
-      case g: Genesis => explicitJustifications ++ prevInSwimlane
-      case nb: NormalBlock => (explicitJustifications :+ nb) ++ prevInSwimlane
-    }
-
   override lazy val toString: String =
-    s"Block-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,parent=${parent.id},j=[${directJustifications.map(_.id).mkString(",")}])"
+    s"Block-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,parent=${parent.id},j=[${justifications.map(_.id).mkString(",")}])"
 }
 
 case class Genesis(id: VertexId) extends Block {

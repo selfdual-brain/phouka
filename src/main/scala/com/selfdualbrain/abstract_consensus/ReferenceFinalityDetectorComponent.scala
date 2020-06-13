@@ -131,7 +131,10 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
       }
     }
 
-    private def sumOfWeights(validators: Iterable[ValidatorId]): Ether = validators.map(weightsOfValidators).sum
+    private def sumOfWeights(validators: Iterable[ValidatorId]): Ether = {
+      //performance optimization of: validators.toSeq.map(weightsOfValidators).sum
+      validators.foldLeft(0L) {case (acc, vid) => acc + weightsOfValidators(vid)}
+    }
 
   }
 

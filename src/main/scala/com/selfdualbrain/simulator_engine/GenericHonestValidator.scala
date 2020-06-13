@@ -7,10 +7,11 @@ import com.selfdualbrain.randomness.Picker
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.annotation.tailrec
+import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
+class GenericHonestValidator(id: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
   private var localClock: SimTimepoint = SimTimepoint.zero
   val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[Brick,Brick]
   val knownBricks = new mutable.HashSet[Brick](1000, 0.75)
@@ -32,6 +33,8 @@ class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) e
   val blockVsBallot = new Picker[String](context.random, Map("block" -> context.blocksFraction, "ballot" -> (1 - context.blocksFraction)))
   val brickHashGenerator = new FakeSha256Digester(context.random, 8)
   var currentFinalityDetector: ACC.FinalityDetector = _
+
+  override def toString: String = s"Validator-$id"
 
   def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
     val bgame: BGame = block2bgame(bGameAnchor)
@@ -58,7 +61,7 @@ class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) e
 
   def onNewBrickArrived(time: SimTimepoint, msg: Brick): Unit = {
     localClock = SimTimepoint.max(time, localClock)
-    val missingDependencies: Seq[Brick] = msg.directJustifications.filter(j => ! knownBricks.contains(j))
+    val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! knownBricks.contains(j))
     registerProcessingTime(1L)
 
     if (missingDependencies.isEmpty)
@@ -129,16 +132,9 @@ class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) e
       else
         forkChoice(lastFinalizedBlock)
 
-    val justificationsApproximation1: Set[Brick] = globalPanorama.honestSwimlanesTips.values.toSet
-    val justificationsApproximation2: Set[Brick] = forkChoiceWinner match {
-      case x: Genesis => justificationsApproximation1
-      case x: NormalBlock => justificationsApproximation1 - x
-    }
-    val justificationsApproximation3: Set[Brick] = myLastMessagePublished match {
-      case None => justificationsApproximation2
-      case Some(x) => justificationsApproximation2 - x
-    }
-    val justifications: Seq[Brick] = justificationsApproximation3.toSeq
+    //we use "toSet" conversion in the middle to leave only distinct elements
+    //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
+    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](globalPanorama.honestSwimlanesTips.values.toSet.toArray)
 
     val brick =
       if (shouldBeBlock || forkChoiceWinner == context.genesis)
