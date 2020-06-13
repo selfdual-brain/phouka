@@ -57,7 +57,9 @@ class SymmetricTwoWayIndexer[A,B] extends BinaryRelation[A,B] {
   /**
     * Number of pairs in the relation.
     */
-  def size: Int = ab.size
+  override def size: Int = ab.size
 
-  def isEmpty: Boolean = ab.isEmpty
+  override def isEmpty: Boolean = ab.isEmpty
+
+  override def iterator: Iterator[(A, B)] = ab.iterator
 }

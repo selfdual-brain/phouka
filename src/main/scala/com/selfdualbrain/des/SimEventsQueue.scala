@@ -46,6 +46,7 @@ sealed trait Event[A] extends Ordered[Event[A]] {
   def id: Long
   def timepoint: SimTimepoint
   override def compare(that: Event[A]): Int = timepoint.compare(that.timepoint)
+  def loggingAgent: A
 }
 
 object Event  {
@@ -62,7 +63,9 @@ object Event  {
     * @tparam A type of agent identifier
     * @tparam P type of business-logic-specific payload
     */
-  case class External[A,P](id: Long, timepoint: SimTimepoint, destination: A, payload: P) extends Event[A]
+  case class External[A,P](id: Long, timepoint: SimTimepoint, destination: A, payload: P) extends Event[A] {
+    override def loggingAgent: A = destination
+  }
 
   /**
     * Envelope for a message-passing event - to be handled by an agent.
@@ -76,7 +79,9 @@ object Event  {
     * @tparam A type of agent identifier
     * @tparam P type of business-logic-specific payload
     */
-  case class MessagePassing[A,P](id: Long, timepoint: SimTimepoint, source: A, destination: A, payload: P) extends Event[A]
+  case class MessagePassing[A,P](id: Long, timepoint: SimTimepoint, source: A, destination: A, payload: P) extends Event[A] {
+    override def loggingAgent: A = destination
+  }
 
   /**
     * Envelope for "semantic" events. This is stuff that agents "emits" to the outside world
@@ -91,5 +96,7 @@ object Event  {
     * @tparam A type of agent identifier
     * @tparam P type of business-logic-specific payload
     */
-  case class Semantic[A,P](id: Long, timepoint: SimTimepoint, source: A, payload: P) extends Event[A]
+  case class Semantic[A,P](id: Long, timepoint: SimTimepoint, source: A, payload: P) extends Event[A] {
+    override def loggingAgent: A = source
+  }
 }

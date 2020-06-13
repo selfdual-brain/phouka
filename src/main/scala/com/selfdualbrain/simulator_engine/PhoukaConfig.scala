@@ -2,6 +2,7 @@ package com.selfdualbrain.simulator_engine
 
 import java.io.File
 
+import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.config_files_support.ConfigurationReader.PrimitiveType._
 import com.selfdualbrain.config_files_support.Hocon
 import com.selfdualbrain.randomness.IntSequenceConfig
@@ -14,6 +15,7 @@ case class PhoukaConfig(
                          equivocationChanceAsPercentage: Option[Double],
                          validatorsWeights: IntSequenceConfig,
                          simLogDir: Option[File],
+                         validatorsToBeLogged: Seq[ValidatorId],
                          finalizerAckLevel: Int,
                          relativeFtt: Double,
                          brickProposeDelays: IntSequenceConfig,
@@ -35,6 +37,7 @@ object PhoukaConfig {
       equivocationChanceAsPercentage = config.asOptional.primitiveValue("equivocation-chance", DOUBLE),
       validatorsWeights = config.typeTaggedComposite("validators-weights", IntSequenceConfig.fromConfig),
       simLogDir = config.asOptional.encodedValue("sim-log-dir", path => new File(path)),
+      validatorsToBeLogged = config.collectionOfPrimValues[ValidatorId]("log-validators", INT),
       finalizerAckLevel = config.primitiveValue("finalizer-ack-level", INT),
       relativeFtt = config.primitiveValue("finalizer-relative-ftt", DOUBLE),
       brickProposeDelays = config.typeTaggedComposite("brick-propose-delays", IntSequenceConfig.fromConfig),

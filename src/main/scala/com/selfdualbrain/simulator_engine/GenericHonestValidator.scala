@@ -59,12 +59,16 @@ class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) e
   def onNewBrickArrived(time: SimTimepoint, msg: Brick): Unit = {
     localClock = SimTimepoint.max(time, localClock)
     val missingDependencies: Seq[Brick] = msg.directJustifications.filter(j => ! knownBricks.contains(j))
+    registerProcessingTime(1L)
 
     if (missingDependencies.isEmpty)
       runBufferPruningCascadeFor(msg)
     else
-      for (j <- missingDependencies)
+      for (j <- missingDependencies) {
         messagesBuffer.addPair(msg,j)
+        if (sherlockMode)
+          context.addOutputEvent(localClock, OutputEventPayload.AddedEntryToMsgBuffer(msg, j, messagesBuffer.toSeq))
+      }
   }
 
   override def onScheduledBrickCreation(time: SimTimepoint): Unit = {
@@ -95,6 +99,10 @@ class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) e
         val waitingForThisOne = messagesBuffer.findSourcesFor(nextBrick)
         messagesBuffer.removeTarget(nextBrick)
         val unblockedMessages = waitingForThisOne.filterNot(b => messagesBuffer.hasSource(b))
+        if (sherlockMode && unblockedMessages.nonEmpty) {
+          registerProcessingTime(1L)
+          context.addOutputEvent(localClock, OutputEventPayload.RemovedEntriesFromMsgBuffer(unblockedMessages, messagesBuffer.toSeq))
+        }
         queue enqueueAll unblockedMessages
       }
     }
@@ -113,7 +121,6 @@ class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) e
   def createNewBrick(shouldBeBlock: Boolean): Brick = {
     registerProcessingTime(5L)
     val creator: ValidatorId = context.validatorId
-    val justifications: Seq[Brick] = globalPanorama.honestSwimlanesTips.values.toSeq
     mySwimlaneLastMessageSequenceNumber += 1
 
     val forkChoiceWinner: Block =
@@ -121,6 +128,17 @@ class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) e
         forkChoice(context.genesis)
       else
         forkChoice(lastFinalizedBlock)
+
+    val justificationsApproximation1: Set[Brick] = globalPanorama.honestSwimlanesTips.values.toSet
+    val justificationsApproximation2: Set[Brick] = forkChoiceWinner match {
+      case x: Genesis => justificationsApproximation1
+      case x: NormalBlock => justificationsApproximation1 - x
+    }
+    val justificationsApproximation3: Set[Brick] = myLastMessagePublished match {
+      case None => justificationsApproximation2
+      case Some(x) => justificationsApproximation2 - x
+    }
+    val justifications: Seq[Brick] = justificationsApproximation3.toSeq
 
     val brick =
       if (shouldBeBlock || forkChoiceWinner == context.genesis)
@@ -155,19 +173,19 @@ class GenericHonestValidator(context: ValidatorContext, sherlockMode: Boolean) e
 
   //########################## J-DAG ##########################################
 
-  def addToLocalJdag(msg: Brick): Unit = {
+  def addToLocalJdag(brick: Brick): Unit = {
     registerProcessingTime(1L)
-    knownBricks += msg
+    knownBricks += brick
     equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(globalPanorama.equivocators)
 
-    msg match {
+    brick match {
       case x: NormalBlock =>
 //        mainTree insert x
         val newBGame = new BGame(x, context.weightsOfValidators, equivocatorsRegistry)
         block2bgame += x -> newBGame
-        applyNewVoteToBGamesChain(msg, x)
+        applyNewVoteToBGamesChain(brick, x)
       case x: Ballot =>
-        applyNewVoteToBGamesChain(msg, x.targetBlock)
+        applyNewVoteToBGamesChain(brick, x.targetBlock)
     }
 
     advanceLfbChainAsManyStepsAsPossible()

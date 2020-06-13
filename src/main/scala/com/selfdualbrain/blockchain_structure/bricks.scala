@@ -52,7 +52,9 @@ case class Ballot(
 
   override val directJustifications: Seq[Brick] = (explicitJustifications :+ targetBlock) ++ prevInSwimlane
 
-  override def toString: String = s"Ballot-$id"
+  override lazy val toString: String =
+    s"Ballot-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,target=${targetBlock.id},j=[${directJustifications.map(_.id).mkString(",")}])"
+
 }
 
 case class NormalBlock(
@@ -74,7 +76,8 @@ case class NormalBlock(
       case nb: NormalBlock => (explicitJustifications :+ nb) ++ prevInSwimlane
     }
 
-  override def toString: String = s"Block-$id"
+  override lazy val toString: String =
+    s"Block-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,parent=${parent.id},j=[${directJustifications.map(_.id).mkString(",")}])"
 }
 
 case class Genesis(id: VertexId) extends Block {

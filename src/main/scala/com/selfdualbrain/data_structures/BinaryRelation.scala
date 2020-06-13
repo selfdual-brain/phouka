@@ -2,7 +2,7 @@ package com.selfdualbrain.data_structures
 
 //Contract for a mutable 2-argument relation (= subset of the cartesian product AxB)
 //We use this structure to represent messages buffer.
-trait BinaryRelation[A,B] {
+trait BinaryRelation[A,B] extends Iterable[(A,B)]{
   def addPair(a: A, b: B): Unit
   def removePair(a: A, b: B): Unit
   def removeSource(a: A): Unit

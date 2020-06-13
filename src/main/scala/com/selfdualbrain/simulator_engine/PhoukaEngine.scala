@@ -35,6 +35,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     val file = new File(dir, filename)
     new SimulationRecorder[ValidatorId](file, eagerFlush = true)
   }
+  val validatorsToBeLogged: Set[ValidatorId] = config.validatorsToBeLogged.toSet
   //initialize validators
   private val validators = new Array[Validator[ValidatorId, NodeEventPayload, OutputEventPayload]](config.numberOfValidators)
   for (i <- validators.indices) {
@@ -68,7 +69,8 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     }
 
     if (recorder.isDefined)
-      recorder.get.record(event)
+      if (validatorsToBeLogged.isEmpty || validatorsToBeLogged.contains(event.loggingAgent))
+        recorder.get.record(stepId, event)
 
     return (stepId, event)
   }
