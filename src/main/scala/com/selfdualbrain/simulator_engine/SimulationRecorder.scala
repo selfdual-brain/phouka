@@ -22,10 +22,8 @@ class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
         payload match {
           case NodeEventPayload.WakeUpForCreatingNewBrick =>
             s"(validator $destination) propose wake-up"
-          case NodeEventPayload.BlockDelivered(block) =>
+          case NodeEventPayload.BrickDelivered(block) =>
             s"(validator $destination) received $block"
-          case NodeEventPayload.BallotDelivered(ballot) =>
-            s"(validator $destination) received $ballot"
         }
 
       case Event.Semantic(id, timepoint, source, payload) =>

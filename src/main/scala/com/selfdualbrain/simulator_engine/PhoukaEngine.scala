@@ -27,7 +27,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   val desQueue: SimEventsQueue[ValidatorId, NodeEventPayload, OutputEventPayload] = new ClassicDesQueue[ValidatorId, NodeEventPayload, OutputEventPayload]
   val validatorId2Weight: ValidatorId => Ether = vid => weightsArray(vid)
   var lastBrickId: VertexId = 0
-  private var stepId: Long = 0
+  private var stepId: Long = -1L
   val recorder: Option[SimulationRecorder[ValidatorId]] = config.simLogDir map {dir =>
     val timeNow = java.time.LocalDateTime.now()
     val timestampAsString = timeNow.toString.replace(':', '-').replace('.','-')
@@ -55,7 +55,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     if (stepId >= config.cyclesLimit)
       throw new RuntimeException(s"cycles limit exceeded: ${config.cyclesLimit}")
 
-    stepId += 1
+    stepId += 1 //first step executed will have number 0
     val event: Event[ValidatorId] = desQueue.next()
     if (log.isDebugEnabled() && stepId % 1000 == 0)
       log.debug(s"step $stepId")
@@ -75,7 +75,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     return (stepId, event)
   }
 
-  override def numberOfStepsExecuted: Long = stepId
+  override def lastStepExecuted: Long = stepId
 
   override def currentTime: SimTimepoint = desQueue.currentTime
 
@@ -83,8 +83,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
 
   protected def handleMessagePassing(id: Long, timepoint: SimTimepoint, source: ValidatorId, destination: ValidatorId, payload: NodeEventPayload): Unit = {
     payload match {
-      case NodeEventPayload.BallotDelivered(ballot) => validators(destination).onNewBrickArrived(desQueue.currentTime, ballot)
-      case NodeEventPayload.BlockDelivered(block) => validators(destination).onNewBrickArrived(desQueue.currentTime, block)
+      case NodeEventPayload.BrickDelivered(block) => validators(destination).onNewBrickArrived(desQueue.currentTime, block)
       case NodeEventPayload.WakeUpForCreatingNewBrick => validators(destination).onScheduledBrickCreation(desQueue.currentTime)
     }
   }
@@ -106,11 +105,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
       val qf: Long = random.between(-500, 500).toLong //quantum fluctuation
       val effectiveDelay: Long = math.max(1, networkDelayGenerator.next() * 1000 + qf) // we enforce minimum delay = 1 microsecond
       val targetTimepoint: SimTimepoint = validatorTime + effectiveDelay
-      val payload = brick match {
-        case x: NormalBlock => NodeEventPayload.BlockDelivered(x)
-        case x: Ballot => NodeEventPayload.BallotDelivered(x)
-      }
-      desQueue.addMessagePassingEvent(targetTimepoint, sender, i, payload)
+      desQueue.addMessagePassingEvent(targetTimepoint, sender, i, NodeEventPayload.BrickDelivered(brick))
     }
   }
 
@@ -158,3 +153,4 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   }
 
 }
+

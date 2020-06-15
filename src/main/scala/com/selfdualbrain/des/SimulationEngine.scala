@@ -9,6 +9,10 @@ import com.selfdualbrain.time.SimTimepoint
   * @tparam A type of agent identifiers
   */
 trait SimulationEngine[A] extends Iterator[(Long, Event[A])]{
-  def numberOfStepsExecuted: Long
+
+  //steps are 0-based
+  def lastStepExecuted: Long
+
+  //timepoint of last event pulled
   def currentTime: SimTimepoint
 }

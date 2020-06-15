@@ -36,7 +36,7 @@ class Picker[T](random: Random, freqMap: Map[T, Double])(implicit tag: ClassTag[
     val frequenciesTable: Seq[Double] = pairsOrderedByDescendingFreq.map(pair => pair._2)
     val sumOfAllFrequencies: Double = frequenciesTable.sum
     if (sumOfAllFrequencies < 0.00001)
-      throw new RuntimeException("Invalid freq map in random selector - sum is (almost) zero")
+      throw new RuntimeException("Invalid frequency map in Picker - sum of relative frequencies is (almost) zero")
 
     val partialSumsWithLeadingZero = frequenciesTable.scanLeft(0.0) {case (acc, freq) => acc + freq / sumOfAllFrequencies}
     return (items, partialSumsWithLeadingZero.drop(1).toArray)
