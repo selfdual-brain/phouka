@@ -44,8 +44,17 @@ trait SimEventsQueue[A,AP,OP] extends Iterator[Event[A]] {
   */
 sealed trait Event[A] extends Ordered[Event[A]] {
   def id: Long
+
   def timepoint: SimTimepoint
-  override def compare(that: Event[A]): Int = timepoint.compare(that.timepoint)
+
+  override def compare(that: Event[A]): Int = {
+    val timeDiff = timepoint.compare(that.timepoint)
+    return if (timeDiff != 0)
+      timeDiff
+    else
+      id.compareTo(that.id)
+  }
+
   def loggingAgent: A
 }
 
