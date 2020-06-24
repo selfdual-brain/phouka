@@ -1,7 +1,9 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, Genesis, ValidatorId}
+import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{Event, SimulationEngine}
+import com.selfdualbrain.gui.SimulationDisplayModel.Ev
+import com.selfdualbrain.gui_framework.EventsBroadcaster
 import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload, PhoukaConfig, ValidatorStats}
 
 import scala.collection.mutable
@@ -11,9 +13,8 @@ import scala.collection.mutable.ArrayBuffer
   * This is the model for "simulation display" GUI. All the non-trivial GUI logic happens here.
   * This model allows for different arrangement of actual forms and windows.
   *
-  * The GUI is centered around showing the log of events generated along a single simulation.
-  *
   * ============== Concepts ==============
+  * The GUI is centered around showing the log of events generated along a single simulation.
   * The simulation engine is an iterator of events. On every engine.next() a new event is produced.
   * Because event ids are assigned as events are created internally in the engine, and events are subject
   * to DES-queue-implied shuffling caused by how we simulate physical time, we distinguish step-id and event-id:
@@ -31,25 +32,23 @@ import scala.collection.mutable.ArrayBuffer
   * Dimension 2: selecting validator to be observed
   * Dimension 3: selecting brick within the local jdag of a validator
   *
-  * The collection of all events is kept in the "allEvents" ArrayBuffer.
-  * The last step simulated so far (= emitted by the engine) we refer to as "simulation horizon".
-  * The pointers (cursors) in all 3 browsing dimensions are:
+  * The collection of all events is kept in the "allEvents" ArrayBuffer. The last step simulated so far (= emitted by the engine) we refer
+  * to as "simulation horizon". The pointers (cursors) in all 3 browsing dimensions are:
   *
   * Dimension 1: getter = currentlyDisplayedStep, setter = displayStep(n: Int)
   * Dimension 2: getter = getObservedValidator, setter  = setObserverValidator(vid: ValidatorId)
   * Dimension 3: getter = selectedBrick, setter = selectBrick(brick: Brick)
   *
   * ============== Panels ==============
-  * The following components of the GUI are expected:
-  * - experiment configuration panel:
+  * The following panels in the GUI are expected:
+  * - experiment configuration panel: config params used for the simulation engine to run current simulation
   * - graph panel: displaying current jdag of selected validator
-  * - selected brick panel:
-  * - events log panel:
-  * - selected event panel:
-  * - bricks buffer panel:
-  * - validator stats panel:
-  * - selected brick details panel:
-  * - simulation control panel:
+  * - selected brick details: details of the brick selected on the graph (by clicking)
+  * - events log panel: history of events in the simulation (filtered)
+  * - selected event panel: details of the event selected in events log panel
+  * - messages buffer panel: contents of the messages buffer of the currently observed validator (bricks received but not yet integrated with the local jdag)
+  * - validator stats panel: statistics of observed validator
+  * - simulation control panel: allows running the simulation (= extending the horizon)
   *
   * ============== User actions ==============
   * - advance simulation
@@ -66,22 +65,27 @@ import scala.collection.mutable.ArrayBuffer
   * @param engine
   * @param genesis
   */
-class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: SimulationEngine[ValidatorId], genesis: Genesis) {
+class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: SimulationEngine[ValidatorId], genesis: Genesis) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
 
   //only-growing collection of (all) events
   //index in this collection coincides with step-id
   private val allEvents = new ArrayBuffer[Event[ValidatorId]]
 
-  //position in this collection corresponds to generation of LFB chain element
+  //This array is used as a map, where the key is validator id and it corresponds to array index).
+  //For a given validator, the array buffer contains all summits established along the LFB chain.
+  //Position in the buffer corresponds to generation of LFB chain element,
   //in the cell 13 there is summit ending b-game for LFB-chain element at height 13
   //i.e. at cell 0 is the summit for b-game anchored at Genesis
-  private val summits = new ArrayBuffer[ACC.Summit]
+  private val summits = new Array[ArrayBuffer[ACC.Summit]](experimentConfig.numberOfValidators)
+  for (vid <- 0 until experimentConfig.numberOfValidators)
+    summits(vid) = new ArrayBuffer[ACC.Summit]
 
   //subset of all-events, obtained via filtering; this is what "events log" table is showing
   //gets re-populated from scratch every time filter is changed
   private var filteredEvents = new ArrayBuffer[(Long, Event[ValidatorId])]
 
   //stats of the validators as calculated for the last event in allEvents
+  //(this array is used as a map, where the key is validator id and it corresponds to array index)
   private val validatorsStats = new Array[ValidatorStats](experimentConfig.numberOfValidators)
 
   //the id of validator for which the jdag graph is displayed
@@ -94,11 +98,12 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
 
   private var observedValidatorRenderedState: RenderedValidatorState = new RenderedValidatorState
 
-  //instance represents observed validator as inferred from events log
-  //caution: this class is mutable
-  //as the user moves the "selected event" on the events log table, we accordingly
-  //update the RenderedValidatorState by incremental processing of events
-  //important remark: when the selected event is "step N" we calculate the state so that all steps from 0 to N (inclusive) were executed
+  /**
+    * Represents observed validator state as inferred from events log.
+    * Caution: this class is mutable. As the user moves the "selected event" on the events log table, we accordingly
+    * update the RenderedValidatorState by incremental processing of events.
+    * Important remark: when the selected event is "step N" we calculate the state so that all steps from 0 to N (inclusive) were executed
+    */
   class RenderedValidatorState {
 
     //number of step which is currently highlighted
@@ -114,7 +119,6 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
 
     private var msgBufferSnapshot: Iterable[(Brick, Brick)] = Iterable.empty
 
-    //
     private var lastPartialSummitForCurrentBGame: Option[ACC.Summit] = None
 
     private var lastFinalizedBlock: Block = genesis
@@ -131,6 +135,10 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
 
     //returns a pair: (last finalized block, partial summit for next finalized block
     def currentFinalitySituation: (Block, Option[ACC.Summit]) = (lastFinalizedBlock, lastPartialSummitForCurrentBGame)
+
+    def knownEquivocators: Iterable[ValidatorId] = equivocators.toSeq
+
+    def isAfterEquivocationCatastrophe: Boolean = equivocationCatastrophe
 
     //moving state one step into the future
     def stepForward(): Unit = {
@@ -211,7 +219,7 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
       selectedStep -= 1
     }
 
-    //finds "previous" message buffer snapshot
+    //finds previous message buffer snapshot
     private def undoMsgBufferChange(step: Int): Iterable[(Brick,Brick)] = {
       for (i <- step to 0 by -1) {
         allEvents(i) match {
@@ -278,59 +286,12 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
 
   }
 
-//##########################################################################################################
+//################################ PUBLIC ################################################
+
+  //--------------------- HORIZON -------------------------
 
   //the number of last event generated from the engine
   def simulationHorizon: Int = engine.lastStepExecuted.toInt //for the GUI, we must assume that the number of steps in within Int range (this limitation is not present in the engine itself)
-
-  def eventsAfterFiltering: ArrayBuffer[(Long,Event[ValidatorId])] = filteredEvents
-
-  def getEventByStep(step: Int): Event[ValidatorId] = allEvents(step)
-
-  def getObservedValidator: ValidatorId = currentlyObservedValidator
-
-  def setObservedValidator(vid: ValidatorId): Unit = {
-    if (vid == currentlyObservedValidator)
-      return //no change is needed
-
-    //remembering which step we are displaying
-    val s = this.currentlyDisplayedStep
-
-    //switching the validator under observation and rendering its state from scratch
-    //caution: this will take some time, because we need to re-evaluate all events since the beginning of the simulation
-    //up to the displayed step
-    currentlyObservedValidator = vid
-    observedValidatorRenderedState = new RenderedValidatorState
-    displayStep(s)
-  }
-
-  def getFilter: EventsFilter = eventsFilter
-
-  def setFilter(filter: EventsFilter): Unit = {
-    eventsFilter = filter
-    filteredEvents = allEvents.zipWithIndex collect {case (ev, step) if filter.isEventIncluded(ev) => (step,ev)}
-  }
-
-  def currentlyDisplayedStep: Int = observedValidatorRenderedState.currentStep
-
-  //changing the selected event implies we need to determine which bricks are to be be visible
-  //at the new position of the timeline
-  def displayStep(newPosition: Int): Unit = {
-    if (newPosition == currentlyDisplayedStep)
-      return //no change, do nothing
-
-    if (newPosition > )
-
-      if (newPosition < currentlyDisplayedStep) {
-
-    }
-  }
-
-  private def goBackInTime(numberOfSteps: Int): Unit = {
-
-  }
-
-  def getStatsOf(vid: ValidatorId): ValidatorStats = validatorsStats(vid)
 
   //runs the engine to produce requested portion of steps, i.e. we extend the "simulation horizon"
   //returns the id of last step executed (coincides with the position of last element in allEvents collection)
@@ -342,9 +303,113 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
     for ((step,event) <- iterator) {
       allEvents.append(event)
       assert (allEvents.length == step + 1)
+      event match {
+        case Event.Semantic(id, timepoint, source, payload) =>
+          payload match {
+            case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+              summits(source)(bGameAnchor.generation) = summit
+            case other =>
+            //ignore
+          }
+        case _ =>
+        //ignore
+      }
+      trigger(Ev.SimulationAdvanced(step))
     }
 
     return allEvents.length - 1
+  }
+
+  //--------------------- OBSERVED VALIDATOR -------------------------
+
+  def getObservedValidator: ValidatorId = currentlyObservedValidator
+
+  def setObservedValidator(vid: ValidatorId): Unit = {
+    if (vid == currentlyObservedValidator)
+      return //no change is needed
+
+    //remembering which step we are displaying
+    //this is needed because we are just about to destroy the rendered state, where the current step pointer really lives
+    val s = currentlyDisplayedStep
+
+    //switching the validator under observation and rendering its state from scratch
+    //caution: this will take some time, because we need to re-evaluate all events since the beginning of the simulation
+    //up to the displayed step
+    currentlyObservedValidator = vid
+    observedValidatorRenderedState = new RenderedValidatorState
+    trigger(Ev.ValidatorSelectionChanged(currentlyObservedValidator))
+    displayStep(s)
+  }
+
+  def stateOfObservedValidator: RenderedValidatorState = observedValidatorRenderedState
+
+  def getSummit(generation: Int): Option[ACC.Summit] = {
+    val summitsOfCurrentValidator = summits(currentlyObservedValidator)
+    if (generation <= summitsOfCurrentValidator.length - 1)
+      Some(summitsOfCurrentValidator(generation))
+    else
+      None
+  }
+
+  def getStatsOf(vid: ValidatorId): ValidatorStats = validatorsStats(vid)
+
+  //--------------------- EVENTS LOG -------------------------
+
+  def eventsAfterFiltering: ArrayBuffer[(Long,Event[ValidatorId])] = filteredEvents
+
+  def getEvent(step: Int): Event[ValidatorId] = allEvents(step)
+
+  def getFilter: EventsFilter = eventsFilter
+
+  def setFilter(filter: EventsFilter): Unit = {
+    eventsFilter = filter
+    filteredEvents = allEvents.zipWithIndex collect {case (ev, step) if filter.isEventIncluded(ev) => (step,ev)}
+    trigger(Ev.NewFilterApplied)
+  }
+
+  def currentlyDisplayedStep: Int = observedValidatorRenderedState.currentStep
+
+  //changing the selected event implies we need to determine which bricks are to be be visible
+  //at the new position of the timeline
+  def displayStep(newPosition: Int): Unit = {
+    if (newPosition == currentlyDisplayedStep)
+      return //no change, do nothing
+
+    if (newPosition > this.currentlyDisplayedStep)
+      for (i <- this.currentlyDisplayedStep until newPosition) observedValidatorRenderedState.stepForward()
+    else {
+      if (newPosition > this.currentlyDisplayedStep / 2)
+        for (i <- this.currentlyDisplayedStep until newPosition by -1) observedValidatorRenderedState.stepBackward()
+      else {
+        observedValidatorRenderedState = new RenderedValidatorState
+        for (i <- 0 until newPosition) observedValidatorRenderedState.stepForward()
+      }
+    }
+
+    assert(this.currentlyDisplayedStep == newPosition)
+    trigger(Ev.StepSelectionChanged(newPosition))
+  }
+
+  //--------------------- GRAPHICAL JDAG -------------------------
+
+  def getSelectedBrick: Option[Brick] = selectedBrick
+
+  def selectBrick(brickOrNone: Option[Brick]): Unit = {
+    selectedBrick = brickOrNone
+    trigger(Ev.BrickSelectionChanged(selectedBrick))
+  }
+
+}
+
+object SimulationDisplayModel {
+
+  sealed abstract class Ev
+  object Ev {
+    case object NewFilterApplied extends Ev
+    case class SimulationAdvanced(step: Long) extends Ev
+    case class ValidatorSelectionChanged(vid: ValidatorId) extends Ev
+    case class StepSelectionChanged(step: Long) extends Ev
+    case class BrickSelectionChanged(brickOrNone: Option[Brick]) extends Ev
   }
 }
 

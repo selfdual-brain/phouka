@@ -1,8 +1,9 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.blockchain_structure._
+import com.selfdualbrain.des.Event
 
-sealed abstract class EventPayload(filteringTag: Int)
+sealed abstract class EventPayload(val filteringTag: Int)
 
 sealed abstract class NodeEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
 object NodeEventPayload {
@@ -35,10 +36,10 @@ object EventTag {
   val CATASTROPHE = 10
 
   val collection = Map(
-    BRICK_DELIVERED -> "brick delivered",
+    BRICK_DELIVERED -> "brick delivery",
     WAKE_UP -> "wake up",
-    BRICK_PROPOSED -> "brick published",
-    ADDED_INCOMING -> "added brick to jdag",
+    BRICK_PROPOSED -> "propose",
+    ADDED_INCOMING -> "incoming -> jdag",
     ADDED_ENTRY_TO_BUF -> "msg-buffer add",
     REMOVED_ENTRY_FROM_BUF -> "msg-buffer remove",
     PRE_FINALITY -> "pre-finality",
@@ -46,6 +47,19 @@ object EventTag {
     EQUIVOCATION -> "equivocation",
     CATASTROPHE -> "catastrophe"
   )
+
+  def of(event: Event[ValidatorId]): Int = {
+    val p: EventPayload = event match {
+      case Event.External(id, timepoint, destination, payload) => throw new RuntimeException("not supported")
+      case Event.MessagePassing(id, timepoint, source, destination, payload) => payload.asInstanceOf[NodeEventPayload]
+      case Event.Semantic(id, timepoint, source, payload) => payload.asInstanceOf[OutputEventPayload]
+    }
+    return p.filteringTag
+  }
+
+  def asString(event: Event[ValidatorId]): String = collection(EventTag.of(event))
+
 }
+
 
 
