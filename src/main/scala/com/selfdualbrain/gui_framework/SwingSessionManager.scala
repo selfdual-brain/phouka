@@ -1,5 +1,7 @@
 package com.selfdualbrain.gui_framework
 
+import java.awt.{BorderLayout, Color}
+
 import javax.swing.{JFrame, JPanel}
 
 import scala.collection.mutable

@@ -55,5 +55,16 @@ object IntSequenceConfig {
       case ex: Exception => throw new RuntimeException("parsing failed", ex)
     }
   }
+
+  def description(cfg: IntSequenceConfig): String = cfg match {
+    case Fixed(value) => s"fixed (value=$value)"
+    case Linear(start, growth) => s"linear (start=$start growth=$growth)"
+    case Exponential(start, growth) => s"exponential (start=$start growth=$growth)"
+    case Uniform(min, max) => s"uniform (min=$min max=$max)"
+    case PseudoGaussian(min, max) => s"pseudo-gaussian (min=$min max=$max)"
+    case Gaussian(mean, standardDeviation) => s"gaussian (mean=$mean standard-deviation=$standardDeviation)"
+    case PoissonProcess(lambda) => s"poisson-process (lambda=$lambda)"
+    case Erlang(k, lambda) => s"erlang (k=$k lambda=$lambda)"
+  }
 }
 
