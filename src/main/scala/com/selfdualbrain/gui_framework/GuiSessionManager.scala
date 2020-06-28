@@ -1,6 +1,8 @@
 package com.selfdualbrain.gui_framework
 
-trait SessionManager {
+import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
+
+trait GuiSessionManager {
 
   /**
     * I install given presenter as part of current session.
@@ -21,5 +23,7 @@ trait SessionManager {
   def encapsulateViewInFrame(view: Any, windowTitle: String): Unit
 
   def encapsulateViewInModalDialog(view: Any, windowTitle: String, relativeTo: Presenter[_,_,_])
+
+  def guiLayoutConfig: GuiLayoutConfig
 
 }

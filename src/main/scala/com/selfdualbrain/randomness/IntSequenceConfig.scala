@@ -13,7 +13,7 @@ object IntSequenceConfig {
   case class Uniform(min: Int, max: Int) extends IntSequenceConfig
   case class PseudoGaussian(min: Int, max: Int) extends IntSequenceConfig
   case class Gaussian(mean: Double, standardDeviation: Double) extends IntSequenceConfig
-  case class PoissonProcess(lambda: Double) extends IntSequenceConfig
+  case class PoissonProcess(lambda: Double) extends IntSequenceConfig //lambda = expected number of events per second, output from generator is sequence of delays as milliseconds
   case class Erlang(k: Int, lambda: Double) extends IntSequenceConfig
 
   def fromConfig(keyword: String, config: ConfigurationReader): IntSequenceConfig = {

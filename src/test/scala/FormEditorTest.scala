@@ -1,8 +1,9 @@
 import java.io.File
 
 import com.selfdualbrain.experiments.FixedLengthLFB.{config, lfbChainDesiredLength}
-import com.selfdualbrain.gui.ExperimentConfigView
+import com.selfdualbrain.gui.{ExperimentConfigPresenter, ExperimentConfigView}
 import com.selfdualbrain.gui_framework.SwingSessionManager
+import com.selfdualbrain.gui_framework.layout_dsl.HardcodedLayoutConfig
 import com.selfdualbrain.simulator_engine.PhoukaConfig
 import javax.swing.UIManager
 
@@ -30,9 +31,8 @@ object FormEditorTest {
 
     //display config
     val sessionManager = new SwingSessionManager
-    val view = new ExperimentConfigView
-    view.model = config
-    sessionManager.encapsulateViewInFrame(view, "test")
+    val presenter = new ExperimentConfigPresenter
+    sessionManager.mountTopPresenter(presenter, Some("test"))
   }
 
 }

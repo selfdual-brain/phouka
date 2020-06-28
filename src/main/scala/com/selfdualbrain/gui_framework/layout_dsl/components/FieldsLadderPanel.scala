@@ -1,10 +1,11 @@
-package com.selfdualbrain.gui_framework.layout_dsl
+package com.selfdualbrain.gui_framework.layout_dsl.components
 
 import java.awt.{Dimension, GridBagConstraints, GridBagLayout, Insets}
 
+import com.selfdualbrain.gui_framework.layout_dsl.PanelBasedViewComponent
 import javax.swing.{JCheckBox, JLabel, JPanel, JTextField}
 
-trait StaticFieldListPanel {
+trait FieldsLadderPanel extends PanelBasedViewComponent {
   self: JPanel =>
 
   private var lastRowUsed: Int = -1
@@ -62,6 +63,8 @@ trait StaticFieldListPanel {
     gbc.fill = GridBagConstraints.BOTH
     this.add(spacer, gbc)
   }
+
+//################################## PRIVATE ####################################
 
   private def addLabel(label: String): Unit = {
     lastRowUsed += 1

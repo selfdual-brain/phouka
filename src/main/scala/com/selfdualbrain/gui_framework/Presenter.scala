@@ -1,47 +1,22 @@
 package com.selfdualbrain.gui_framework
 
-import scala.collection.mutable
-
-abstract class Presenter[M, V <: MvpView[M,_], E](val isMultiwindowOrchestrator: Boolean) extends EventsBroadcaster[E] {
+/**
+  * Base class for presenters.
+  *
+  * @tparam M type of models that are compatible with this presenter.
+  * @tparam V type of views that are compatible with this presenter
+  * @tparam E triggered events base type
+  */
+abstract class Presenter[M, V <: MvpView[M,_], E] extends PresentersTreeVertex with EventsBroadcaster[E] {
   private var _view: Option[V] = None
   private var _model: Option[M] = None
-  private var _sessionManager: Option[SessionManager] = None
-  private val subpresenters = new mutable.HashMap[String, Presenter[_,_,_]]
 
-  init()
-
-  def init(): Unit = {
-    createComponents()
-    createSchematicWiring()
-  }
-
-  def initSessionManager(sm: SessionManager): Unit = {
-    _sessionManager = Some(sm)
-    for (p <- subpresentersIterator)
-      p.initSessionManager(sm)
-  }
-
-  protected def subpresentersIterator: Iterator[Presenter[_,_,_]] = subpresenters.valuesIterator
-
-  def show(windowTitleOverride: Option[String]): Unit = {
-    if (_sessionManager.isEmpty)
-      throw new RuntimeException(s"Could not show presenter $this: session manager not initialized yet")
-
+  override def show(windowTitleOverride: Option[String]): Unit = {
     ensureModelIsConnected()
     ensureViewIsConnected()
 
-    if (isMultiwindowOrchestrator) {
-      for (p <- subpresentersIterator)
-        p.show(None)
-    } else {
-      val windowTitle = windowTitleOverride.getOrElse(this.defaultWindowTitle)
-      sessionManager.encapsulateViewInFrame(this.view, windowTitle)
-    }
-  }
-
-  def sessionManager: SessionManager = {
-    assert(_sessionManager.isDefined)
-    return _sessionManager.get
+    val windowTitle = windowTitleOverride.getOrElse(this.defaultWindowTitle)
+    sessionManager.encapsulateViewInFrame(this.view, windowTitle)
   }
 
   def view: V = {
@@ -51,8 +26,12 @@ abstract class Presenter[M, V <: MvpView[M,_], E](val isMultiwindowOrchestrator:
 
   def view_=(value: V): Unit = {
     _view = Some(value)
+    if (this.hasModel)
+      view.model = this.model
     this.afterViewConnected()
   }
+
+  def hasView: Boolean = _view.isDefined
 
   def model: M = {
     assert(_model.isDefined)
@@ -61,32 +40,28 @@ abstract class Presenter[M, V <: MvpView[M,_], E](val isMultiwindowOrchestrator:
 
   def model_=(value: M): Unit = {
     _model = Some(value)
+    if (this.hasView)
+      this.view.model = value
     this.afterModelConnected()
   }
 
+  def hasModel: Boolean = _model.isDefined
+
   def ensureModelIsConnected(): Unit = {
-    if (_model.isEmpty) {
+    if (! this.hasModel) {
       val m = createDefaultModel()
       this.model = m
     }
   }
 
   def ensureViewIsConnected(): Unit = {
-    if (_view.isEmpty && ! isMultiwindowOrchestrator) {
+    if (! this.hasView) {
       val v = createDefaultView()
       this.view = v
     }
   }
 
 //####################################### SUBCLASS RESPONSIBILITY ##################################
-
-  def createComponents(): Unit = {
-    //do nothing
-  }
-
-  def createSchematicWiring(): Unit = {
-    //do nothing
-  }
 
   def createDefaultView(): V
 

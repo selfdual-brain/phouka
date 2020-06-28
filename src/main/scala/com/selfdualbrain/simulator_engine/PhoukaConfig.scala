@@ -18,9 +18,9 @@ case class PhoukaConfig(
                          validatorsToBeLogged: Seq[ValidatorId],
                          finalizerAckLevel: Int,
                          relativeFtt: Double,
-                         brickProposeDelays: IntSequenceConfig,
+                         brickProposeDelays: IntSequenceConfig, //in milliseconds
                          blocksFractionAsPercentage: Double,
-                         networkDelays: IntSequenceConfig,
+                         networkDelays: IntSequenceConfig, //in milliseconds
                          runForkChoiceFromGenesis: Boolean
   )
 

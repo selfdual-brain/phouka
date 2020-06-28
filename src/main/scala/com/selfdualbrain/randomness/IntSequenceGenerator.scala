@@ -71,7 +71,8 @@ object IntSequenceGenerator {
   }
 
   class PoissonProcessGen(random: Random, lambda: Double) extends IntSequenceGenerator {
-    override def next(): Int = (- math.log(random.nextDouble()) / lambda).toInt
+    val millisecondScaleLambda = lambda / 1000 //scaling from seconds to milliseconds
+    override def next(): Int = (- math.log(random.nextDouble()) / millisecondScaleLambda).toInt
   }
 
   class ErlangGen(random: Random, k: Int, lambda: Double) extends IntSequenceGenerator {

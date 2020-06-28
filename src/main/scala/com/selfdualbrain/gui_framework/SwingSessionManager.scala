@@ -1,7 +1,6 @@
 package com.selfdualbrain.gui_framework
 
-import java.awt.{BorderLayout, Color}
-
+import com.selfdualbrain.gui_framework.layout_dsl.{GuiLayoutConfig, HardcodedLayoutConfig}
 import javax.swing.{JFrame, JPanel}
 
 import scala.collection.mutable
@@ -9,7 +8,7 @@ import scala.collection.mutable
 /**
   * Generic session manager implementation based on Java Swing library.
   */
-class SwingSessionManager extends SessionManager {
+class SwingSessionManager extends GuiSessionManager {
   private val topPresenters = new mutable.HashSet[Presenter[_, _, _]]
 
   override def mountTopPresenter(presenter: Presenter[_, _, _], windowTitleOverride: Option[String]): Unit = {
@@ -31,4 +30,6 @@ class SwingSessionManager extends SessionManager {
     //todo
     throw new RuntimeException
   }
+
+  override def guiLayoutConfig: GuiLayoutConfig = HardcodedLayoutConfig
 }

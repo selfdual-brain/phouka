@@ -1,5 +1,6 @@
 package com.selfdualbrain.gui_framework
 
+import com.selfdualbrain.gui_framework.layout_dsl.PanelBasedViewComponent
 import javax.swing.JCheckBox
 import javax.swing.text.JTextComponent
 
