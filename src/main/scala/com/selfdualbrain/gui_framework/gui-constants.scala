@@ -17,3 +17,9 @@ object PanelEdge {
     case WEST => BorderLayout.WEST
   }
 }
+
+sealed trait TextAlignment {}
+object TextAlignment {
+  case object LEFT extends TextAlignment
+  case object RIGHT extends TextAlignment
+}

@@ -13,8 +13,10 @@ trait VerticalRadioButtonsListPanel extends EventsBroadcaster[EvItemSelection] {
 
   private val buttonGroup = new ButtonGroup
   private val collectionOfRadioButtons = new ArrayBuffer[JRadioButton]
+  private var currentSelection: Int = 0
 
   this.setLayout(new GridBagLayout)
+  selectItem(0)
 
   def initItems(coll: Iterable[String]): Unit = {
     for ((item,row) <- coll.zipWithIndex) {
@@ -32,8 +34,10 @@ trait VerticalRadioButtonsListPanel extends EventsBroadcaster[EvItemSelection] {
       buttonGroup.add(radioButton)
 
       radioButton.addActionListener(new ActionListener {
-        override def actionPerformed(e: ActionEvent): Unit =
+        override def actionPerformed(e: ActionEvent): Unit = {
           self.trigger(EvItemSelection.Selected(row))
+          currentSelection = row
+        }
       })
 
     }
@@ -53,6 +57,9 @@ trait VerticalRadioButtonsListPanel extends EventsBroadcaster[EvItemSelection] {
       throw new RuntimeException(s"Attempted programmatically selecting radio button with ite id outside available range: $itemId")
 
     collectionOfRadioButtons(itemId).setSelected(true)
+    currentSelection = itemId
   }
+
+  def selectedItem: Int = currentSelection
 
 }

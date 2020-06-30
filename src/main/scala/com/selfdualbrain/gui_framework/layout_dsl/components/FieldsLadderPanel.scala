@@ -15,11 +15,10 @@ trait FieldsLadderPanel extends PanelBasedViewComponent {
   def addTxtField(label: String, isEditable: Boolean): JTextField = {
     addLabel(label)
     val textFieldComponent = new JTextField()
-    textFieldComponent.setMinimumSize(new Dimension(49, 30))
-    textFieldComponent.setPreferredSize(new Dimension(49, 30))
+    textFieldComponent.setMinimumSize(new Dimension(49, guiLayoutConfig.fieldsHeight))
+    textFieldComponent.setPreferredSize(new Dimension(49, guiLayoutConfig.fieldsHeight))
     textFieldComponent.setEditable(true)
     textFieldComponent.setEnabled(isEditable)
-
     val gbc = new GridBagConstraints
     gbc.gridx = 1
     gbc.gridy = lastRowUsed
@@ -29,7 +28,6 @@ trait FieldsLadderPanel extends PanelBasedViewComponent {
     gbc.fill = GridBagConstraints.HORIZONTAL
     gbc.insets = new Insets(0, 2, 0, 2)
     this.add(textFieldComponent, gbc)
-
     return textFieldComponent
   }
 
@@ -37,7 +35,6 @@ trait FieldsLadderPanel extends PanelBasedViewComponent {
     addLabel(label)
     val checkboxComponent = new JCheckBox()
     checkboxComponent.setEnabled(isEditable)
-
     val gbc = new GridBagConstraints
     gbc.gridx = 1
     gbc.gridy = lastRowUsed
@@ -47,13 +44,11 @@ trait FieldsLadderPanel extends PanelBasedViewComponent {
     gbc.fill = GridBagConstraints.NONE
     gbc.insets = new Insets(0, 2, 0, 2)
     this.add(checkboxComponent, gbc)
-
     return checkboxComponent
   }
 
   def sealLayout(): Unit = {
     lastRowUsed += 1
-
     val spacer = new JPanel
     val gbc = new GridBagConstraints
     gbc.gridx = 1

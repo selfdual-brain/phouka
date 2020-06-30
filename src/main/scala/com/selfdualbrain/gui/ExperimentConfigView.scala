@@ -9,7 +9,7 @@ import com.selfdualbrain.gui_framework.MvpView.JCheckBoxOps
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.FieldsLadderPanel
 
-class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends PanelView[PhoukaConfig, Nothing] with FieldsLadderPanel {
+class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends PanelView[PhoukaConfig, ExperimentConfigPresenter] with FieldsLadderPanel {
   private val randomSeed_TextField: JTextField = addTxtField("Random seed", isEditable = false)
   private val numberOfValidators_TextField: JTextField = addTxtField("Number of validators", isEditable = false)
   private val numberOfEquivocators_TextField: JTextField = addTxtField("Number of equivocators", isEditable = false)

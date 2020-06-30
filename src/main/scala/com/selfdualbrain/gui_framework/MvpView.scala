@@ -1,8 +1,9 @@
 package com.selfdualbrain.gui_framework
 
-import com.selfdualbrain.gui_framework.layout_dsl.PanelBasedViewComponent
-import javax.swing.JCheckBox
+import java.awt.event.{ActionEvent, ActionListener}
+
 import javax.swing.text.JTextComponent
+import javax.swing.{AbstractButton, JCheckBox}
 
 trait MvpView[M, P <: Presenter[_,_,_]] {
   private var _presenter: Option[P] = None
@@ -49,6 +50,16 @@ object MvpView {
   implicit class JCheckBoxOps(component: JCheckBox) {
     def <--(value: Boolean): Unit = {
       component.setSelected(value)
+    }
+  }
+
+  implicit class AbstractButtonOps(component: AbstractButton) {
+    def ~~>(handler: => Unit): Unit = {
+      component.addActionListener(new ActionListener() {
+        override def actionPerformed(e: ActionEvent): Unit = {
+          handler
+        }
+      })
     }
   }
 

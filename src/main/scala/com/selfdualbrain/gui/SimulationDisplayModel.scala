@@ -2,9 +2,10 @@ package com.selfdualbrain.gui
 
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{Event, SimulationEngine}
-import com.selfdualbrain.gui.SimulationDisplayModel.Ev
+import com.selfdualbrain.gui.SimulationDisplayModel.{Ev, SimulationEngineStopCondition}
 import com.selfdualbrain.gui_framework.EventsBroadcaster
 import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload, PhoukaConfig, ValidatorStats}
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -97,6 +98,8 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
   private var selectedBrick: Option[Brick] = None
 
   private var observedValidatorRenderedState: RenderedValidatorState = new RenderedValidatorState
+
+  private var simulationEngineStopCondition: SimulationEngineStopCondition = new SimulationEngineStopCondition.NextNumberOfSteps(20)
 
   /**
     * Represents observed validator state as inferred from events log.
@@ -399,6 +402,13 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
     trigger(Ev.BrickSelectionChanged(selectedBrick))
   }
 
+  //--------------------- SIMULATION ENGINE RUNNING -------------------------
+
+  def getEngineStopCondition: SimulationEngineStopCondition = simulationEngineStopCondition
+
+  def setEngineStopCondition(condition: SimulationEngineStopCondition): Unit = {
+    simulationEngineStopCondition = condition
+  }
 }
 
 object SimulationDisplayModel {
@@ -411,6 +421,100 @@ object SimulationDisplayModel {
     case class StepSelectionChanged(step: Long) extends Ev
     case class BrickSelectionChanged(brickOrNone: Option[Brick]) extends Ev
   }
+
+  sealed abstract class SimulationEngineStopCondition {
+    def caseTag: Int
+    def render(): String
+  }
+
+  object SimulationEngineStopCondition {
+
+    val variants = Map(
+      0 -> "next number of steps [long]",
+      1 -> "reach the exact step [step id]",
+      2 -> "simulated time delta [seconds.microseconds]",
+      3 -> "reach the exact simulated time point [seconds.microseconds]",
+      4 -> "wall clock time delta [HHH:MM:SS]"
+    )
+
+    def parse(caseTag: Int, inputString: String): Either[String, SimulationEngineStopCondition] = {
+      caseTag match {
+
+        case 0 =>
+          try {
+            val n: Int = inputString.toInt
+            Right(NextNumberOfSteps(n))
+          } catch {
+            case ex: NumberFormatException => Left(s"integer number expected here, <$inputString> is not a valid number")
+          }
+
+        case 1 =>
+          try {
+            val n: Int = inputString.toInt
+            Right(NextNumberOfSteps(n))
+          } catch {
+            case ex: NumberFormatException => Left(s"integer number expected here, <$inputString> is not a valid number")
+          }
+
+        case 2 =>
+          SimTimepoint.parse(inputString) match {
+            case Left(error) => Left(error)
+            case Right(micros) => Right(SimulatedTimeDelta(micros))
+          }
+
+        case 3 =>
+          SimTimepoint.parse(inputString) match {
+            case Left(error) => Left(error)
+            case Right(micros) => Right(ReachExactSimulatedTimePoint(SimTimepoint(micros)))
+          }
+
+        case 4 =>
+          val digitGroups = inputString.split(':')
+          if (digitGroups.length != 3)
+            Left("expected format is HHH:MM:SS")
+          else {
+            try {
+              val hours = digitGroups(0).toInt
+              val minutes = digitGroups(1).toInt
+              val seconds = digitGroups(2).toInt
+              if (hours < 0 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59)
+                Left("expected format is HHH:MM:SS, where HH=hours, MM=minutes, SS=seconds")
+              else
+                Right(WallClockTimeDelta(hours, minutes, seconds))
+            } catch {
+              case ex: NumberFormatException => Left("expected format is HHH:MM:SS, where HH=hours, MM=minutes, SS=seconds")
+            }
+          }
+      }
+    }
+
+    case class NextNumberOfSteps(n: Int) extends SimulationEngineStopCondition {
+      override def caseTag: Int = 0
+      override def render(): String = n.toString
+    }
+
+    case class ReachExactStep(n: Int) extends SimulationEngineStopCondition {
+      override def caseTag: Int = 1
+      override def render(): String = n.toString
+    }
+
+    case class SimulatedTimeDelta(micros: TimeDelta) extends SimulationEngineStopCondition {
+      override def caseTag: Int = 2
+      override def render(): String = SimTimepoint.render(micros)
+    }
+
+    case class ReachExactSimulatedTimePoint(point: SimTimepoint) extends SimulationEngineStopCondition {
+      override def caseTag: VertexId = 3
+      override def render(): String = point.toString
+    }
+
+    case class WallClockTimeDelta(hours: Int, minutes: Int, seconds: Int) extends SimulationEngineStopCondition {
+      override def caseTag: VertexId = 4
+      override def render(): String = s"$hours:$minutes:$seconds"
+    }
+
+  }
+
 }
 
 
