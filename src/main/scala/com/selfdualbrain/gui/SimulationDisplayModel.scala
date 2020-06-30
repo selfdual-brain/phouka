@@ -4,7 +4,7 @@ import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{Event, SimulationEngine}
 import com.selfdualbrain.gui.SimulationDisplayModel.{Ev, SimulationEngineStopCondition}
 import com.selfdualbrain.gui_framework.EventsBroadcaster
-import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload, PhoukaConfig, ValidatorStats}
+import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload, PhoukaConfig, PhoukaEngine, ValidatorStats}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -323,6 +323,12 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
     return allEvents.length - 1
   }
 
+  def getEngineStopCondition: SimulationEngineStopCondition = simulationEngineStopCondition
+
+  def setEngineStopCondition(condition: SimulationEngineStopCondition): Unit = {
+    simulationEngineStopCondition = condition
+  }
+
   //--------------------- OBSERVED VALIDATOR -------------------------
 
   def getObservedValidator: ValidatorId = currentlyObservedValidator
@@ -402,16 +408,16 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
     trigger(Ev.BrickSelectionChanged(selectedBrick))
   }
 
-  //--------------------- SIMULATION ENGINE RUNNING -------------------------
-
-  def getEngineStopCondition: SimulationEngineStopCondition = simulationEngineStopCondition
-
-  def setEngineStopCondition(condition: SimulationEngineStopCondition): Unit = {
-    simulationEngineStopCondition = condition
-  }
 }
 
 object SimulationDisplayModel {
+
+  def createDefault(): SimulationDisplayModel = {
+    val config = PhoukaConfig.default
+    val engine = new PhoukaEngine(config)
+    val genesis = engine.genesis
+    new SimulationDisplayModel(config, engine, genesis)
+  }
 
   sealed abstract class Ev
   object Ev {

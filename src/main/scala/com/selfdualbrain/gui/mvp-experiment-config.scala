@@ -1,13 +1,29 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.gui_framework.PanelView
+import com.selfdualbrain.gui_framework.MvpView.{JCheckBoxOps, JTextComponentOps}
+import com.selfdualbrain.gui_framework.{PanelView, Presenter}
+import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
+import com.selfdualbrain.gui_framework.layout_dsl.components.FieldsLadderPanel
 import com.selfdualbrain.randomness.IntSequenceConfig
 import com.selfdualbrain.simulator_engine.PhoukaConfig
 import javax.swing.{JCheckBox, JTextField}
-import com.selfdualbrain.gui_framework.MvpView.JTextComponentOps
-import com.selfdualbrain.gui_framework.MvpView.JCheckBoxOps
-import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.layout_dsl.components.FieldsLadderPanel
+
+class ExperimentConfigPresenter extends Presenter[PhoukaConfig, ExperimentConfigView, Nothing] {
+
+  override def createDefaultView(): ExperimentConfigView = new ExperimentConfigView(guiLayoutConfig)
+
+  override def createDefaultModel(): PhoukaConfig = PhoukaConfig.default
+
+  override def afterViewConnected(): Unit = {
+    //do nothing
+  }
+
+  override def afterModelConnected(): Unit = {
+    //do nothing
+  }
+}
+
+//##################################################################################################################################################
 
 class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends PanelView[PhoukaConfig, ExperimentConfigPresenter] with FieldsLadderPanel {
   private val randomSeed_TextField: JTextField = addTxtField("Random seed", isEditable = false)
@@ -39,5 +55,3 @@ class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends PanelVi
   }
 
 }
-
-
