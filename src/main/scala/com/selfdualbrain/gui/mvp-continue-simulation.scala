@@ -3,10 +3,9 @@ package com.selfdualbrain.gui
 import com.selfdualbrain.gui.SimulationDisplayModel.SimulationEngineStopCondition
 import com.selfdualbrain.gui.SimulationDisplayModel.SimulationEngineStopCondition.NextNumberOfSteps
 import com.selfdualbrain.gui_framework.MvpView.{AbstractButtonOps, JTextComponentOps}
-import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.layout_dsl.components.{RibbonPanel, StaticSplitPanel, VerticalRadioButtonsListPanel}
 import com.selfdualbrain.gui_framework._
-import com.selfdualbrain.simulator_engine.{PhoukaConfig, PhoukaEngine}
+import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
+import com.selfdualbrain.gui_framework.layout_dsl.components.{RibbonPanel, StaticSplitPanel, RadioButtonsListPanel}
 
 class ContinueSimulationPresenter extends Presenter[SimulationDisplayModel, ContinueSimulationView, ContinueSimulationPresenter.Ev] {
 
@@ -43,17 +42,17 @@ object ContinueSimulationPresenter {
 
 //###############################################################################################################################
 
-class ContinueSimulationView(val guiLayoutConfig: GuiLayoutConfig) extends PanelView[SimulationDisplayModel, ContinueSimulationPresenter] with StaticSplitPanel {
+class ContinueSimulationView(val guiLayoutConfig: GuiLayoutConfig) extends StaticSplitPanel(guiLayoutConfig, PanelEdge.SOUTH) with MvpView[SimulationDisplayModel, ContinueSimulationPresenter] {
 
   //### mode panel ###
-  private val stopConditionMode_Panel = new SubPanel(guiLayoutConfig) with VerticalRadioButtonsListPanel
+  private val stopConditionMode_Panel = new RadioButtonsListPanel(guiLayoutConfig, Orientation.VERTICAL)
   private val mapOfStopConditionVariants = SimulationDisplayModel.SimulationEngineStopCondition.variants
   private val sortedListOfVariants = (0 until mapOfStopConditionVariants.size) map (i => mapOfStopConditionVariants(i))
   stopConditionMode_Panel.initItems(sortedListOfVariants)
   stopConditionMode_Panel.surroundWithTitledBorder("Pick stop condition variant")
 
   //### run panel ###
-  private val run_Panel = new SubPanel(guiLayoutConfig) with RibbonPanel
+  private val run_Panel = new RibbonPanel(guiLayoutConfig, Orientation.HORIZONTAL)
   run_Panel.addLabel("Stop condition value")
   private val targetValue_Field = run_Panel.addField(60, isEditable = true, TextAlignment.RIGHT)
   run_Panel.addSpacer()
@@ -69,7 +68,7 @@ class ContinueSimulationView(val guiLayoutConfig: GuiLayoutConfig) extends Panel
   }
 
   //### this view ###
-  this.mountChildPanels(stopConditionMode_Panel, run_Panel, edge = PanelEdge.SOUTH)
+  this.mountChildPanels(stopConditionMode_Panel, run_Panel)
   this.surroundWithTitledBorder("Continue simulation")
 
   override def afterModelConnected(): Unit = {

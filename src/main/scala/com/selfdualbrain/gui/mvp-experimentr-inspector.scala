@@ -1,11 +1,12 @@
 package com.selfdualbrain.gui
 
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.{PanelView, Presenter}
+import com.selfdualbrain.gui_framework.layout_dsl.components.StaticSplitPanel
+import com.selfdualbrain.gui_framework.{MvpView, PanelEdge, Presenter}
 
-class ExperimentInspectorPresenter extends Presenter[SimulationDisplayModel, ExperimentInspectorPresenter, ExperimentInspectorPresenter.Ev] {
+class ExperimentInspectorPresenter extends Presenter[SimulationDisplayModel, ExperimentInspectorView, ExperimentInspectorPresenter.Ev] {
 
-  override def createDefaultView(): ExperimentInspectorPresenter = ???
+  override def createDefaultView(): ExperimentInspectorView = ???
 
   override def createDefaultModel(): SimulationDisplayModel = ???
 
@@ -22,7 +23,7 @@ object ExperimentInspectorPresenter {
 
 //##################################################################################################################################
 
-class ExperimentInspectorView(val guiLayoutConfig: GuiLayoutConfig) extends PanelView[SimulationDisplayModel, ExperimentInspectorPresenter] {
+class ExperimentInspectorView(val guiLayoutConfig: GuiLayoutConfig) extends StaticSplitPanel(guiLayoutConfig, locationOfSatellite = PanelEdge.EAST) with MvpView[SimulationDisplayModel, ExperimentInspectorPresenter] {
 
   override def afterModelConnected(): Unit = ???
 

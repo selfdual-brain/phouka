@@ -6,10 +6,7 @@ import javax.swing.{BorderFactory, JPanel}
 /**
   * Base trait for views building blocks.
   */
-trait PanelBasedViewComponent {
-  self: JPanel =>
-
-  def guiLayoutConfig: GuiLayoutConfig
+abstract class PanelBasedViewComponent(guiLayoutConfig: GuiLayoutConfig) extends JPanel {
 
   def surroundWithTitledBorder(title: String): Unit = {
     val border = BorderFactory.createTitledBorder(

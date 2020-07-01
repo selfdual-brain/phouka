@@ -2,8 +2,7 @@ package com.selfdualbrain.gui_framework
 
 import java.awt.BorderLayout
 
-sealed trait PanelEdge {
-}
+sealed trait PanelEdge {}
 object PanelEdge {
   case object NORTH extends PanelEdge
   case object EAST extends PanelEdge

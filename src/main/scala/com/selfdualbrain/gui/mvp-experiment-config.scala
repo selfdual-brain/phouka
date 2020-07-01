@@ -1,9 +1,9 @@
 package com.selfdualbrain.gui
 
 import com.selfdualbrain.gui_framework.MvpView.{JCheckBoxOps, JTextComponentOps}
-import com.selfdualbrain.gui_framework.{PanelView, Presenter}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.FieldsLadderPanel
+import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import com.selfdualbrain.randomness.IntSequenceConfig
 import com.selfdualbrain.simulator_engine.PhoukaConfig
 import javax.swing.{JCheckBox, JTextField}
@@ -25,7 +25,7 @@ class ExperimentConfigPresenter extends Presenter[PhoukaConfig, ExperimentConfig
 
 //##################################################################################################################################################
 
-class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends PanelView[PhoukaConfig, ExperimentConfigPresenter] with FieldsLadderPanel {
+class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadderPanel(guiLayoutConfig) with MvpView[PhoukaConfig, ExperimentConfigPresenter] {
   private val randomSeed_TextField: JTextField = addTxtField("Random seed", isEditable = false)
   private val numberOfValidators_TextField: JTextField = addTxtField("Number of validators", isEditable = false)
   private val numberOfEquivocators_TextField: JTextField = addTxtField("Number of equivocators", isEditable = false)

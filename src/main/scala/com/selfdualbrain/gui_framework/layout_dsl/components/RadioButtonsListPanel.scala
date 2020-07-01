@@ -3,12 +3,13 @@ package com.selfdualbrain.gui_framework.layout_dsl.components
 import java.awt.event.{ActionEvent, ActionListener}
 import java.awt.{GridBagConstraints, GridBagLayout, Insets}
 
-import com.selfdualbrain.gui_framework.{EvItemSelection, EventsBroadcaster}
+import com.selfdualbrain.gui_framework.layout_dsl.{GuiLayoutConfig, PanelBasedViewComponent}
+import com.selfdualbrain.gui_framework.{EvItemSelection, EventsBroadcaster, Orientation}
 import javax.swing.{ButtonGroup, JPanel, JRadioButton, SwingConstants}
 
 import scala.collection.mutable.ArrayBuffer
 
-trait VerticalRadioButtonsListPanel extends EventsBroadcaster[EvItemSelection] {
+class RadioButtonsListPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) extends PanelBasedViewComponent(guiLayoutConfig) with EventsBroadcaster[EvItemSelection] {
   self: JPanel =>
 
   private val buttonGroup = new ButtonGroup
@@ -19,24 +20,34 @@ trait VerticalRadioButtonsListPanel extends EventsBroadcaster[EvItemSelection] {
   selectItem(0)
 
   def initItems(coll: Iterable[String]): Unit = {
-    for ((item,row) <- coll.zipWithIndex) {
+    for ((item,position) <- coll.zipWithIndex) {
       val radioButton = new JRadioButton(item)
       collectionOfRadioButtons.append(radioButton)
       radioButton.setVerticalAlignment(SwingConstants.CENTER)
       val gbc = new GridBagConstraints
-      gbc.gridx = 0
-      gbc.gridy = row
-      gbc.anchor = GridBagConstraints.WEST
-      gbc.weightx = 0.0
-      gbc.weighty = 0.0
-      gbc.insets = new Insets(0, 2, 0, 0)
+      orientation match {
+        case Orientation.HORIZONTAL =>
+          gbc.gridx = position
+          gbc.gridy = 0
+          gbc.anchor = GridBagConstraints.CENTER
+          gbc.weightx = 0.0
+          gbc.weighty = 0.0
+          gbc.insets = new Insets(0, 2, 0, 0)
+        case Orientation.VERTICAL =>
+          gbc.gridx = 0
+          gbc.gridy = position
+          gbc.anchor = GridBagConstraints.WEST
+          gbc.weightx = 0.0
+          gbc.weighty = 0.0
+          gbc.insets = new Insets(0, 2, 0, 0)
+      }
       this.add(radioButton, gbc)
       buttonGroup.add(radioButton)
 
       radioButton.addActionListener(new ActionListener {
         override def actionPerformed(e: ActionEvent): Unit = {
-          self.trigger(EvItemSelection.Selected(row))
-          currentSelection = row
+          self.trigger(EvItemSelection.Selected(position))
+          currentSelection = position
         }
       })
 
@@ -44,11 +55,21 @@ trait VerticalRadioButtonsListPanel extends EventsBroadcaster[EvItemSelection] {
 
     val spacer = new JPanel
     val gbc = new GridBagConstraints
-    gbc.gridx = 0
-    gbc.gridy = coll.size
-    gbc.weightx = 1.0
-    gbc.weighty = 1.0
-    gbc.fill = GridBagConstraints.BOTH
+    orientation match {
+      case Orientation.HORIZONTAL =>
+        gbc.gridx = coll.size
+        gbc.gridy = 0
+        gbc.weightx = 1.0
+        gbc.weighty = 1.0
+        gbc.fill = GridBagConstraints.BOTH
+      case Orientation.VERTICAL =>
+        gbc.gridx = 0
+        gbc.gridy = coll.size
+        gbc.weightx = 1.0
+        gbc.weighty = 1.0
+        gbc.fill = GridBagConstraints.BOTH
+    }
+
     this.add(spacer, gbc)
   }
 
