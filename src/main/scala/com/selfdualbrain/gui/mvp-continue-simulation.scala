@@ -4,7 +4,7 @@ import com.selfdualbrain.gui.SimulationDisplayModel.SimulationEngineStopConditio
 import com.selfdualbrain.gui.SimulationDisplayModel.SimulationEngineStopCondition.NextNumberOfSteps
 import com.selfdualbrain.gui_framework.MvpView.{AbstractButtonOps, JTextComponentOps}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.layout_dsl.components.{HorizontalRibbonPanel, StaticSplitPanel, VerticalRadioButtonsListPanel}
+import com.selfdualbrain.gui_framework.layout_dsl.components.{RibbonPanel, StaticSplitPanel, VerticalRadioButtonsListPanel}
 import com.selfdualbrain.gui_framework._
 import com.selfdualbrain.simulator_engine.{PhoukaConfig, PhoukaEngine}
 
@@ -53,7 +53,7 @@ class ContinueSimulationView(val guiLayoutConfig: GuiLayoutConfig) extends Panel
   stopConditionMode_Panel.surroundWithTitledBorder("Pick stop condition variant")
 
   //### run panel ###
-  private val run_Panel = new SubPanel(guiLayoutConfig) with HorizontalRibbonPanel
+  private val run_Panel = new SubPanel(guiLayoutConfig) with RibbonPanel
   run_Panel.addLabel("Stop condition value")
   private val targetValue_Field = run_Panel.addField(60, isEditable = true, TextAlignment.RIGHT)
   run_Panel.addSpacer()

@@ -23,3 +23,9 @@ object TextAlignment {
   case object LEFT extends TextAlignment
   case object RIGHT extends TextAlignment
 }
+
+sealed trait Orientation {}
+object Orientation {
+  case object HORIZONTAL extends Orientation
+  case object VERTICAL extends Orientation
+}

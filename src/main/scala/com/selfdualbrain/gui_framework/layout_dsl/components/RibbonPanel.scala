@@ -6,7 +6,7 @@ import com.selfdualbrain.gui_framework.TextAlignment
 import com.selfdualbrain.gui_framework.layout_dsl.PanelBasedViewComponent
 import javax.swing.{JButton, JCheckBox, JLabel, JPanel, JTextField, SwingConstants}
 
-trait HorizontalRibbonPanel extends PanelBasedViewComponent {
+trait RibbonPanel extends PanelBasedViewComponent {
   self: JPanel =>
 
   private var lastColumnUsed: Int = -1
