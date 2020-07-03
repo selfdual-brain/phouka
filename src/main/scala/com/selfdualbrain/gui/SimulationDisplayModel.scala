@@ -373,7 +373,7 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
   def setFilter(filter: EventsFilter): Unit = {
     eventsFilter = filter
     filteredEvents = allEvents.zipWithIndex collect {case (ev, step) if filter.isEventIncluded(ev) => (step,ev)}
-    trigger(Ev.NewFilterApplied)
+    trigger(Ev.FilterChanged)
   }
 
   def currentlyDisplayedStep: Int = observedValidatorRenderedState.currentStep
@@ -421,7 +421,7 @@ object SimulationDisplayModel {
 
   sealed abstract class Ev
   object Ev {
-    case object NewFilterApplied extends Ev
+    case object FilterChanged extends Ev
     case class SimulationAdvanced(step: Long) extends Ev
     case class ValidatorSelectionChanged(vid: ValidatorId) extends Ev
     case class StepSelectionChanged(step: Long) extends Ev

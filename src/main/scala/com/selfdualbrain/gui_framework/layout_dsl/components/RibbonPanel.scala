@@ -3,10 +3,10 @@ package com.selfdualbrain.gui_framework.layout_dsl.components
 import java.awt.{Dimension, GridBagConstraints, GridBagLayout, Insets}
 
 import com.selfdualbrain.gui_framework.{Orientation, TextAlignment}
-import com.selfdualbrain.gui_framework.layout_dsl.{GuiLayoutConfig, PanelBasedViewComponent}
+import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import javax.swing.{JButton, JCheckBox, JLabel, JPanel, JTextField, SwingConstants}
 
-class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) extends PanelBasedViewComponent(guiLayoutConfig) {
+class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) extends PlainPanel(guiLayoutConfig) {
   self: JPanel =>
 
   private var position: Int = -1
@@ -150,6 +150,30 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
     }
     this.add(checkboxComponent, gbc)
     return checkboxComponent
+  }
+
+  def addPanel(panel: JPanel): Unit = {
+    position += 1
+    val gbc = new GridBagConstraints
+    orientation match {
+      case Orientation.HORIZONTAL =>
+        gbc.gridx = 0
+        gbc.gridy = position
+        gbc.anchor = GridBagConstraints.CENTER
+        gbc.weightx = 1.0
+        gbc.weighty = 1.0
+        gbc.fill = GridBagConstraints.BOTH
+        gbc.insets = new Insets(0, 0, 0, 0)
+      case Orientation.VERTICAL =>
+        gbc.gridx = position
+        gbc.gridy = 0
+        gbc.anchor = GridBagConstraints.CENTER
+        gbc.weightx = 1.0
+        gbc.weighty = 1.0
+        gbc.fill = GridBagConstraints.BOTH
+        gbc.insets = new Insets(0, 0, 0, 0)
+    }
+    this.add(panel, gbc)
   }
 
 }

@@ -3,10 +3,10 @@ package com.selfdualbrain.gui_framework.layout_dsl.components
 import java.awt.BorderLayout
 
 import com.selfdualbrain.gui_framework.PanelEdge
-import com.selfdualbrain.gui_framework.layout_dsl.{GuiLayoutConfig, PanelBasedViewComponent}
+import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import javax.swing.JPanel
 
-class StaticSplitPanel(guiLayoutConfig: GuiLayoutConfig, locationOfSatellite: PanelEdge) extends PanelBasedViewComponent(guiLayoutConfig) {
+class StaticSplitPanel(guiLayoutConfig: GuiLayoutConfig, locationOfSatellite: PanelEdge) extends PlainPanel(guiLayoutConfig) {
   self: JPanel =>
 
   this.setLayout(new BorderLayout)

@@ -4,7 +4,8 @@ import java.awt.{BorderLayout, Dimension}
 
 import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.des.Event
-import com.selfdualbrain.gui_framework.layout_dsl.{GuiLayoutConfig, PanelBasedViewComponent}
+import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
+import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import com.selfdualbrain.simulator_engine.{EventTag, NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.SimTimepoint
@@ -34,7 +35,7 @@ object EventsLogPresenter {
 
 //##########################################################################################
 
-class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PanelBasedViewComponent(guiLayoutConfig)  with MvpView[SimulationDisplayModel, EventsLogPresenter] {
+class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig)  with MvpView[SimulationDisplayModel, EventsLogPresenter] {
   private val events_Table = new JTable()
   private val scrollPane = new JScrollPane(events_Table)
   private var swingTableModel: EventsLogTableModel = _

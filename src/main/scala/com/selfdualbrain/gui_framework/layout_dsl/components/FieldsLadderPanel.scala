@@ -2,10 +2,10 @@ package com.selfdualbrain.gui_framework.layout_dsl.components
 
 import java.awt.{Dimension, GridBagConstraints, GridBagLayout, Insets}
 
-import com.selfdualbrain.gui_framework.layout_dsl.{GuiLayoutConfig, PanelBasedViewComponent}
+import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import javax.swing.{JCheckBox, JLabel, JPanel, JTextField}
 
-class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PanelBasedViewComponent(guiLayoutConfig) {
+class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) {
   self: JPanel =>
 
   private var lastRowUsed: Int = -1

@@ -51,6 +51,13 @@ object MvpView {
     def <--(value: Boolean): Unit = {
       component.setSelected(value)
     }
+    def ~~>(handler: => Unit): Unit = {
+      component.addActionListener(new ActionListener() {
+        override def actionPerformed(e: ActionEvent): Unit = {
+          handler
+        }
+      })
+    }
   }
 
   implicit class AbstractButtonOps(component: AbstractButton) {

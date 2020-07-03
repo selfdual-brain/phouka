@@ -3,13 +3,13 @@ package com.selfdualbrain.gui_framework.layout_dsl.components
 import java.awt.event.{ActionEvent, ActionListener}
 import java.awt.{GridBagConstraints, GridBagLayout, Insets}
 
-import com.selfdualbrain.gui_framework.layout_dsl.{GuiLayoutConfig, PanelBasedViewComponent}
+import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.{EvItemSelection, EventsBroadcaster, Orientation}
 import javax.swing.{ButtonGroup, JPanel, JRadioButton, SwingConstants}
 
 import scala.collection.mutable.ArrayBuffer
 
-class RadioButtonsListPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) extends PanelBasedViewComponent(guiLayoutConfig) with EventsBroadcaster[EvItemSelection] {
+class RadioButtonsListPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) extends PlainPanel(guiLayoutConfig) with EventsBroadcaster[EvItemSelection] {
   self: JPanel =>
 
   private val buttonGroup = new ButtonGroup
