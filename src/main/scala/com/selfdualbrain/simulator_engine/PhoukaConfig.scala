@@ -7,6 +7,8 @@ import com.selfdualbrain.config_files_support.ConfigurationReader.PrimitiveType.
 import com.selfdualbrain.config_files_support.Hocon
 import com.selfdualbrain.randomness.IntSequenceConfig
 
+import scala.util.Random
+
 case class PhoukaConfig(
                          cyclesLimit: Long,
                          randomSeed: Option[Long],
@@ -50,7 +52,7 @@ object PhoukaConfig {
 
   val default = PhoukaConfig(
     cyclesLimit = Long.MaxValue,
-    randomSeed = None,
+    randomSeed = Some(new Random(42).nextLong()),
     numberOfValidators = 10,
     numberOfEquivocators = 2,
     equivocationChanceAsPercentage = Some(2.0),

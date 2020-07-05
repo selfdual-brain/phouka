@@ -14,7 +14,7 @@ import javax.swing.{JScrollPane, JTable}
 
 import scala.collection.mutable.ArrayBuffer
 
-class EventsLogPresenter extends Presenter[SimulationDisplayModel, EventsLogView, EventsLogPresenter.Ev] {
+class EventsLogPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, EventsLogPresenter, EventsLogView, EventsLogPresenter.Ev] {
 
   override def createDefaultView(): EventsLogView = new EventsLogView(guiLayoutConfig)
 

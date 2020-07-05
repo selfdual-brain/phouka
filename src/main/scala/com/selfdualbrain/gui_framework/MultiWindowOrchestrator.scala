@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui_framework
 
-abstract class MultiWindowOrchestrator[M, V <: MvpView[M,_], E] extends Presenter[M,V,E] {
+abstract class MultiWindowOrchestrator[M,E] extends Presenter[M,Nothing,Nothing,Nothing,E] {
 
   override def show(windowTitleOverride: Option[String]): Unit = {
     ensureModelIsConnected()

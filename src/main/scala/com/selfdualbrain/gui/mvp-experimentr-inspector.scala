@@ -4,7 +4,7 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.StaticSplitPanel
 import com.selfdualbrain.gui_framework.{MvpView, PanelEdge, Presenter}
 
-class ExperimentInspectorPresenter extends Presenter[SimulationDisplayModel, ExperimentInspectorView, ExperimentInspectorPresenter.Ev] {
+class ExperimentInspectorPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, ExperimentInspectorPresenter,ExperimentInspectorView, ExperimentInspectorPresenter.Ev] {
   private val eventsLog = new EventsLogPresenter
   private val experimentConfig = new ExperimentInspectorPresenter
   private val simulationStats = new SimulationStatsPresenter

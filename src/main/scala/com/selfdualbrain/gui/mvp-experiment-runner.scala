@@ -2,7 +2,7 @@ package com.selfdualbrain.gui
 
 import com.selfdualbrain.gui_framework.MultiWindowOrchestrator
 
-class ExperimentRunnerPresenter extends MultiWindowOrchestrator[SimulationDisplayModel, Nothing, ExperimentRunnerPresenter.Ev] {
+class ExperimentRunnerPresenter extends MultiWindowOrchestrator[SimulationDisplayModel, ExperimentRunnerPresenter.Ev] {
 
   override def createDefaultView(): Nothing = ???
 

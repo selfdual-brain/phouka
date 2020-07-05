@@ -6,4 +6,6 @@ trait GuiLayoutConfig {
   def fieldsHeight: Int
   def standardButtonHeight: Int
   def standardButtonWidth: Int
+  def ribbonPreGap:Int
+  def ribbonPostGap: Int
 }

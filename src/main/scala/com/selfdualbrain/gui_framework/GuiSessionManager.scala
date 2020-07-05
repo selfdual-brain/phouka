@@ -11,7 +11,7 @@ trait GuiSessionManager {
     * presenters do not always correspond to top-level views.
     * @param presenter
     */
-  def mountTopPresenter(presenter: Presenter[_,_,_], windowTitleOverride: Option[String])
+  def mountTopPresenter(presenter: PresentersTreeVertex, windowTitleOverride: Option[String])
 
   /**
     * I encapsulate the view of given presenter in a top-level window of the GUI windowing system
@@ -22,7 +22,7 @@ trait GuiSessionManager {
     */
   def encapsulateViewInFrame(view: Any, windowTitle: String): Unit
 
-  def encapsulateViewInModalDialog(view: Any, windowTitle: String, relativeTo: Presenter[_,_,_])
+  def encapsulateViewInModalDialog(view: Any, windowTitle: String, relativeTo: PresentersTreeVertex)
 
   def guiLayoutConfig: GuiLayoutConfig
 

@@ -4,7 +4,7 @@ import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{Event, SimulationEngine}
 import com.selfdualbrain.gui.SimulationDisplayModel.{Ev, SimulationEngineStopCondition}
 import com.selfdualbrain.gui_framework.EventsBroadcaster
-import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload, PhoukaConfig, PhoukaEngine, ValidatorStats}
+import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -93,7 +93,7 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
   private var currentlyObservedValidator: ValidatorId = 0
 
   //current events filter in use
-  private var eventsFilter: EventsFilter = EventsFilter.ShowAll
+  private var eventsFilter: EventsFilter = EventsFilter.Standard(Set.empty, takeAllValidatorsFlag = true, Set.empty, takeAllEventsFlag = true)
 
   private var selectedBrick: Option[Brick] = None
 

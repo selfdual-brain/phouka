@@ -5,9 +5,15 @@ import java.awt.event.{ActionEvent, ActionListener}
 import javax.swing.text.JTextComponent
 import javax.swing.{AbstractButton, JCheckBox}
 
-trait MvpView[M, P <: Presenter[_,_,_]] {
-  private var _presenter: Option[P] = None
-  private var _model: Option[M] = None
+/**
+  * Contract for MVP views.
+  *
+  * @tparam M compatible model type
+  * @tparam P compatible presenter type
+  */
+trait MvpView[M, P <: PresentersTreeVertex] {
+  protected var _presenter: Option[P] = None
+  protected var _model: Option[M] = None
 
   def presenter: P = {
     assert(_presenter.isDefined)
@@ -24,11 +30,34 @@ trait MvpView[M, P <: Presenter[_,_,_]] {
   }
 
   def model_=(value: M): Unit = {
+    assert(_model.isEmpty)
     _model = Some(value)
     afterModelConnected()
   }
 
   def afterModelConnected(): Unit
+
+}
+
+/**
+  * Contract for MVP views that support dynamic model switching.
+  *
+  * @tparam M compatible model type
+  * @tparam P compatible presenter type
+  */
+trait MvpPluggableView[M, P <: PresentersTreeVertex] extends MvpView[M,P] {
+
+  override def model_=(value: M): Unit = {
+    _model = Some(value)
+    afterModelConnected()
+  }
+
+}
+
+trait MvpViewWithSealedModel[M, P <: PresentersTreeVertex] extends MvpView[M,P] {
+
+  override def model_=(value: M): Unit = {
+  }
 
 }
 

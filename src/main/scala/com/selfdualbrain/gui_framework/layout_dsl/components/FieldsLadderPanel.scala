@@ -2,6 +2,7 @@ package com.selfdualbrain.gui_framework.layout_dsl.components
 
 import java.awt.{Dimension, GridBagConstraints, GridBagLayout, Insets}
 
+import com.selfdualbrain.gui_framework.Orientation
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import javax.swing.{JCheckBox, JLabel, JPanel, JTextField}
 
@@ -45,6 +46,23 @@ class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     gbc.insets = new Insets(0, 2, 0, 2)
     this.add(checkboxComponent, gbc)
     return checkboxComponent
+  }
+
+  def addRibbon(label: String): RibbonPanel = {
+    addLabel(label)
+    val panel = new RibbonPanel(guiLayoutConfig, Orientation.HORIZONTAL)
+//    panel.setBackground(Color.GREEN)
+    panel.setPreferredSize(new Dimension(-1, guiLayoutConfig.fieldsHeight))
+    val gbc = new GridBagConstraints
+    gbc.gridx = 1
+    gbc.gridy = lastRowUsed
+    gbc.anchor = GridBagConstraints.CENTER
+    gbc.weightx = 1.0
+    gbc.weighty = 0.0
+    gbc.fill = GridBagConstraints.HORIZONTAL
+    gbc.insets = new Insets(0, 2, 0, 2)
+    this.add(panel, gbc)
+    return panel
   }
 
   def sealLayout(): Unit = {

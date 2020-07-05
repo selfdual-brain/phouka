@@ -10,4 +10,8 @@ object HardcodedLayoutConfig extends GuiLayoutConfig {
   override def standardButtonWidth: Int = 60
 
   override def standardButtonHeight: Int = 30
+
+  override def ribbonPreGap: Int = 2
+
+  override def ribbonPostGap: Int = 2
 }

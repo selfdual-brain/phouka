@@ -4,7 +4,7 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.FieldsLadderPanel
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 
-class SimulationStatsPresenter extends Presenter[SimulationDisplayModel, SimulationStatsView, Nothing] {
+class SimulationStatsPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, SimulationStatsPresenter, SimulationStatsView, Nothing] {
 
   override def createDefaultView(): SimulationStatsView = ???
 
