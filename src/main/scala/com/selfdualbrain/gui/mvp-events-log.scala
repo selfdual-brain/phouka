@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui
 
-import java.awt.{BorderLayout, Dimension}
+import java.awt.{BorderLayout, Color, Dimension}
 
 import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.des.Event
@@ -10,7 +10,7 @@ import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import com.selfdualbrain.simulator_engine.{EventTag, NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.SimTimepoint
 import javax.swing.table.AbstractTableModel
-import javax.swing.{JScrollPane, JTable}
+import javax.swing.{JPanel, JScrollPane, JTable, ListSelectionModel, ScrollPaneConstants}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -35,17 +35,41 @@ object EventsLogPresenter {
 
 //##########################################################################################
 
-class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig)  with MvpView[SimulationDisplayModel, EventsLogPresenter] {
+class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, EventsLogPresenter] {
   private val events_Table = new JTable()
-  private val scrollPane = new JScrollPane(events_Table)
+  private val scrollPane = new JScrollPane(events_Table, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS)
   private var swingTableModel: EventsLogTableModel = _
 
+  events_Table.setFillsViewportHeight(true)
+  events_Table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF)
+  events_Table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
+
   this.setPreferredSize(new Dimension(1000,800))
+  scrollPane.setViewportView(events_Table)
   this.add(scrollPane, BorderLayout.CENTER)
 
   override def afterModelConnected(): Unit = {
     swingTableModel = new EventsLogTableModel(this.model)
     events_Table.setModel(swingTableModel)
+
+    events_Table.getColumnModel.getColumn(0).setPreferredWidth(60)
+    events_Table.getColumnModel.getColumn(0).setMaxWidth(100)
+
+    events_Table.getColumnModel.getColumn(1).setPreferredWidth(60)
+    events_Table.getColumnModel.getColumn(1).setMaxWidth(100)
+
+    events_Table.getColumnModel.getColumn(2).setPreferredWidth(80)
+    events_Table.getColumnModel.getColumn(2).setMaxWidth(100)
+
+    events_Table.getColumnModel.getColumn(3).setPreferredWidth(30)
+    events_Table.getColumnModel.getColumn(3).setMaxWidth(40)
+
+    events_Table.getColumnModel.getColumn(4).setPreferredWidth(130)
+    events_Table.getColumnModel.getColumn(4).setMaxWidth(130)
+
+    events_Table.getColumnModel.getColumn(5).setPreferredWidth(2000)
+
+    events_Table.getColumnModel.getColumn(2).setCellRenderer(new SimTimepointRenderer)
   }
 
 }
@@ -70,10 +94,10 @@ class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extend
   override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
 
   override def getColumnClass(columnIndex: Int): Class[_] = columnIndex match {
-    case 0 => classOf[Long]
-    case 1 => classOf[Long]
-    case 2 => classOf[SimTimepoint]
-    case 3 => classOf[Int]
+    case 0 => classOf[Number]
+    case 1 => classOf[Number]
+    case 2 => classOf[Number]
+    case 3 => classOf[Number]
     case 4 => classOf[String]
     case 5 => classOf[String]
   }

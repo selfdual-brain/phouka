@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui_framework
 
-import java.awt.{Dimension, GraphicsEnvironment, Toolkit}
+import java.awt.{BorderLayout, Dimension, GraphicsEnvironment, Toolkit}
 
 import com.selfdualbrain.gui_framework.layout_dsl.{GuiLayoutConfig, HardcodedLayoutConfig}
 import javax.swing.{JFrame, JPanel}
@@ -23,7 +23,7 @@ class SwingSessionManager extends GuiSessionManager {
     val defaultScreen = GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice
     val frame = new JFrame(defaultScreen.getDefaultConfiguration)
     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
-    frame.getContentPane.add(view.asInstanceOf[JPanel])
+    frame.getContentPane.add(view.asInstanceOf[JPanel], BorderLayout.CENTER)
     frame.pack()
     frame.setTitle(windowTitle)
     frame.setVisible(true)

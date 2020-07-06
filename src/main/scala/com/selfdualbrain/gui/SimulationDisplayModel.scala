@@ -72,11 +72,12 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
   //index in this collection coincides with step-id
   private val allEvents = new ArrayBuffer[Event[ValidatorId]]
 
-  //This array is used as a map, where the key is validator id and it corresponds to array index).
-  //For a given validator, the array buffer contains all summits established along the LFB chain.
+  //This array is used as a map: validator-id ----> array-buffer.
+  //(where the key is validator id - and it corresponds to array index).
+  //For a given validator, the array buffer contains all summits observed by this validator so far (established along the LFB chain).
   //Position in the buffer corresponds to generation of LFB chain element,
-  //in the cell 13 there is summit ending b-game for LFB-chain element at height 13
-  //i.e. at cell 0 is the summit for b-game anchored at Genesis
+  //i.e in the cell 13 there is summit ending b-game for LFB-chain element at height 13
+  //and at cell 0 is the summit for b-game anchored at Genesis.
   private val summits = new Array[ArrayBuffer[ACC.Summit]](experimentConfig.numberOfValidators)
   for (vid <- 0 until experimentConfig.numberOfValidators)
     summits(vid) = new ArrayBuffer[ACC.Summit]
@@ -299,18 +300,22 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
   //runs the engine to produce requested portion of steps, i.e. we extend the "simulation horizon"
   //returns the id of last step executed (coincides with the position of last element in allEvents collection)
   def advanceTheSimulationBy(numberOfSteps: Int): Long = {
-    val startingPoint: Long = engine.lastStepExecuted
-    val stoppingPoint: Long = startingPoint + numberOfSteps
-    val iterator = engine takeWhile {case (step, event) => step <= startingPoint}
+//    val startingPoint: Long = engine.lastStepExecuted
+//    val stoppingPoint: Long = startingPoint + numberOfSteps
+//    val iterator = engine takeWhile {case (step, event) => step <= stoppingPoint}
+    val iterator = engine.take(numberOfSteps)
 
     for ((step,event) <- iterator) {
       allEvents.append(event)
+      if (eventsFilter.isEventIncluded(event))
+        eventsAfterFiltering.append((step,event))
       assert (allEvents.length == step + 1)
       event match {
         case Event.Semantic(id, timepoint, source, payload) =>
           payload match {
             case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
-              summits(source)(bGameAnchor.generation) = summit
+              summits(source) += summit
+              assert(summits(source)(bGameAnchor.generation) == summit)
             case other =>
             //ignore
           }

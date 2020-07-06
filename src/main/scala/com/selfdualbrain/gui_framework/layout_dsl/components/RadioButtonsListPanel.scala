@@ -17,7 +17,7 @@ class RadioButtonsListPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orien
   private var currentSelection: Int = 0
 
   this.setLayout(new GridBagLayout)
-  selectItem(0)
+//  selectItem(0)
 
   def initItems(coll: Iterable[String]): Unit = {
     for ((item,position) <- coll.zipWithIndex) {
@@ -75,7 +75,7 @@ class RadioButtonsListPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orien
 
   def selectItem(itemId: Int): Unit = {
     if (itemId < 0 || itemId >= collectionOfRadioButtons.size)
-      throw new RuntimeException(s"Attempted programmatically selecting radio button with ite id outside available range: $itemId")
+      throw new RuntimeException(s"Attempted programmatically selecting radio button with its id outside available range: $itemId")
 
     collectionOfRadioButtons(itemId).setSelected(true)
     currentSelection = itemId

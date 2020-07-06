@@ -54,7 +54,7 @@ class ContinueSimulationView(val guiLayoutConfig: GuiLayoutConfig) extends Stati
   //### run panel ###
   private val run_Panel = new RibbonPanel(guiLayoutConfig, Orientation.HORIZONTAL)
   run_Panel.addLabel("Stop condition value")
-  private val targetValue_Field = run_Panel.addTxtField(60, isEditable = true, TextAlignment.RIGHT)
+  private val targetValue_Field = run_Panel.addTxtField(80, isEditable = true, TextAlignment.RIGHT)
   run_Panel.addSpacer()
   private val run_Button = run_Panel.addButton("Run")
 
