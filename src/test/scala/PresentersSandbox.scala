@@ -39,7 +39,7 @@ object PresentersSandbox {
 
     //run short simulation
     log.info("starting the simulation")
-    simulationDisplayModel.advanceTheSimulationBy(2000)
+    simulationDisplayModel.advanceTheSimulationBy(10000)
     log.info(s"simulation completed, last step was: ${engine.lastStepExecuted}")
 
     //create desired controller

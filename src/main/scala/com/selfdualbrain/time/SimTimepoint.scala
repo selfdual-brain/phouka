@@ -13,9 +13,15 @@ case class SimTimepoint(micros: Long) extends AnyVal with Ordered[SimTimepoint] 
   def -(other: SimTimepoint): TimeDelta = this.micros - other.micros
 
   override def toString: String = SimTimepoint.render(micros)
+
+  def asHumanReadable: HumanReadableTimeAmount = SimTimepoint.asHumanReadable(micros)
 }
 
 object SimTimepoint {
+  private val secondsInMinute = 60
+  private val secondsInHour = 60 * 60
+  private val secondsInDay = 60 * 60 * 24
+
   val zero: SimTimepoint = SimTimepoint(0L)
 
   def max(t1: SimTimepoint, t2: SimTimepoint): SimTimepoint = if (t1 < t2) t2 else t1
@@ -64,6 +70,19 @@ object SimTimepoint {
     } catch {
       case ex: NumberFormatException => None
     }
+
+  def asHumanReadable(micros: Long): HumanReadableTimeAmount = {
+    val microsPart: Int = (micros % 1000000).toInt
+    val wholeSeconds: Long = micros / 1000000
+    val secondsPart: Int = (wholeSeconds % 60).toInt
+    val wholeMinutes :Long = wholeSeconds / 60
+    val minutesPart: Int = (wholeMinutes % 60).toInt
+    val wholeHours: Long = wholeMinutes / 60
+    val hoursPart: Int = (wholeHours % 24).toInt
+    val wholeDays: Long = wholeHours / 24
+    val daysPart: Int = wholeDays.toInt
+    return HumanReadableTimeAmount(daysPart, hoursPart, minutesPart, secondsPart, microsPart)
+  }
 }
 
 object TimeDelta {
@@ -72,6 +91,4 @@ object TimeDelta {
   def minutes(n: Long): TimeDelta = n * 1000000L * 60L
   def hours(n: Long): TimeDelta = n * 1000000L * 60L * 60L
   def days(n: Long): TimeDelta = n * 1000000L * 60L * 60L * 24L
-
-  val SIM_TIME_UNITS_PER_SECOND: Long = 1000000
 }

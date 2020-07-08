@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui
 
-import java.awt.{BorderLayout, Color, Dimension}
+import java.awt.{BorderLayout, Dimension}
 
 import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.des.Event
@@ -8,10 +8,11 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import com.selfdualbrain.simulator_engine.{EventTag, NodeEventPayload, OutputEventPayload}
-import com.selfdualbrain.time.SimTimepoint
-import javax.swing.table.AbstractTableModel
-import javax.swing.{JPanel, JScrollPane, JTable, ListSelectionModel, ScrollPaneConstants}
+import com.selfdualbrain.time.{HumanReadableTimeAmount, SimTimepoint}
+import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer}
+import javax.swing._
 
+import scala.annotation.switch
 import scala.collection.mutable.ArrayBuffer
 
 class EventsLogPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, EventsLogPresenter, EventsLogView, EventsLogPresenter.Ev] {
@@ -58,18 +59,21 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     events_Table.getColumnModel.getColumn(1).setPreferredWidth(60)
     events_Table.getColumnModel.getColumn(1).setMaxWidth(100)
 
-    events_Table.getColumnModel.getColumn(2).setPreferredWidth(80)
+    events_Table.getColumnModel.getColumn(2).setPreferredWidth(100)
     events_Table.getColumnModel.getColumn(2).setMaxWidth(100)
-
-    events_Table.getColumnModel.getColumn(3).setPreferredWidth(30)
-    events_Table.getColumnModel.getColumn(3).setMaxWidth(40)
-
-    events_Table.getColumnModel.getColumn(4).setPreferredWidth(130)
-    events_Table.getColumnModel.getColumn(4).setMaxWidth(130)
-
-    events_Table.getColumnModel.getColumn(5).setPreferredWidth(2000)
-
     events_Table.getColumnModel.getColumn(2).setCellRenderer(new SimTimepointRenderer)
+
+    events_Table.getColumnModel.getColumn(3).setPreferredWidth(80)
+    events_Table.getColumnModel.getColumn(3).setMaxWidth(80)
+    events_Table.getColumnModel.getColumn(3).setCellRenderer(new HumanReadableTimeAmountRenderer)
+
+    events_Table.getColumnModel.getColumn(4).setPreferredWidth(30)
+    events_Table.getColumnModel.getColumn(4).setMaxWidth(40)
+
+    events_Table.getColumnModel.getColumn(5).setPreferredWidth(130)
+    events_Table.getColumnModel.getColumn(5).setMaxWidth(130)
+
+    events_Table.getColumnModel.getColumn(6).setPreferredWidth(2000)
   }
 
 }
@@ -80,15 +84,16 @@ class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extend
 
   override def getRowCount: Int = simulationDisplayModel.eventsAfterFiltering.length
 
-  override def getColumnCount: Int = 6
+  override def getColumnCount: Int = 7
 
   override def getColumnName(column: Int): String = column match {
     case 0 => "Step id"
     case 1 => "Event id"
     case 2 => "Time"
-    case 3 => "Vid"
-    case 4 => "Type"
-    case 5 => "Details"
+    case 3 => "HH:MM:SS"
+    case 4 => "Vid"
+    case 5 => "Type"
+    case 6 => "Details"
   }
 
   override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
@@ -96,23 +101,25 @@ class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extend
   override def getColumnClass(columnIndex: Int): Class[_] = columnIndex match {
     case 0 => classOf[Number]
     case 1 => classOf[Number]
-    case 2 => classOf[Number]
-    case 3 => classOf[Number]
-    case 4 => classOf[String]
+    case 2 => classOf[SimTimepoint]
+    case 3 => classOf[HumanReadableTimeAmount]
+    case 4 => classOf[Number]
     case 5 => classOf[String]
+    case 6 => classOf[String]
   }
   override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = {
     val coll: ArrayBuffer[(Long,Event[ValidatorId])] = simulationDisplayModel.eventsAfterFiltering
     val (stepId, event) = coll(rowIndex)
     //caution: interfacing with java library makes us to use enforced boxing of primitive types below
     //42.asInstanceOf[AnyRef] <- this really compiles to: new java.lang.Integer(42)
-    return columnIndex match {
+    return (columnIndex: @switch) match {
       case 0 => stepId.asInstanceOf[AnyRef]
       case 1 => event.id.asInstanceOf[AnyRef]
       case 2 => event.timepoint.asInstanceOf[AnyRef]
-      case 3 => event.loggingAgent.asInstanceOf[AnyRef]
-      case 4 => EventTag.asString(event)
-      case 5 => eventDetails(event)
+      case 3 => event.timepoint.asHumanReadable
+      case 4 => event.loggingAgent.asInstanceOf[AnyRef]
+      case 5 => EventTag.asString(event)
+      case 6 => eventDetails(event)
     }
   }
 
@@ -137,4 +144,17 @@ class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extend
       }
   }
 
+}
+
+class SimTimepointRenderer extends DefaultTableCellRenderer {
+  this.setHorizontalAlignment(SwingConstants.RIGHT)
+}
+
+class HumanReadableTimeAmountRenderer extends DefaultTableCellRenderer {
+  this.setHorizontalAlignment(SwingConstants.RIGHT)
+
+  override def setValue(value: Any): Unit = {
+    val t = value.asInstanceOf[HumanReadableTimeAmount]
+    this.setText(t.toStringCutToSeconds)
+  }
 }

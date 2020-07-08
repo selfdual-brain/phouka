@@ -1,5 +1,15 @@
 package com.selfdualbrain.simulator_engine
 
-class ValidatorStats {
+trait ValidatorStats {
+
+  def numberOfFinalizedBlocks :Int
+
+  def brickdagDepth: Int
+
+  def brickdagSize: Int
+
+  def myBlocksLatency: Double
+
+  def myBlocksOrphanRate: Double
 
 }
