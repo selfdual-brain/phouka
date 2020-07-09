@@ -164,11 +164,11 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
           payload match {
             case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) =>
               knownBricks += brick
-            case OutputEventPayload.AddedIncomingBrickToLocalDag(brick) =>
+            case OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(brick) =>
               knownBricks += brick
             case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) =>
               msgBufferSnapshot = snapshot
-            case OutputEventPayload.RemovedEntriesFromMsgBuffer(coll, snapshot) =>
+            case OutputEventPayload.RemovedEntryFromMsgBuffer(coll, snapshot) =>
               msgBufferSnapshot = snapshot
             case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
               lastPartialSummitForCurrentBGame = Some(partialSummit)
@@ -201,11 +201,11 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
           payload match {
             case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) =>
               knownBricks -= brick
-            case OutputEventPayload.AddedIncomingBrickToLocalDag(brick) =>
+            case OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(brick) =>
               knownBricks -= brick
             case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) =>
               msgBufferSnapshot = undoMsgBufferChange(selectedStep)
-            case OutputEventPayload.RemovedEntriesFromMsgBuffer(coll, snapshot) =>
+            case OutputEventPayload.RemovedEntryFromMsgBuffer(coll, snapshot) =>
               msgBufferSnapshot = undoMsgBufferChange(selectedStep)
             case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
               lastPartialSummitForCurrentBGame = undoPreFinalityStep(selectedStep)
@@ -231,7 +231,7 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
             payload match {
               case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) =>
                 return snapshot
-              case OutputEventPayload.RemovedEntriesFromMsgBuffer(coll, snapshot) =>
+              case OutputEventPayload.RemovedEntryFromMsgBuffer(coll, snapshot) =>
                 return snapshot
               case other =>
                 //ignore

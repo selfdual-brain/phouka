@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui
 
-import java.awt.{BorderLayout, Dimension}
+import java.awt.{BorderLayout, Color, Component, Dimension}
 
 import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.des.Event
@@ -72,6 +72,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
     events_Table.getColumnModel.getColumn(5).setPreferredWidth(130)
     events_Table.getColumnModel.getColumn(5).setMaxWidth(130)
+    events_Table.getColumnModel.getColumn(5).setCellRenderer(new EventTypeCellRenderer)
 
     events_Table.getColumnModel.getColumn(6).setPreferredWidth(2000)
   }
@@ -104,7 +105,7 @@ class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extend
     case 2 => classOf[SimTimepoint]
     case 3 => classOf[HumanReadableTimeAmount]
     case 4 => classOf[Number]
-    case 5 => classOf[String]
+    case 5 => classOf[Int]
     case 6 => classOf[String]
   }
   override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = {
@@ -118,7 +119,7 @@ class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extend
       case 2 => event.timepoint.asInstanceOf[AnyRef]
       case 3 => event.timepoint.asHumanReadable
       case 4 => event.loggingAgent.asInstanceOf[AnyRef]
-      case 5 => EventTag.asString(event)
+      case 5 => EventTag.of(event).asInstanceOf[AnyRef]
       case 6 => eventDetails(event)
     }
   }
@@ -134,9 +135,9 @@ class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extend
     case Event.Semantic(id, timepoint, source, payload) =>
       payload match {
         case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) => s"$brick"
-        case OutputEventPayload.AddedIncomingBrickToLocalDag(brick) => s"$brick"
+        case OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(brick) => s"$brick"
         case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) => s"$brick (missing dependency: $dependency)"
-        case OutputEventPayload.RemovedEntriesFromMsgBuffer(coll, snapshot) => s"${coll.mkString(",")}"
+        case OutputEventPayload.RemovedEntryFromMsgBuffer(brick, snapshot) => s"$brick"
         case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) => s"level ${partialSummit.level}"
         case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
         case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"
@@ -157,4 +158,30 @@ class HumanReadableTimeAmountRenderer extends DefaultTableCellRenderer {
     val t = value.asInstanceOf[HumanReadableTimeAmount]
     this.setText(t.toStringCutToSeconds)
   }
+}
+
+class EventTypeCellRenderer extends DefaultTableCellRenderer {
+  private val FINALITY_COLOR = new Color(150, 200, 255)
+
+  this.setHorizontalAlignment(SwingConstants.LEFT)
+
+
+  override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: ValidatorId, column: ValidatorId): Component = {
+    val result = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+    if (value.asInstanceOf[Int] == EventTag.FINALITY)
+      result.setBackground(FINALITY_COLOR)
+    else {
+      if (isSelected)
+        result.setBackground(table.getSelectionBackground)
+      else
+        result.setBackground(table.getBackground)
+    }
+    return result
+  }
+
+  override def setValue(value: Any): Unit = {
+    val eventTag = value.asInstanceOf[Int]
+    this.setText(EventTag.tag2description(eventTag))
+  }
+
 }

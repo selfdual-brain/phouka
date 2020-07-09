@@ -30,12 +30,12 @@ class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
         payload match {
           case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) =>
             s"(validator $source) published $brick"
-          case OutputEventPayload.AddedIncomingBrickToLocalDag(brick) =>
-            s"(validator $source) added incoming $brick to local blockdag"
+          case OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(brick) =>
+            s"(validator $source) directly added incoming $brick to local blockdag"
           case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) =>
             s"(validator $source) added entry to msg buffer ${brick.id}->${dependency.id}, buffer=[${msgBufferSnapshotDescription(snapshot)}]"
-          case OutputEventPayload.RemovedEntriesFromMsgBuffer(coll, snapshot) =>
-            s"(validator $source) removed entries from msg buffer ${coll.mkString(",")}, buffer=[${msgBufferSnapshotDescription(snapshot)}]"
+          case OutputEventPayload.RemovedEntryFromMsgBuffer(brick, snapshot) =>
+            s"(validator $source) removed entry from msg buffer, brick=$brick, buffer=[${msgBufferSnapshotDescription(snapshot)}]"
           case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
             s"(validator $source) pre-finality - level ${partialSummit.level}"
           case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>

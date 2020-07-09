@@ -64,9 +64,10 @@ class GenericHonestValidator(id: ValidatorId, context: ValidatorContext, sherloc
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! knownBricks.contains(j))
     registerProcessingTime(1L)
 
-    if (missingDependencies.isEmpty)
+    if (missingDependencies.isEmpty) {
+      context.addOutputEvent(localClock, OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(msg))
       runBufferPruningCascadeFor(msg)
-    else
+    } else
       for (j <- missingDependencies) {
         messagesBuffer.addPair(msg,j)
         if (sherlockMode)
@@ -76,6 +77,7 @@ class GenericHonestValidator(id: ValidatorId, context: ValidatorContext, sherloc
 
   override def onScheduledBrickCreation(time: SimTimepoint): Unit = {
     localClock = SimTimepoint.max(time, localClock)
+    registerProcessingTime(context.random.nextLong(1000) + 1) //todo: turn these delays into yet another simulation parameter (with random int sequence generator)
     blockVsBallot.select() match {
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)
@@ -97,15 +99,11 @@ class GenericHonestValidator(id: ValidatorId, context: ValidatorContext, sherloc
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(nextBrick))
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextBrick))
         addToLocalJdag(nextBrick)
-        if (sherlockMode)
-          context.addOutputEvent(localTime, OutputEventPayload.AddedIncomingBrickToLocalDag(nextBrick))
+        if (sherlockMode && nextBrick != msg)
+          context.addOutputEvent(localClock, OutputEventPayload.RemovedEntryFromMsgBuffer(nextBrick, messagesBuffer.toSeq))
         val waitingForThisOne = messagesBuffer.findSourcesFor(nextBrick)
         messagesBuffer.removeTarget(nextBrick)
         val unblockedMessages = waitingForThisOne.filterNot(b => messagesBuffer.hasSource(b))
-        if (sherlockMode && unblockedMessages.nonEmpty) {
-          registerProcessingTime(1L)
-          context.addOutputEvent(localClock, OutputEventPayload.RemovedEntriesFromMsgBuffer(unblockedMessages, messagesBuffer.toSeq))
-        }
         queue enqueueAll unblockedMessages
       }
     }
