@@ -5,6 +5,7 @@ import com.selfdualbrain.des.{Event, SimulationEngine}
 import com.selfdualbrain.gui.SimulationDisplayModel.{Ev, SimulationEngineStopCondition}
 import com.selfdualbrain.gui_framework.EventsBroadcaster
 import com.selfdualbrain.simulator_engine._
+import com.selfdualbrain.stats.ValidatorStats
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
