@@ -24,9 +24,11 @@ import com.selfdualbrain.time.SimTimepoint
   * simulation(t).blocks - the set of all blocks in simulation(t)
   * simulation(t).ballots - the set of all ballots in simulation(t)
   * simulation(t).bricks - a set-theoretic sum: simulation(t).blocks + simulation(t).ballots
-  * simulation(t).acceptedBlocks(v) - the set of blocks that are accepted (= added to local j-dag) of v
-  * simulation(t).acceptedBallots(v) - the set of ballots that are accepted (= added to local j-dag) of v
-  * simulation(t).acceptedBricks(v) = simulation(t).acceptedBlocks(v) + simulation(t).acceptedBricks(v)
+  * simulation(t).receivedBlocks(v) - the set of blocks that were received from network by validator v
+  * simulation(t).receivedBallots(v) - the set of ballots that were received from network by validator v
+  * simulation(t).jdagBlocks(v) - the set of blocks that are added to local j-dag of v
+  * simulation(t).jdagBallots(v) - the set of ballots that are added to local j-dag of v
+  * simulation(t).jdagBricks(v) = simulation(t).jdagBlocks(v) + simulation(t).jdagBallots(v)
   * x.size - number of elements in collection x
   * eq(t,v) - set of equivocators seen by validator v at simulation state t
   * gen(t,g) := simulation(t).blocks.filter(b => b.generation <= g)

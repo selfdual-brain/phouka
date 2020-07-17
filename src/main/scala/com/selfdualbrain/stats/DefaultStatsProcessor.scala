@@ -1,10 +1,11 @@
 package com.selfdualbrain.stats
 
-import com.selfdualbrain.blockchain_structure.{NormalBlock, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, NormalBlock, ValidatorId}
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 class DefaultStatsProcessor(
@@ -13,6 +14,7 @@ class DefaultStatsProcessor(
                              throughputCheckpointsDelta: TimeDelta,
                              numberOfValidators: Int
                            ) extends StatsProcessor {
+
   private var lastStepId: Long = _
   private var eventsCounter: Long = 0
   private var lastStepTimepoint: SimTimepoint = _
@@ -20,20 +22,50 @@ class DefaultStatsProcessor(
   private var publishedBallotsCounter: Long = 0
   private var visiblyFinalizedBlocksCounter: Long = 0
   private var completelyFinalizedBlocksCounter: Long = 0
-  private var equivocatorsCounter: Int = 0
-  private val generation2cumulativeBlocksCounter = new ArrayBuffer[Int]
+  private var equivocators: mutable.Set[ValidatorId] = new mutable.HashSet[ValidatorId]
+  private val blocksByGenerationCounters = new TreeNodesByGenerationCounter
   private val finalityMap = new ArrayBuffer[LfbElementInfo]
   private val latencyAverage = new ArrayBuffer[Double]
   private val latencyStandardDeviation = new ArrayBuffer[Double]
   private val throughputMovingAverageCheckpoints = new ArrayBuffer[Double]
+  private var vid2stats = new Array[PerValidatorCounters](numberOfValidators)
 
-  class LfbElementInfo {
-    var generation: Int = _
-    var block: NormalBlock = _
-    var vid2finalityTime = new Array[SimTimepoint](numberOfValidators)
-    var isCompletelyFinalized: Boolean = false
-    var visiblyFinalizedTime: SimTimepoint = _
-    var completelyFinalizedTime: SimTimepoint = _
+  for (i <- 0 until numberOfValidators)
+    vid2stats(i) = new PerValidatorCounters
+
+  class LfbElementInfo(val generation: Int) {
+    private var blockX: Option[NormalBlock] = None
+    private var confirmationsCounter: Int = 0
+    private var vid2finalityTime = new Array[SimTimepoint](numberOfValidators)
+    private var visiblyFinalizedTimeX: SimTimepoint = _
+    private var completelyFinalizedTimeX: SimTimepoint = _
+
+    def isVisiblyFinalized: Boolean = confirmationsCounter > 0
+
+    def numberOfConfirmations: Int = confirmationsCounter
+
+    def isCompletelyFinalized: Boolean = confirmationsCounter == numberOfValidators
+
+    def block: NormalBlock = {
+      blockX match {
+        case None => throw new RuntimeException(s"attempting to access lfb element info for generation $generation, before block at this generation was finalized")
+        case Some(b) => b
+      }
+    }
+
+    def updateWithAnotherFinalityEventObserved(block: NormalBlock, validator: ValidatorId, timepoint: SimTimepoint): Unit = {
+      blockX match {
+        case None => blockX = Some(block)
+        case Some(b) => assert (b == block)
+      }
+      confirmationsCounter += 1
+      if (confirmationsCounter == 1)
+        visiblyFinalizedTimeX = timepoint
+      if (confirmationsCounter == numberOfValidators)
+        completelyFinalizedTimeX = timepoint
+
+      vid2finalityTime(validator) = timepoint
+    }
   }
 
   class PerValidatorCounters extends ValidatorStats {
@@ -42,40 +74,50 @@ class DefaultStatsProcessor(
     var myBallotsCounter: Int = 0
     var receivedBlocksCounter: Int = 0
     var receivedBallotsCounter: Int = 0
+    var acceptedBlocksCounter: Int = 0
+    var acceptedBallotsCounter: Int = 0
+    val myBlocksByGenerationCounters = new TreeNodesByGenerationCounter
     var myFinalizedBlocksCounter: Int = 0
-    var myOrphanedBlocksCounter: Int = 0
     var myBrickdagDepth: Int = 0
     var myBrickdagSize: Int = 0
     var sumOfLatenciesOfAllLocallyCreatedBlocks: TimeDelta = 0L
     var sumOfBufferingTimes: TimeDelta = 0L
     var numberOfBricksThatEnteredMsgBuffer: Int = 0
     var numberOfBricksThatLeftMsgBuffer: Int = 0
+    var lastFinalizedBlockGeneration: Int = 0
 
-    override def numberOfPublishedBlocks: ValidatorId = myBlocksCounter
+    override def numberOfBlocksIPublished: ValidatorId = myBlocksCounter
 
-    override def numberOfPublishedBallots: ValidatorId = myBallotsCounter
+    override def numberOfBallotsIPublished: ValidatorId = myBallotsCounter
 
-    override def numberOfReceivedBlocks: ValidatorId = receivedBlocksCounter
+    override def numberOfBlocksIReceived: ValidatorId = receivedBlocksCounter
 
-    override def numberOfReceivedBallots: ValidatorId = receivedBallotsCounter
+    override def numberOfBallotsIReceived: ValidatorId = receivedBallotsCounter
 
-    override def numberOfFinalizedBlocks: ValidatorId = myFinalizedBlocksCounter
+    override def numberOfBlocksIReceivedAndIntegratedIntoMyLocalJDag: ValidatorId = acceptedBlocksCounter
 
-    override def numberOfOrphanedBlocks: ValidatorId = myOrphanedBlocksCounter
+    override def numberOfBallotIReceivedAndIntegratedIntoMyLocalJDag: ValidatorId = acceptedBallotsCounter
 
-    override def brickdagDepth: ValidatorId = myBrickdagDepth
+    override def numberOfMyBlocksThatICanSeeFinalized: ValidatorId = myFinalizedBlocksCounter
 
-    override def brickdagSize: ValidatorId = myBrickdagSize
+    override def numberOfMyBlocksThatICanAlreadySeeAsOrphaned: ValidatorId =
+      myBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration) - myFinalizedBlocksCounter
 
-    override def localLatency: Double = sumOfLatenciesOfAllLocallyCreatedBlocks.toDouble / numberOfFinalizedBlocks
+    override def myJdagDepth: ValidatorId = myBrickdagDepth
 
-    override def localThroughput: Double = numberOfFinalizedBlocks / totalTime.asSeconds
+    override def myJdagSize: ValidatorId = myBrickdagSize
 
-    override def blocksOrphanRate: Double = numberOfOrphanedBlocks.toDouble / numberOfPublishedBlocks
+    override def averageLatencyIAmObservingForMyBlocks: Double = sumOfLatenciesOfAllLocallyCreatedBlocks.toDouble / numberOfMyBlocksThatICanSeeFinalized
 
-    override def averageBufferingTime: Double = sumOfBufferingTimes.toDouble / numberOfBricksThatLeftMsgBuffer
+    override def averageThroughputIAmGenerating: Double = numberOfMyBlocksThatICanSeeFinalized / totalTime.asSeconds
 
-    override def bufferingChance: Double = numberOfBricksThatEnteredMsgBuffer.toDouble / (numberOfReceivedBlocks + numberOfReceivedBallots)
+    override def averageFractionOfMyBlocksThatGetOrphaned: Double = numberOfMyBlocksThatICanAlreadySeeAsOrphaned.toDouble / numberOfBlocksIPublished
+
+    override def averageBufferingTimeInMyLocalMsgBuffer: Double = sumOfBufferingTimes.toDouble / 1000000 / numberOfBricksThatLeftMsgBuffer
+
+    override def numberOfBricksInTheBuffer: ValidatorId = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
+
+    override def averageBufferingChanceForIncomingBricks: Double = numberOfBricksThatEnteredMsgBuffer.toDouble / (numberOfBlocksIReceivedAndIntegratedIntoMyLocalJDag + numberOfBallotIReceivedAndIntegratedIntoMyLocalJDag)
   }
 
   /**
@@ -91,24 +133,78 @@ class DefaultStatsProcessor(
       case Event.MessagePassing(id, timepoint, source, destination, payload) =>
         payload match {
           case NodeEventPayload.WakeUpForCreatingNewBrick => //ignored
-          case NodeEventPayload.BrickDelivered(block) => //ignored
-
+          case NodeEventPayload.BrickDelivered(brick) =>
+            if (brick.isInstanceOf[NormalBlock])
+              vid2stats(destination).receivedBlocksCounter += 1
+            else
+              vid2stats(destination).receivedBallotsCounter += 1
         }
 
-      case Event.Semantic(id, timepoint, source, payload) =>
-        payload match {
+      case Event.Semantic(id, eventTimepoint, validatorAnnouncingEvent, eventPayload) =>
+        val vStats = vid2stats(validatorAnnouncingEvent)
+
+        eventPayload match {
           case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) =>
-            publishedBlocksCounter += 1
+            brick match {
+              case block: NormalBlock =>
+                publishedBlocksCounter += 1
+                vStats.myBlocksCounter += 1
+                blocksByGenerationCounters.nodeAdded(block.generation)
+                vStats.myBlocksByGenerationCounters.nodeAdded(block.generation)
+              case ballot: Ballot =>
+                publishedBallotsCounter += 1
+                vStats.myBallotsCounter += 1
+            }
+            vStats.myBrickdagSize += 1
+            vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
 
           case OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(brick) =>
+            if (brick.isInstanceOf[NormalBlock])
+              vStats.acceptedBlocksCounter += 1
+            else
+              vStats.acceptedBallotsCounter += 1
+
+            vStats.myBrickdagSize += 1
+            vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
 
           case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) =>
+            vStats.numberOfBricksThatEnteredMsgBuffer += 1
+
           case OutputEventPayload.RemovedEntryFromMsgBuffer(brick, snapshot) =>
+            vStats.numberOfBricksThatLeftMsgBuffer += 1
+            if (brick.isInstanceOf[NormalBlock])
+              vStats.acceptedBlocksCounter += 1
+            else
+              vStats.acceptedBallotsCounter += 1
+            vStats.myBrickdagSize += 1
+            vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
+            vStats.sumOfBufferingTimes = eventTimepoint.micros - brick.timepoint.micros
+
           case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
+            //do nothing
+
           case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+            while (finalityMap.length < finalizedBlock.generation + 1)
+              finalityMap += new LfbElementInfo(finalityMap.length - 1)
+            val lfbElementInfo = finalityMap(finalizedBlock.generation)
+            lfbElementInfo.updateWithAnotherFinalityEventObserved(finalizedBlock, validatorAnnouncingEvent, eventTimepoint)
+            if (lfbElementInfo.numberOfConfirmations == 1)
+              visiblyFinalizedBlocksCounter += 1
+            if (lfbElementInfo.isCompletelyFinalized)
+              completelyFinalizedBlocksCounter += 1
+            if (validatorAnnouncingEvent == finalizedBlock.creator)
+              vStats.myFinalizedBlocksCounter += 1
+            vStats.lastFinalizedBlockGeneration = finalizedBlock.generation
+
           case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
+            equivocators += evilValidator
+
           case OutputEventPayload.EquivocationCatastrophe(validators, fttExceededBy) =>
+            //ignore (at this point the simulation must be stopped anyway, because finality theorem no longer holds)
+
         }
+
+        assert (vStats.myJdagSize == vStats.numberOfBricksIPublished + vStats.numberOfBricksIReceived - vStats.numberOfBricksInTheBuffer)
     }
 
   }
@@ -128,8 +224,8 @@ class DefaultStatsProcessor(
     if (n == 0) 0
     else if (n > this.numberOfVisiblyFinalizedBlocks) throw new RuntimeException(s"orphan rate undefined yet for generation $n")
     else {
-      val orphanedBlocks = generation2cumulativeBlocksCounter(n) - (n + 1)
-      val allBlocks = generation2cumulativeBlocksCounter(n)
+      val orphanedBlocks = blocksByGenerationCounters.numberOfNodesWithGenerationUpTo(n) - (n + 1)
+      val allBlocks = blocksByGenerationCounters.numberOfNodesWithGenerationUpTo(n)
       orphanedBlocks.toDouble / allBlocks
     }
   }
@@ -138,7 +234,7 @@ class DefaultStatsProcessor(
 
   override def numberOfCompletelyFinalizedBlocks: Long = completelyFinalizedBlocksCounter
 
-  override def numberOfObservedEquivocators: Int = equivocatorsCounter
+  override def numberOfObservedEquivocators: Int = equivocators.size
 
   override def blockchainLatencyAverage: Int => Double = { n =>
     assert (n >= 0)
@@ -171,4 +267,5 @@ class DefaultStatsProcessor(
   }
 
   override def perValidatorStats: Int => ValidatorStats = ???
+
 }

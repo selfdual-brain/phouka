@@ -7,7 +7,7 @@ sealed abstract class EventPayload(val filteringTag: Int)
 
 sealed abstract class NodeEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
 object NodeEventPayload {
-  case class BrickDelivered(block: Brick) extends NodeEventPayload(EventTag.BRICK_DELIVERED)
+  case class BrickDelivered(brick: Brick) extends NodeEventPayload(EventTag.BRICK_DELIVERED)
   case object WakeUpForCreatingNewBrick extends NodeEventPayload(EventTag.WAKE_UP)
 }
 
@@ -18,7 +18,7 @@ object OutputEventPayload {
   case class AddedEntryToMsgBuffer(bufferedBrick: Brick, dependency: Brick, bufferSnapshotAfter: Iterable[(Brick, Brick)]) extends OutputEventPayload(EventTag.ADDED_ENTRY_TO_BUF)
   case class RemovedEntryFromMsgBuffer(brick: Brick, bufferSnapshotAfter: Iterable[(Brick, Brick)]) extends OutputEventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
   case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends OutputEventPayload(EventTag.PRE_FINALITY)
-  case class BlockFinalized(bGameAnchor: Block, finalizedBlock: Block, summit: ACC.Summit) extends OutputEventPayload(EventTag.FINALITY)
+  case class BlockFinalized(bGameAnchor: Block, finalizedBlock: NormalBlock, summit: ACC.Summit) extends OutputEventPayload(EventTag.FINALITY)
   case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends OutputEventPayload(EventTag.EQUIVOCATION)
   case class EquivocationCatastrophe(validators: Iterable[ValidatorId], fttExceededBy: Ether) extends OutputEventPayload(EventTag.CATASTROPHE)
 }
