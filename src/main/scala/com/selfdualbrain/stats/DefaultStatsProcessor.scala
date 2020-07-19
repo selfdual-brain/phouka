@@ -16,7 +16,7 @@ class DefaultStatsProcessor(
                            ) extends StatsProcessor {
 
   assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
-  private var lastStepId: Long = _
+  private var lastStepId: Long = -1
   private var eventsCounter: Long = 0
   private var lastStepTimepoint: SimTimepoint = _
   private var publishedBlocksCounter: Long = 0
@@ -32,7 +32,7 @@ class DefaultStatsProcessor(
   private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounter(throughputMovingWindow, throughputCheckpointsDelta)
 
   for (i <- 0 until numberOfValidators)
-    vid2stats(i) = new PerValidatorCounters
+    vid2stats(i) = new PerValidatorCounters(i)
 
   latencyAverage.addOne(0.0)
   latencyStandardDeviation.addOne(0.0)
@@ -83,7 +83,7 @@ class DefaultStatsProcessor(
     }
   }
 
-  class PerValidatorCounters extends ValidatorStats {
+  class PerValidatorCounters(vid: ValidatorId) extends ValidatorStats {
 
     var myBlocksCounter: Int = 0
     var myBallotsCounter: Int = 0
@@ -122,7 +122,7 @@ class DefaultStatsProcessor(
 
     override def myJdagSize: ValidatorId = myBrickdagSize
 
-    override def averageLatencyIAmObservingForMyBlocks: Double = sumOfLatenciesOfAllLocallyCreatedBlocks.toDouble / numberOfMyBlocksThatICanSeeFinalized
+    override def averageLatencyIAmObservingForMyBlocks: Double = sumOfLatenciesOfAllLocallyCreatedBlocks.toDouble / 1000 / numberOfMyBlocksThatICanSeeFinalized //scaling to milliseconds
 
     override def averageThroughputIAmGenerating: Double = numberOfMyBlocksThatICanSeeFinalized / totalTime.asSeconds
 
@@ -141,7 +141,7 @@ class DefaultStatsProcessor(
     * Several optimizations are applied to ensure that all calculations are incremental.
     */
   def updateWithEvent(stepId: Long, event: Event[ValidatorId]): Unit = {
-    assert (stepId == lastStepId + 1)
+    assert (stepId == lastStepId + 1, s"stepId=$stepId, lastStepId=$lastStepId")
     lastStepId = stepId
     lastStepTimepoint = event.timepoint
     eventsCounter += 1
@@ -222,8 +222,8 @@ class DefaultStatsProcessor(
               val sumOfSquaredFinalityDelays: Long =
                 (latencyCalculationStartingGeneration to latencyCalculationEndingGeneration).map(generation => finalityMap(generation).sumOfSquaredFinalityDelays).sum
               val n: Int = numberOfGenerations * numberOfValidators
-              val average: Double = sumOfFinalityDelays.toDouble / n
-              val standardDeviation: Double = math.sqrt(sumOfSquaredFinalityDelays.toDouble / n - average * average)
+              val average: Double = sumOfFinalityDelays.toDouble / 1000 / n //scaling to milliseconds
+              val standardDeviation: Double = math.sqrt(sumOfSquaredFinalityDelays.toDouble / 1000000 / n - average * average) //scaling to milliseconds
               latencyAverage.addOne(average)
               latencyStandardDeviation.addOne(standardDeviation)
             }
@@ -239,7 +239,10 @@ class DefaultStatsProcessor(
 
         }
 
-        assert (vStats.myJdagSize == vStats.numberOfBricksIPublished + vStats.numberOfBricksIReceived - vStats.numberOfBricksInTheBuffer)
+        assert (
+          assertion = vStats.myJdagSize == vStats.numberOfBricksIPublished + vStats.numberOfBricksIReceived - vStats.numberOfBricksInTheBuffer,
+          message = s"event $event: ${vStats.myJdagSize} != ${vStats.numberOfBricksIPublished} + ${vStats.numberOfBricksIReceived} - ${vStats.numberOfBricksInTheBuffer}"
+        )
     }
 
   }

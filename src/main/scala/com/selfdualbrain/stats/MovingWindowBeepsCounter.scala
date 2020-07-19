@@ -34,7 +34,7 @@ class MovingWindowBeepsCounter(windowSize: Long, resolution: Long) {
     //ensuring that assumptions on the stream of events are fulfilled
     assert (eventId == lastEventId + 1)
     lastEventId += 1
-    assert (timepoint < lastTimepoint)
+    assert (timepoint >= lastTimepoint, s"timepoint=$timepoint, lastTimepoint=$lastTimepoint")
     lastTimepoint = timepoint
 
     //finding interval that the new beep belongs to

@@ -4,6 +4,8 @@ import java.io.File
 
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload, PhoukaConfig, PhoukaEngine}
+import com.selfdualbrain.stats.StatsPrinter
+import com.selfdualbrain.textout.TextOutput
 
 /**
   * We run the simulation as long as the specified number of finalized blocks is achieved by validator 0.
@@ -28,6 +30,9 @@ object FixedLengthLFB {
     engine = new PhoukaEngine(config)
 
     simulationLoop()
+
+    val statsPrinter = new StatsPrinter(TextOutput.overConsole(4), config.numberOfValidators)
+    statsPrinter.print(engine.stats)
   }
 
   def simulationLoop(): Unit = {

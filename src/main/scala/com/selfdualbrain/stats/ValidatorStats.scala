@@ -47,6 +47,7 @@ trait ValidatorStats {
 
   //Average time-to-finality (calculated for blocks created by this validator only; does not include orphaned blocks).
   //simulation(t).blocks.filter(b => b.creator == v and b.seenFinalizedAt(v)).map(b => b.fTime(v) - b.cTime).average
+  //Latency is expressed in milliseconds.
   def averageLatencyIAmObservingForMyBlocks: Double
 
   //Average number of finalized blocks per second (calculated for blocks created by this validator only).
