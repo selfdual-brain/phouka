@@ -81,17 +81,17 @@ trait SimulationStats {
   //This average is calculated over completely finalized blocks only (so orphan rate is not influencing the value).
   //f(g) = simulation(t).blocks.filter(b => g-N < b.generation <= g and b.isCompletelyFinalized).map(b => b.latencySpectrum(b)).setSum.average
   //N is a global parameter (latency moving window size)
-  def blockchainLatencyAverage: Int => Double
+  def movingWindowLatencyAverage: Int => Double
 
   //Standard deviation of latency.
   //f(g) = simulation(t).blocks.filter(b => g-N < b.generation <= g and b.isCompletelyFinalized).map(b => b.latencySpectrum(b)).setSum.standardDeviation
-  def blockchainLatencyStandardDeviation: Int => Double
+  def movingWindowLatencyStandardDeviation: Int => Double
 
   //number of blocks visibly finalized per second (calculated for last K seconds)
   //throughput(t) = simulation(t).blocks.filter(b => b.isVisiblyFinalized and t - K <= b.vfTime <= t) / K
-  def blockchainThroughputMovingAverage: SimTimepoint => Double
+  def movingWindowThroughput: SimTimepoint => Double
 
   //Statistics calculated separately for every validator.
-  def perValidatorStats: ValidatorId => ValidatorStats
+  def perValidatorStats(validator: ValidatorId): ValidatorStats
 
 }

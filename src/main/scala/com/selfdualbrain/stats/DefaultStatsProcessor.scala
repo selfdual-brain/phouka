@@ -15,6 +15,7 @@ class DefaultStatsProcessor(
                              numberOfValidators: Int
                            ) extends StatsProcessor {
 
+  assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
   private var lastStepId: Long = _
   private var eventsCounter: Long = 0
   private var lastStepTimepoint: SimTimepoint = _
@@ -27,11 +28,14 @@ class DefaultStatsProcessor(
   private val finalityMap = new ArrayBuffer[LfbElementInfo]
   private val latencyAverage = new ArrayBuffer[Double]
   private val latencyStandardDeviation = new ArrayBuffer[Double]
-  private val throughputMovingAverageCheckpoints = new ArrayBuffer[Double]
   private var vid2stats = new Array[PerValidatorCounters](numberOfValidators)
+  private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounter(throughputMovingWindow, throughputCheckpointsDelta)
 
   for (i <- 0 until numberOfValidators)
     vid2stats(i) = new PerValidatorCounters
+
+  latencyAverage.addOne(0.0)
+  latencyStandardDeviation.addOne(0.0)
 
   class LfbElementInfo(val generation: Int) {
     private var blockX: Option[NormalBlock] = None
@@ -39,6 +43,8 @@ class DefaultStatsProcessor(
     private var vid2finalityTime = new Array[SimTimepoint](numberOfValidators)
     private var visiblyFinalizedTimeX: SimTimepoint = _
     private var completelyFinalizedTimeX: SimTimepoint = _
+    private var sumOfFinalityDelaysX: Long = 0L
+    private var sumOfSquaredFinalityDelaysX: Long = 0L
 
     def isVisiblyFinalized: Boolean = confirmationsCounter > 0
 
@@ -53,6 +59,12 @@ class DefaultStatsProcessor(
       }
     }
 
+    def averageFinalityDelay: Double = sumOfFinalityDelaysX.toDouble / numberOfValidators
+
+    def sumOfFinalityDelays: Long = sumOfFinalityDelaysX
+
+    def sumOfSquaredFinalityDelays: Long = sumOfSquaredFinalityDelaysX
+
     def updateWithAnotherFinalityEventObserved(block: NormalBlock, validator: ValidatorId, timepoint: SimTimepoint): Unit = {
       blockX match {
         case None => blockX = Some(block)
@@ -65,6 +77,9 @@ class DefaultStatsProcessor(
         completelyFinalizedTimeX = timepoint
 
       vid2finalityTime(validator) = timepoint
+      val finalityDelay: Long = timepoint - block.timepoint
+      sumOfFinalityDelaysX += finalityDelay
+      sumOfSquaredFinalityDelaysX += finalityDelay * finalityDelay
     }
   }
 
@@ -122,10 +137,13 @@ class DefaultStatsProcessor(
 
   /**
     * Updates statistics by taking into account given event.
+    * Caution: the complexity of updating stats is O(1) with respect to stepId and O(n) with respect to number of validators.
+    * Several optimizations are applied to ensure that all calculations are incremental.
     */
   def updateWithEvent(stepId: Long, event: Event[ValidatorId]): Unit = {
     assert (stepId == lastStepId + 1)
     lastStepId = stepId
+    lastStepTimepoint = event.timepoint
     eventsCounter += 1
 
     event match {
@@ -188,10 +206,27 @@ class DefaultStatsProcessor(
               finalityMap += new LfbElementInfo(finalityMap.length - 1)
             val lfbElementInfo = finalityMap(finalizedBlock.generation)
             lfbElementInfo.updateWithAnotherFinalityEventObserved(finalizedBlock, validatorAnnouncingEvent, eventTimepoint)
-            if (lfbElementInfo.numberOfConfirmations == 1)
+            if (lfbElementInfo.numberOfConfirmations == 1) {
               visiblyFinalizedBlocksCounter += 1
-            if (lfbElementInfo.isCompletelyFinalized)
+              assert (visiblyFinalizedBlocksCounter == finalizedBlock.generation)
+              visiblyFinalizedBlocksMovingWindowCounter.beep(finalizedBlock.generation, eventTimepoint.micros)
+            }
+            if (lfbElementInfo.isCompletelyFinalized) {
               completelyFinalizedBlocksCounter += 1
+              assert (completelyFinalizedBlocksCounter == finalizedBlock.generation)
+              val latencyCalculationStartingGeneration: Int = math.max(1, lfbElementInfo.generation - latencyMovingWindow + 1)
+              val latencyCalculationEndingGeneration: Int = lfbElementInfo.generation
+              val numberOfGenerations: Int = latencyCalculationEndingGeneration - latencyCalculationStartingGeneration + 1
+              val sumOfFinalityDelays: Long =
+                (latencyCalculationStartingGeneration to latencyCalculationEndingGeneration).map(generation => finalityMap(generation).sumOfFinalityDelays).sum
+              val sumOfSquaredFinalityDelays: Long =
+                (latencyCalculationStartingGeneration to latencyCalculationEndingGeneration).map(generation => finalityMap(generation).sumOfSquaredFinalityDelays).sum
+              val n: Int = numberOfGenerations * numberOfValidators
+              val average: Double = sumOfFinalityDelays.toDouble / n
+              val standardDeviation: Double = math.sqrt(sumOfSquaredFinalityDelays.toDouble / n - average * average)
+              latencyAverage.addOne(average)
+              latencyStandardDeviation.addOne(standardDeviation)
+            }
             if (validatorAnnouncingEvent == finalizedBlock.creator)
               vStats.myFinalizedBlocksCounter += 1
             vStats.lastFinalizedBlockGeneration = finalizedBlock.generation
@@ -236,7 +271,7 @@ class DefaultStatsProcessor(
 
   override def numberOfObservedEquivocators: Int = equivocators.size
 
-  override def blockchainLatencyAverage: Int => Double = { n =>
+  override def movingWindowLatencyAverage: Int => Double = { n =>
     assert (n >= 0)
     if (n <= this.numberOfCompletelyFinalizedBlocks)
       latencyAverage(n)
@@ -244,7 +279,7 @@ class DefaultStatsProcessor(
       throw new RuntimeException(s"latency undefined yet for generation $n")
   }
 
-  override def blockchainLatencyStandardDeviation: Int => Double = { n =>
+  override def movingWindowLatencyStandardDeviation: Int => Double = { n =>
     assert (n >= 0)
     if (n <= this.numberOfCompletelyFinalizedBlocks)
       latencyStandardDeviation(n)
@@ -256,16 +291,15 @@ class DefaultStatsProcessor(
 
   override def cumulativeThroughput: Double = numberOfVisiblyFinalizedBlocks.toDouble / totalTime.asSeconds
 
-  override def blockchainThroughputMovingAverage: SimTimepoint => Double = { timepoint =>
-    //we optimize performance by using stored throughput checkpoints
-    //this means the result is not perfectly accurate
-    //performance is presumably more important than accuracy here (as we want to support real-time animated graphs)
-    //accuracy is adjustable - see the throughputCheckpointsDelta parameter in the constructor
+  private val throughputMovingWindowAsSeconds: Double = throughputMovingWindow.toDouble / TimeDelta.seconds(1)
 
-    val lastCheckpoint: Int = (timepoint.micros / throughputCheckpointsDelta).toInt
-    throughputMovingAverageCheckpoints(lastCheckpoint)
+  override def movingWindowThroughput: SimTimepoint => Double = { timepoint =>
+    assert (timepoint < lastStepTimepoint + throughputMovingWindow) //we do not support asking for throughput fot yet-unexplored future
+    val numberOfVisiblyFinalizedBlocks = visiblyFinalizedBlocksMovingWindowCounter.numberOfBeepsInWindowEndingAt(timepoint.micros)
+    val throughput: Double = numberOfVisiblyFinalizedBlocks.toDouble / throughputMovingWindowAsSeconds
+    throughput
   }
 
-  override def perValidatorStats: Int => ValidatorStats = ???
+  override def perValidatorStats(validator: ValidatorId): ValidatorStats = vid2stats(validator)
 
 }

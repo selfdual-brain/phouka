@@ -1,5 +1,7 @@
 package com.selfdualbrain.randomness
 
+import com.selfdualbrain.time.TimeUnit
+
 import scala.util.Random
 
 trait IntSequenceGenerator {
@@ -17,8 +19,8 @@ object IntSequenceGenerator {
       case IntSequenceConfig.Uniform(min, max) => new UniformGen(random, min, max)
       case IntSequenceConfig.Gaussian(mean, standardDeviation) => new GaussianGen(random, mean, standardDeviation)
       case IntSequenceConfig.PseudoGaussian(min, max) => new PseudoGaussianGen(random, min, max)
-      case IntSequenceConfig.PoissonProcess(lambda: Double) => new PoissonProcessGen(random, lambda)
-      case IntSequenceConfig.Erlang(k: Int, lambda: Double) => new ErlangGen(random, k, lambda)
+      case IntSequenceConfig.PoissonProcess(lambda, unit) => new PoissonProcessGen(random, lambda, unit)
+      case IntSequenceConfig.Erlang(k, lambda, unit) => new ErlangGen(random, k, lambda, unit)
     }
 
   }
@@ -70,13 +72,13 @@ object IntSequenceGenerator {
     override def next(): Int = math.max(0, (random.nextGaussian() * standardDeviation + mean).toInt)
   }
 
-  class PoissonProcessGen(random: Random, lambda: Double) extends IntSequenceGenerator {
-    val millisecondScaleLambda = lambda / 1000 //scaling from seconds to milliseconds
+  class PoissonProcessGen(random: Random, lambda: Double, unit: TimeUnit) extends IntSequenceGenerator {
+    val millisecondScaleLambda: Double = lambda * 1000 / (unit.oneUnitAsTimeDelta)  //scaling to events-per-one-millisecond
     override def next(): Int = (- math.log(random.nextDouble()) / millisecondScaleLambda).toInt
   }
 
-  class ErlangGen(random: Random, k: Int, lambda: Double) extends IntSequenceGenerator {
-    private val poisson = new PoissonProcessGen(random, lambda)
+  class ErlangGen(random: Random, k: Int, lambda: Double, unit: TimeUnit) extends IntSequenceGenerator {
+    private val poisson = new PoissonProcessGen(random, lambda, unit)
     override def next(): Int = (1 to k).map(i => poisson.next()).sum
   }
 

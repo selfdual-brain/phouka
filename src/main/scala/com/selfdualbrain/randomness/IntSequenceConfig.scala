@@ -2,6 +2,7 @@ package com.selfdualbrain.randomness
 
 import com.selfdualbrain.config_files_support.ConfigurationReader
 import com.selfdualbrain.config_files_support.ConfigurationReader.PrimitiveType._
+import com.selfdualbrain.time.TimeUnit
 
 sealed abstract class IntSequenceConfig {
 }
@@ -13,8 +14,8 @@ object IntSequenceConfig {
   case class Uniform(min: Int, max: Int) extends IntSequenceConfig
   case class PseudoGaussian(min: Int, max: Int) extends IntSequenceConfig
   case class Gaussian(mean: Double, standardDeviation: Double) extends IntSequenceConfig
-  case class PoissonProcess(lambda: Double) extends IntSequenceConfig //lambda = expected number of events per second, output from generator is sequence of delays as milliseconds
-  case class Erlang(k: Int, lambda: Double) extends IntSequenceConfig
+  case class PoissonProcess(lambda: Double, unit: TimeUnit) extends IntSequenceConfig //lambda = expected number of events per time unit, output from generator is sequence of delays as milliseconds
+  case class Erlang(k: Int, lambda: Double, unit: TimeUnit) extends IntSequenceConfig
 
   def fromConfig(keyword: String, config: ConfigurationReader): IntSequenceConfig = {
     try {
@@ -42,11 +43,13 @@ object IntSequenceConfig {
           max = config.primitiveValue("max", INT)
         )
         case "rnd-poisson" => IntSequenceConfig.PoissonProcess(
-          lambda = config.primitiveValue("lambda", DOUBLE)
+          lambda = config.primitiveValue("lambda", DOUBLE),
+          unit = config.encodedValue(key = "unit", decoder = TimeUnit.parse)
         )
         case "rnd-erlang" => IntSequenceConfig.Erlang(
           k = config.primitiveValue("k", INT),
-          lambda = config.primitiveValue("lambda", INT)
+          lambda = config.primitiveValue("lambda", INT),
+          unit = config.encodedValue(key = "unit", decoder = TimeUnit.parse)
         )
         case other =>
           throw new RuntimeException(s"unsupported value: $other")
@@ -63,8 +66,8 @@ object IntSequenceConfig {
     case Uniform(min, max) => s"uniform (min=$min max=$max)"
     case PseudoGaussian(min, max) => s"pseudo-gaussian (min=$min max=$max)"
     case Gaussian(mean, standardDeviation) => s"gaussian (mean=$mean standard-deviation=$standardDeviation)"
-    case PoissonProcess(lambda) => s"poisson-process (lambda=$lambda)"
-    case Erlang(k, lambda) => s"erlang (k=$k lambda=$lambda)"
+    case PoissonProcess(lambda, unit) => s"poisson-process (lambda=$lambda unit=$unit)"
+    case Erlang(k, lambda, unit) => s"erlang (k=$k lambda=$lambda unit=$unit)"
   }
 }
 

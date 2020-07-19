@@ -4,13 +4,15 @@ import java.awt.{BorderLayout, Color, Component, Dimension}
 
 import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.des.Event
+import com.selfdualbrain.gui.SimulationDisplayModel.Ev
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import com.selfdualbrain.simulator_engine.{EventTag, NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.{HumanReadableTimeAmount, SimTimepoint}
-import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer}
 import javax.swing._
+import javax.swing.event.ListSelectionEvent
+import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer}
 
 import scala.annotation.switch
 import scala.collection.mutable.ArrayBuffer
@@ -28,6 +30,10 @@ class EventsLogPresenter extends Presenter[SimulationDisplayModel, SimulationDis
   override def afterModelConnected(): Unit = {
     //do nothing
   }
+
+  def onRowSelected(row: Int): Unit = {
+    model.displayStepByDisplayPosition(row)
+  }
 }
 
 object EventsLogPresenter {
@@ -44,6 +50,10 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
   events_Table.setFillsViewportHeight(true)
   events_Table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF)
   events_Table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
+  events_Table.getSelectionModel.addListSelectionListener((e: ListSelectionEvent) => {
+    val selectedRow = e.getFirstIndex
+    presenter.onRowSelected(selectedRow)
+  })
 
   this.setPreferredSize(new Dimension(1000,800))
   scrollPane.setViewportView(events_Table)
@@ -83,6 +93,13 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
 class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extends AbstractTableModel {
 
+  simulationDisplayModel.subscribe(this) {
+    case Ev.FilterChanged => fireTableDataChanged()
+    case Ev.SimulationAdvanced(numberOfSteps, lastStep, firstInsertedRow, lastInsertedRow) =>
+      if (firstInsertedRow.isDefined) fireTableRowsDeleted(firstInsertedRow.get, lastInsertedRow.get)
+    case other => //ignore
+  }
+
   override def getRowCount: Int = simulationDisplayModel.eventsAfterFiltering.length
 
   override def getColumnCount: Int = 7
@@ -109,9 +126,9 @@ class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extend
     case 6 => classOf[String]
   }
   override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = {
-    val coll: ArrayBuffer[(Long,Event[ValidatorId])] = simulationDisplayModel.eventsAfterFiltering
+    val coll: ArrayBuffer[(Int,Event[ValidatorId])] = simulationDisplayModel.eventsAfterFiltering
     val (stepId, event) = coll(rowIndex)
-    //caution: interfacing with java library makes us to use enforced boxing of primitive types below
+    //caution: interfacing with java library requires us to use enforced boxing of primitive types below
     //42.asInstanceOf[AnyRef] <- this really compiles to: new java.lang.Integer(42)
     return (columnIndex: @switch) match {
       case 0 => stepId.asInstanceOf[AnyRef]

@@ -63,6 +63,12 @@ import scala.collection.mutable.ArrayBuffer
   * - adjust events filter
   * - export log to text file
   *
+  * Implementation remark: simulation engine uses Long value for representing step id. This makes a very long simulations possible (without using the GUI).
+  * For simulations that are using GUI, we store all simulation steps produced by the engine in a single ArrayBuffer. JVM enforces the limit of array size
+  * to 2147483647, i.e. whatever a 32-bit number can address. This makes the limit on the number of steps that can be displayed in the GUI. To bypass
+  * this limit we would need to introduce some external storage (= a database). For now this is not supported.
+  * Because of this, within SimulationDisplayModel we represent stepId as Int.
+  *
   * @param experimentConfig
   * @param engine
   * @param genesis
@@ -85,7 +91,7 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
 
   //subset of all-events, obtained via filtering; this is what "events log" table is showing
   //gets re-populated from scratch every time filter is changed
-  private var filteredEvents = new ArrayBuffer[(Long, Event[ValidatorId])]
+  private var filteredEvents = new ArrayBuffer[(Int, Event[ValidatorId])]
 
   //stats of the validators as calculated for the last event in allEvents
   //(this array is used as a map, where the key is validator id and it corresponds to array index)
@@ -300,17 +306,18 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
 
   //runs the engine to produce requested portion of steps, i.e. we extend the "simulation horizon"
   //returns the id of last step executed (coincides with the position of last element in allEvents collection)
-  def advanceTheSimulationBy(numberOfSteps: Int): Long = {
-//    val startingPoint: Long = engine.lastStepExecuted
-//    val stoppingPoint: Long = startingPoint + numberOfSteps
-//    val iterator = engine takeWhile {case (step, event) => step <= stoppingPoint}
-    val iterator = engine.take(numberOfSteps)
-
-    for ((step,event) <- iterator) {
+  def advanceTheSimulationBy(numberOfSteps: Int): Int = {
+    val eventsTableInsertedRowsBuffer = new ArrayBuffer[Int]
+    for ((step,event) <- engine.take(numberOfSteps)) {
+      val stepAsInt: Int = step.toInt
+      if (step.toInt == Int.MaxValue)
+        throw new RuntimeException(s"reached the end of capacity of simulator GUI by hitting stepId == Int.MaxValue")
       allEvents.append(event)
-      if (eventsFilter.isEventIncluded(event))
-        eventsAfterFiltering.append((step,event))
-      assert (allEvents.length == step + 1)
+      if (eventsFilter.isEventIncluded(event)) {
+        eventsAfterFiltering.append((stepAsInt,event))
+        eventsTableInsertedRowsBuffer.addOne(eventsAfterFiltering.length - 1) //number of row in "events log" table
+      }
+      assert (allEvents.length == stepAsInt + 1)
       event match {
         case Event.Semantic(id, timepoint, source, payload) =>
           payload match {
@@ -323,9 +330,9 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
         case _ =>
         //ignore
       }
-      trigger(Ev.SimulationAdvanced(step))
     }
 
+    trigger(Ev.SimulationAdvanced(numberOfSteps, engine.lastStepExecuted.toInt, eventsTableInsertedRowsBuffer.headOption, eventsTableInsertedRowsBuffer.lastOption))
     return allEvents.length - 1
   }
 
@@ -370,7 +377,7 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
 
   //--------------------- EVENTS LOG -------------------------
 
-  def eventsAfterFiltering: ArrayBuffer[(Long,Event[ValidatorId])] = filteredEvents
+  def eventsAfterFiltering: ArrayBuffer[(Int,Event[ValidatorId])] = filteredEvents
 
   def getEvent(step: Int): Event[ValidatorId] = allEvents(step)
 
@@ -386,23 +393,28 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
 
   //changing the selected event implies we need to determine which bricks are to be be visible
   //at the new position of the timeline
-  def displayStep(newPosition: Int): Unit = {
-    if (newPosition == currentlyDisplayedStep)
+  def displayStep(stepId: Int): Unit = {
+    if (stepId == currentlyDisplayedStep)
       return //no change, do nothing
 
-    if (newPosition > this.currentlyDisplayedStep)
-      for (i <- this.currentlyDisplayedStep until newPosition) observedValidatorRenderedState.stepForward()
+    if (stepId > this.currentlyDisplayedStep)
+      for (i <- this.currentlyDisplayedStep until stepId) observedValidatorRenderedState.stepForward()
     else {
-      if (newPosition > this.currentlyDisplayedStep / 2)
-        for (i <- this.currentlyDisplayedStep until newPosition by -1) observedValidatorRenderedState.stepBackward()
+      if (stepId > this.currentlyDisplayedStep / 2)
+        for (i <- this.currentlyDisplayedStep until stepId by -1) observedValidatorRenderedState.stepBackward()
       else {
         observedValidatorRenderedState = new RenderedValidatorState
-        for (i <- 0 until newPosition) observedValidatorRenderedState.stepForward()
+        for (i <- 0 until stepId) observedValidatorRenderedState.stepForward()
       }
     }
 
-    assert(this.currentlyDisplayedStep == newPosition)
-    trigger(Ev.StepSelectionChanged(newPosition))
+    assert(this.currentlyDisplayedStep == stepId)
+    trigger(Ev.StepSelectionChanged(stepId))
+  }
+
+  def displayStepByDisplayPosition(positionInFilteredEventsCollection: Int): Unit = {
+    val stepId = filteredEvents(positionInFilteredEventsCollection)._1
+    this.displayStep(stepId)
   }
 
   //--------------------- GRAPHICAL JDAG -------------------------
@@ -427,10 +439,46 @@ object SimulationDisplayModel {
 
   sealed abstract class Ev
   object Ev {
+
+    /**
+      * Fired after events filter is changed.
+      * In the GUI, events log table wants to listen to this event. Changing the filter means a complete refresh of the table.
+      */
     case object FilterChanged extends Ev
-    case class SimulationAdvanced(step: Long) extends Ev
+
+    /**
+      * Fired after simulation was advanced (usually by several steps at once).
+      * In the GUI, events log table wants to listen to this event. Advancing the simulation means that possibly some rows were added to displayed events collection.
+      * Also, statistics and jdag graph are interested (they must be updated accordingly).
+      *
+      * @param lastStep last step produced by the sim engine
+      * @param firstInsertedRow position of first added item in filteredEvents collection
+      * @param lastInsertedRow position of first added item in filteredEvents collection
+      */
+    case class SimulationAdvanced(numberOfSteps: Int, lastStep: Int, firstInsertedRow: Option[Int], lastInsertedRow: Option[Int]) extends Ev //firstInsertedRow, lastInsertedRow
+
+    /**
+      * Fired after the selection of which validator is the "currently observed validator" has changed.
+      * In the GUI, this will cause complete re-drawing of jdag graph (because only the jdag of currently observed validator is showing).
+      *
+      * @param vid validator that became the "currently observed validator"
+      */
     case class ValidatorSelectionChanged(vid: ValidatorId) extends Ev
-    case class StepSelectionChanged(step: Long) extends Ev
+
+    /**
+      * The user picked another simulation step as the "current step" that the GUI should focus on.
+      * Expected means how the user is doing the change is by selecting a row in events table.
+      *
+      * @param step the "now selected" step id
+      */
+    case class StepSelectionChanged(step: Int) extends Ev
+
+    /**
+      * The user picked another brick as the "current brick" that the GUI should focus on.
+      * Expected means how the user is doing the change is by selecting a brick on jdag graph.
+      *
+      * @param brickOrNone the "now selected" brick
+      */
     case class BrickSelectionChanged(brickOrNone: Option[Brick]) extends Ev
   }
 
@@ -442,7 +490,7 @@ object SimulationDisplayModel {
   object SimulationEngineStopCondition {
 
     val variants = Map(
-      0 -> "next number of steps [long]",
+      0 -> "next number of steps [int]",
       1 -> "reach the exact step [step id]",
       2 -> "simulated time delta [seconds.microseconds]",
       3 -> "reach the exact simulated time point [seconds.microseconds]",

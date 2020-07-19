@@ -5,7 +5,8 @@ import java.io.File
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
 import com.selfdualbrain.randomness.IntSequenceGenerator
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.stats.{DefaultStatsProcessor, SimulationStats, StatsProcessor}
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import org.slf4j.LoggerFactory
 
 import scala.util.Random
@@ -36,6 +37,9 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     new SimulationRecorder[ValidatorId](file, eagerFlush = true)
   }
   val validatorsToBeLogged: Set[ValidatorId] = config.validatorsToBeLogged.toSet
+  val statsProcessor: Option[StatsProcessor] = config.statsProcessor map { cfg =>
+    new DefaultStatsProcessor(cfg.latencyMovingWindow, TimeDelta.seconds(cfg.throughputMovingWindow), TimeDelta.seconds(cfg.throughputCheckpointsDelta), config.numberOfValidators)
+  }
   //initialize validators
   private val validators = new Array[Validator[ValidatorId, NodeEventPayload, OutputEventPayload]](config.numberOfValidators)
   for (i <- validators.indices) {
@@ -72,12 +76,21 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
       if (validatorsToBeLogged.isEmpty || validatorsToBeLogged.contains(event.loggingAgent))
         recorder.get.record(stepId, event)
 
+    if (statsProcessor.isDefined)
+      statsProcessor.get.updateWithEvent(stepId, event)
+
     return (stepId, event)
   }
 
   override def lastStepExecuted: Long = stepId
 
   override def currentTime: SimTimepoint = desQueue.currentTime
+
+  def stats: SimulationStats = statsProcessor match {
+    case Some(p) => p
+    case None =>
+      throw new RuntimeException("stats processing was not enabled for this instance of the engine")
+  }
 
   //################################# PRIVATE ##################################
 
