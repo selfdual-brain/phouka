@@ -29,9 +29,12 @@ object FixedLengthLFB {
     config = PhoukaConfig.loadFrom(configFile)
     engine = new PhoukaEngine(config)
 
+    println("===================== STARTING SIMULATION ===++=================")
+
     simulationLoop()
 
     val statsPrinter = new StatsPrinter(TextOutput.overConsole(4), config.numberOfValidators)
+    println("========================== STATISTICS ==========================")
     statsPrinter.print(engine.stats)
   }
 

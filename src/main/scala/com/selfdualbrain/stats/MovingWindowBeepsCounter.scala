@@ -34,6 +34,32 @@ class MovingWindowBeepsCounter(windowSize: Long, resolution: Long) {
     //ensuring that assumptions on the stream of events are fulfilled
     assert (eventId == lastEventId + 1)
     lastEventId += 1
+    moveInternalClockTo(timepoint)
+    counterOfBeepsInCurrentInterval += 1
+  }
+
+  /**
+    * Registers "silence" (= no beeps) up to specified timepoint.
+    * Registering of silence is not mandatory, but in practice it extends the range of querying after
+    * the counting is completed.
+    */
+  def silence(timepoint: Long): Unit = {
+    moveInternalClockTo(timepoint)
+  }
+
+  def numberOfBeepsInWindowEndingAt(timepoint: Long): Double = {
+    assert (timepoint < lastTimepoint + resolution, s"timepoint=$timepoint lastTimepoint=$lastTimepoint resolution=$resolution")
+    val targetInterval: Int = (timepoint / resolution).toInt - 1
+    return if (targetInterval == -1)
+      0
+    else
+      checkpoints(targetInterval)
+  }
+
+  /**
+    * Common processing of the fact that our knowledge up to timepoint is complete.
+    */
+  private def moveInternalClockTo(timepoint: Long): Unit = {
     assert (timepoint >= lastTimepoint, s"timepoint=$timepoint, lastTimepoint=$lastTimepoint")
     lastTimepoint = timepoint
 
@@ -45,16 +71,6 @@ class MovingWindowBeepsCounter(windowSize: Long, resolution: Long) {
       checkpoints.addOne(beepsBuffer.sum)
       currentInterval += 1
     }
-    counterOfBeepsInCurrentInterval += 1
-  }
-
-  def numberOfBeepsInWindowEndingAt(timepoint: Long): Double = {
-    assert (timepoint < lastTimepoint + resolution)
-    val targetInterval: Int = (timepoint / resolution).toInt - 1
-    return if (targetInterval == -1)
-      0
-    else
-      checkpoints(targetInterval)
   }
 
 }

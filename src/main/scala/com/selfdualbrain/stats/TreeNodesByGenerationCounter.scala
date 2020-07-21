@@ -15,9 +15,10 @@ class TreeNodesByGenerationCounter {
   private val countersStack: ArrayBuffer[Int] = new ArrayBuffer[Int]
 
   //keeping the stack non-empty saves some corner cases
-  countersStack.addOne(0)
+  countersStack.addOne(1) //counting root node here
 
   def nodeAdded(generation: Int): Unit = {
+    assert (generation > 0)
     //ensuring that enough counters were initialized
     if (countersStack.length < generation + 1) {
       val currentValueOnTop = countersStack.last

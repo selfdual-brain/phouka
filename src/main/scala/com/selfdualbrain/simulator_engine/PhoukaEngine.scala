@@ -5,7 +5,7 @@ import java.io.File
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
 import com.selfdualbrain.randomness.IntSequenceGenerator
-import com.selfdualbrain.stats.{DefaultStatsProcessor, SimulationStats, StatsProcessor}
+import com.selfdualbrain.stats.{DefaultStatsProcessor, SimulationStats, IncrementalStatsProcessor}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import org.slf4j.LoggerFactory
 
@@ -37,7 +37,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     new SimulationRecorder[ValidatorId](file, eagerFlush = true)
   }
   val validatorsToBeLogged: Set[ValidatorId] = config.validatorsToBeLogged.toSet
-  val statsProcessor: Option[StatsProcessor] = config.statsProcessor map { cfg =>
+  val statsProcessor: Option[IncrementalStatsProcessor with SimulationStats] = config.statsProcessor map { cfg =>
     new DefaultStatsProcessor(cfg.latencyMovingWindow, TimeDelta.seconds(cfg.throughputMovingWindow), TimeDelta.seconds(cfg.throughputCheckpointsDelta), config.numberOfValidators)
   }
   //initialize validators

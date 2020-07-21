@@ -3,29 +3,37 @@ package com.selfdualbrain.stats
 import com.selfdualbrain.textout.AbstractTextOutput
 
 class StatsPrinter(out: AbstractTextOutput, numberOfValidators: Int) {
+  private val percentChar: Char = '%'
 
   def print(stats: SimulationStats): Unit = {
     out.section("General") {
-      out.print(s"total time: ${stats.totalTime}")
+      out.print(s"total time [sec]: ${stats.totalTime} (${stats.totalTime.asHumanReadable.toStringCutToSeconds})")
       out.print(s"number of events: ${stats.numberOfEvents}")
-      out.print(s"published: ${stats.numberOfBallotsPublished} blocks, ${stats.numberOfBallotsPublished} ballots, ${stats.numberOfBlocksPublished + stats.numberOfBallotsPublished} bricks")
-      out.print(f"fraction of ballots: ${stats.fractionOfBallots}%.3f")
-      out.print(f"orphan rate: ${stats.orphanRateCurve(stats.numberOfVisiblyFinalizedBlocks.toInt)}%.3f")
+      out.print(s"published bricks: ${stats.numberOfBlocksPublished + stats.numberOfBallotsPublished} (${stats.numberOfBlocksPublished} blocks, ${stats.numberOfBallotsPublished} ballots)")
+      out.print(f"fraction of ballots [$percentChar]: ${stats.fractionOfBallots * 100}%.2f")
+      val orphanRateAsPercent: Double = stats.orphanRateCurve(stats.numberOfVisiblyFinalizedBlocks.toInt) * 100
+      out.print(f"orphan rate [$percentChar]: $orphanRateAsPercent%.2f")
       out.print(s"number of finalized blocks: ${stats.numberOfVisiblyFinalizedBlocks} visibly, ${stats.numberOfCompletelyFinalizedBlocks} completely")
       out.print(s"number of observed equivocators: ${stats.numberOfObservedEquivocators}")
     }
 
-    out.section("Latency") {
-      out.print(f"cumulative latency [milliseconds]: ${stats.cumulativeLatency}%.2f")
+    out.section("Latency (= delay between block creation and its observed finality)") {
+      out.print(f"overall average [seconds]: ${stats.cumulativeLatency}%.2f")
       val av = stats.movingWindowLatencyAverage(stats.numberOfCompletelyFinalizedBlocks.toInt)
       val sd = stats.movingWindowLatencyStandardDeviation(stats.numberOfCompletelyFinalizedBlocks.toInt)
-      out.print(f"moving window latency [milliseconds]: average = $av%.2f, standard deviation = $sd%.2f")
+      out.print(f"moving window [seconds]: average = $av%.2f, standard deviation = $sd%.2f")
     }
 
-    out.section("Throughput") {
-      out.print(f"cumulative throughput [= speed of finalizing blocks]: per second = ${stats.cumulativeThroughput}%.4f, per hour = ${stats.cumulativeThroughput * 3600}%.2f")
-      val blocksPerSec = stats.movingWindowThroughput(stats.totalTime)
-      out.print(f"moving window throughput: per second = $blocksPerSec%.3f, per hour = ${blocksPerSec * 3600}%.3f")
+    out.section("Throughput (= speed of finalizing blocks)") {
+      val ps = stats.cumulativeThroughput
+      val pm = stats.cumulativeThroughput * 60
+      val ph = stats.cumulativeThroughput * 3600
+      out.print(f"overall average [number of blocks]: per second = $ps%.4f, per minute = $pm%.3f, per hour = $ph%.2f")
+
+      val movingWindow_ps = stats.movingWindowThroughput(stats.totalTime)
+      val movingWindow_pm = movingWindow_ps * 60
+      val movingWindow_ph = movingWindow_ps * 3600
+      out.print(f"moving window [number of blocks]: per second = $movingWindow_ps%.4f, per minute = $movingWindow_pm%.3f, per per hour = $movingWindow_ph%.2f")
     }
 
     out.section("Per-validator stats") {
@@ -39,8 +47,7 @@ class StatsPrinter(out: AbstractTextOutput, numberOfValidators: Int) {
   }
 
   private def printValidatorStats(stats: ValidatorStats): Unit = {
-    out.print(s"number of published blocks: ${stats.numberOfBlocksIPublished}")
-    out.print(s"number of published ballots: ${stats.numberOfBallotsIPublished}")
+    out.print(s"published bricks: ${stats.numberOfBricksIPublished} (${stats.numberOfBlocksIPublished} blocks, ${stats.numberOfBallotsIPublished} ballots)")
     //todo: finish this
   }
 

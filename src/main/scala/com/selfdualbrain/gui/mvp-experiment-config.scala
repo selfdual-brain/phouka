@@ -49,7 +49,7 @@ class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsL
   private val relativeFtt_TextField: JTextField = finalizer_Ribbon.addTxtField(width = 30, isEditable = false, wantGrow = true, alignment = LEFT, postGap = 0)
 
   private val brickProposeDelays_TextField: JTextField = addTxtField("Brick propose delays", isEditable = false)
-  private val blocksFraction_TextField: JTextField = addTxtField("Blocks fraction", isEditable = false)
+  private val blocksFraction_TextField: JTextField = addTxtField("Blocks fraction [%]", isEditable = false)
   private val networkDelays_TextField: JTextField = addTxtField("Network delays", isEditable = false)
   private val runForkChoiceFromGenesis_JCheckBox: JCheckBox = addCheckBox("Start fork-choice at Genesis", isEditable = false)
 

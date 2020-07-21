@@ -71,7 +71,7 @@ object PhoukaConfig {
     finalizerAckLevel = 3,
     relativeFtt = 0.30,
     brickProposeDelays = IntSequenceConfig.PoissonProcess(lambda = 2, unit = TimeUnit.MINUTES), //on average a validator proposes 2 blocks per minute
-    blocksFractionAsPercentage = 0.1,
+    blocksFractionAsPercentage = 10, //blocks fraction as if in perfect round-robin (in every round there is one leader producing a block and others produce one ballot each)
     networkDelays = IntSequenceConfig.PseudoGaussian(min = 500, max = 10000), //network delays in bricks delivery are between 0.5 sec up to 10 seconds
     runForkChoiceFromGenesis = true,
     statsProcessor = Some(StatsProcessorConfig(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15))

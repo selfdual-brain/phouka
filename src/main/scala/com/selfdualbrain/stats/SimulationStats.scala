@@ -68,7 +68,7 @@ trait SimulationStats {
   //validators.map(v => eq(t,v)).setSum.size
   def numberOfObservedEquivocators: Int
 
-  //Average time from block creation to block becoming finalized - in milliseconds (calculated for the whole time of simulation)
+  //Average time from block creation to block becoming finalized - in seconds (calculated for the whole time of simulation)
   //simulation(t).blocks.filter(b => b.isCompletelyFinalized).map(b => b.latencySpectrum(b)).setSum.average
   def cumulativeLatency: Double
 
