@@ -151,28 +151,32 @@ class DefaultStatsProcessor(
     var numberOfBricksThatLeftMsgBuffer: Int = 0
     var lastFinalizedBlockGeneration: Int = 0
 
-    override def numberOfBlocksIPublished: ValidatorId = myBlocksCounter
+    override def numberOfBlocksIPublished: Int = myBlocksCounter
 
-    override def numberOfBallotsIPublished: ValidatorId = myBallotsCounter
+    override def numberOfBallotsIPublished: Int = myBallotsCounter
 
-    override def numberOfBlocksIReceived: ValidatorId = receivedBlocksCounter
+    override def numberOfBlocksIReceived: Int = receivedBlocksCounter
 
-    override def numberOfBallotsIReceived: ValidatorId = receivedBallotsCounter
+    override def numberOfBallotsIReceived: Int = receivedBallotsCounter
 
-    override def numberOfBlocksIAccepted: ValidatorId = acceptedBlocksCounter
+    override def numberOfBlocksIAccepted: Int = acceptedBlocksCounter
 
-    override def numberOfBallotsIAccepted: ValidatorId = acceptedBallotsCounter
+    override def numberOfBallotsIAccepted: Int = acceptedBallotsCounter
 
-    override def numberOfMyBlocksThatICanSeeFinalized: ValidatorId = myFinalizedBlocksCounter
+    override def numberOfMyBlocksThatICanSeeFinalized: Int = myFinalizedBlocksCounter
 
-    override def numberOfMyBlocksThatICanAlreadySeeAsOrphaned: ValidatorId =
+    override def numberOfMyBlocksThatICanAlreadySeeAsOrphaned: Int =
       myBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration) - myFinalizedBlocksCounter
 
-    override def myJdagDepth: ValidatorId = myBrickdagDepth
+    override def myJdagDepth: Int = myBrickdagDepth
 
-    override def myJdagSize: ValidatorId = myBrickdagSize
+    override def myJdagSize: Int = myBrickdagSize
 
-    override def averageLatencyIAmObservingForMyBlocks: Double = sumOfLatenciesOfAllLocallyCreatedBlocks.toDouble / 1000000 / numberOfMyBlocksThatICanSeeFinalized //scaling to seconds
+    override def averageLatencyIAmObservingForMyBlocks: Double =
+      if (numberOfMyBlocksThatICanSeeFinalized == 0)
+        0
+      else
+        sumOfLatenciesOfAllLocallyCreatedBlocks.toDouble / 1000000 / numberOfMyBlocksThatICanSeeFinalized //scaling to seconds
 
     override def averageThroughputIAmGenerating: Double = numberOfMyBlocksThatICanSeeFinalized / totalTime.asSeconds
 
@@ -180,7 +184,7 @@ class DefaultStatsProcessor(
 
     override def averageBufferingTimeInMyLocalMsgBuffer: Double = sumOfBufferingTimes.toDouble / 1000000 / numberOfBricksThatLeftMsgBuffer
 
-    override def numberOfBricksInTheBuffer: ValidatorId = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
+    override def numberOfBricksInTheBuffer: Int = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
 
     override def averageBufferingChanceForIncomingBricks: Double = numberOfBricksThatEnteredMsgBuffer.toDouble / (numberOfBlocksIAccepted + numberOfBallotsIAccepted)
   }
@@ -294,9 +298,12 @@ class DefaultStatsProcessor(
               assert (latencyMovingWindowStandardDeviation.length == lfbElementInfo.generation + 1)
             }
             //special handling of the case when this finality event is emitted by the creator of the finalized block
-            if (validatorAnnouncingEvent == finalizedBlock.creator)
+            if (validatorAnnouncingEvent == finalizedBlock.creator) {
               vStats.myFinalizedBlocksCounter += 1
-            //within one validator perspective, subsequent finality events are for blocks with generations 1,2,3,4,5 ...... (monotonic, no gaps, starting with 1)
+              vStats.sumOfLatenciesOfAllLocallyCreatedBlocks += eventTimepoint - finalizedBlock.timepoint
+            }
+
+            //within a single validator perspective, subsequent finality events are for blocks with generations 1,2,3,4,5 ...... (monotonic, no gaps, starting with 1)
             vStats.lastFinalizedBlockGeneration = finalizedBlock.generation
 
           case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>

@@ -59,8 +59,8 @@ class StatsPrinter(out: AbstractTextOutput, numberOfValidators: Int) {
     out.print(s"my blocks I can see as finalized: ${stats.numberOfMyBlocksThatICanSeeFinalized}")
     out.print(s"my blocks I can see  as orphaned: ${stats.numberOfMyBlocksThatICanAlreadySeeAsOrphaned}")
     out.print(s"jdag size: ${stats.myJdagSize} depth: ${stats.myJdagDepth}")
-    out.print(f"local latency: ${stats.averageLatencyIAmObservingForMyBlocks}%.2f")
-    out.print(f"local throughput: ${stats.averageThroughputIAmGenerating}%.2f")
+    out.print(f"local latency [seconds]: ${stats.averageLatencyIAmObservingForMyBlocks}%.2f")
+    out.print(f"local throughput [blocks per hour]: ${stats.averageThroughputIAmGenerating * 3600}%.2f")
     out.print(f"local orphan rate [$percentChar]: ${stats.averageFractionOfMyBlocksThatGetOrphaned * 100}")
   }
 

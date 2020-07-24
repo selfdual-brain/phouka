@@ -123,12 +123,19 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
     }
   }
 
+  private val nopTransition = MsgBufferTransition(msgBufSnapshot, msgBufSnapshot)
+
   private def doBufferOp(operation: => Unit): MsgBufferTransition = {
-    val snapshotBefore = msgBufSnapshot
-    operation
-    val snapshotAfter = messagesBuffer.toSeq
-    msgBufSnapshot = snapshotAfter
-    return MsgBufferTransition(snapshotBefore, snapshotAfter)
+    if (sherlockMode) {
+      val snapshotBefore = msgBufSnapshot
+      operation
+      val snapshotAfter = messagesBuffer.toSeq
+      msgBufSnapshot = snapshotAfter
+      return MsgBufferTransition(snapshotBefore, snapshotAfter)
+    } else {
+      operation
+      return nopTransition
+    }
   }
 
   //################## PUBLISHING OF NEW MESSAGES ############################
