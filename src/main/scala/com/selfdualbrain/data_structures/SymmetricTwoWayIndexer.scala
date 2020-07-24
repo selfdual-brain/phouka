@@ -54,6 +54,10 @@ class SymmetricTwoWayIndexer[A,B] extends BinaryRelation[A,B] {
 
   def targets: Iterable[B] = ba.keySet.toSeq
 
+  def sourcesSetSize :Int = ab.keySet.size
+
+  def targetsSetSize: Int = ba.keySet.size
+
   /**
     * Number of pairs in the relation.
     */

@@ -152,9 +152,9 @@ class EventsLogTableModel(simulationDisplayModel: SimulationDisplayModel) extend
     case Event.Semantic(id, timepoint, source, payload) =>
       payload match {
         case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) => s"$brick"
-        case OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(brick) => s"$brick"
-        case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) => s"$brick (missing dependency: $dependency)"
-        case OutputEventPayload.RemovedEntryFromMsgBuffer(brick, snapshot) => s"$brick"
+        case OutputEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) => s"$brick"
+        case OutputEventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) => s"$brick (missing dependency: $dependency)"
+        case OutputEventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) => s"$brick"
         case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) => s"level ${partialSummit.level}"
         case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
         case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"

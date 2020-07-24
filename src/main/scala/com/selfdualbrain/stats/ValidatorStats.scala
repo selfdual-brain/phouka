@@ -20,15 +20,15 @@ trait ValidatorStats {
 
   def numberOfBricksIReceived: Int = numberOfBlocksIReceived + numberOfBallotsIReceived
 
-  //Number of blocks received from network by this validator.
-  //Only blocks that were successfully integrated into local jDag are counted
+  //Number of blocks received and accepted from network by this validator, i.e. only blocks that were successfully
+  //integrated into local jDag are counted.
   //simulation(t).jdagBlocks(v).filter(b => b.creator != v)
-  def numberOfBlocksIReceivedAndIntegratedIntoMyLocalJDag: Int
+  def numberOfBlocksIAccepted: Int
 
   //Number of ballots received from network by this validator.
   //Only ballots that were successfully integrated into local jDag are counted
   //simulation(t).jdagBallots(v).filter(b => b.creator != v)
-  def numberOfBallotIReceivedAndIntegratedIntoMyLocalJDag: Int
+  def numberOfBallotsIAccepted: Int
 
   def numberOfBricksInTheBuffer: Int
 
@@ -47,7 +47,7 @@ trait ValidatorStats {
 
   //Average time-to-finality (calculated for blocks created by this validator only; does not include orphaned blocks).
   //simulation(t).blocks.filter(b => b.creator == v and b.seenFinalizedAt(v)).map(b => b.fTime(v) - b.cTime).average
-  //Latency is expressed in milliseconds.
+  //Latency is expressed in seconds.
   def averageLatencyIAmObservingForMyBlocks: Double
 
   //Average number of finalized blocks per second (calculated for blocks created by this validator only).

@@ -14,6 +14,8 @@ trait BinaryRelation[A,B] extends Iterable[(A,B)]{
   def hasTarget(b: B): Boolean
   def sources: Iterable[A]
   def targets: Iterable[B]
+  def sourcesSetSize :Int
+  def targetsSetSize: Int
   def size: Int
   def isEmpty: Boolean
 }

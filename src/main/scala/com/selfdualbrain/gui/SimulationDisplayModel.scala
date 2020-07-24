@@ -171,12 +171,12 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
           payload match {
             case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) =>
               knownBricks += brick
-            case OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(brick) =>
+            case OutputEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
               knownBricks += brick
-            case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) =>
-              msgBufferSnapshot = snapshot
-            case OutputEventPayload.RemovedEntryFromMsgBuffer(coll, snapshot) =>
-              msgBufferSnapshot = snapshot
+            case OutputEventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
+              msgBufferSnapshot = bufTransition.snapshotAfter
+            case OutputEventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
+              msgBufferSnapshot = bufTransition.snapshotAfter
             case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
               lastPartialSummitForCurrentBGame = Some(partialSummit)
             case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
@@ -208,12 +208,12 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
           payload match {
             case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) =>
               knownBricks -= brick
-            case OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(brick) =>
+            case OutputEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
               knownBricks -= brick
-            case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) =>
-              msgBufferSnapshot = undoMsgBufferChange(selectedStep)
-            case OutputEventPayload.RemovedEntryFromMsgBuffer(coll, snapshot) =>
-              msgBufferSnapshot = undoMsgBufferChange(selectedStep)
+            case OutputEventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
+              msgBufferSnapshot = bufTransition.snapshotBefore
+            case OutputEventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
+              msgBufferSnapshot = bufTransition.snapshotBefore
             case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
               lastPartialSummitForCurrentBGame = undoPreFinalityStep(selectedStep)
             case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
@@ -228,27 +228,6 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
       }
 
       selectedStep -= 1
-    }
-
-    //finds previous message buffer snapshot
-    private def undoMsgBufferChange(step: Int): Iterable[(Brick,Brick)] = {
-      for (i <- step to 0 by -1) {
-        allEvents(i) match {
-          case Event.Semantic(id, timepoint, source, payload) =>
-            payload match {
-              case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) =>
-                return snapshot
-              case OutputEventPayload.RemovedEntryFromMsgBuffer(coll, snapshot) =>
-                return snapshot
-              case other =>
-                //ignore
-            }
-
-          case _ =>
-            //ignore
-        }
-      }
-      return Iterable.empty
     }
 
     //finds previous "partial summit" value

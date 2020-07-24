@@ -14,14 +14,16 @@ object NodeEventPayload {
 sealed abstract class OutputEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
 object OutputEventPayload {
   case class BrickProposed(forkChoiceWinner: Block, brickJustCreated: Brick) extends OutputEventPayload(EventTag.BRICK_PROPOSED)
-  case class DirectlyAddedIncomingBrickToLocalDag(brick: Brick) extends OutputEventPayload(EventTag.DIRECT_ACCEPT)
-  case class AddedEntryToMsgBuffer(bufferedBrick: Brick, dependency: Brick, bufferSnapshotAfter: Iterable[(Brick, Brick)]) extends OutputEventPayload(EventTag.ADDED_ENTRY_TO_BUF)
-  case class RemovedEntryFromMsgBuffer(brick: Brick, bufferSnapshotAfter: Iterable[(Brick, Brick)]) extends OutputEventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
+  case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends OutputEventPayload(EventTag.DIRECT_ACCEPT)
+  case class AddedIncomingBrickToMsgBuffer(bufferedBrick: Brick, missingDependencies: Iterable[Brick], bufTransition: MsgBufferTransition)  extends OutputEventPayload(EventTag.ADDED_ENTRY_TO_BUF)
+  case class AcceptedIncomingBrickAfterBuffering(bufferedBrick: Brick, bufTransition: MsgBufferTransition) extends OutputEventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
   case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends OutputEventPayload(EventTag.PRE_FINALITY)
   case class BlockFinalized(bGameAnchor: Block, finalizedBlock: NormalBlock, summit: ACC.Summit) extends OutputEventPayload(EventTag.FINALITY)
   case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends OutputEventPayload(EventTag.EQUIVOCATION)
   case class EquivocationCatastrophe(validators: Iterable[ValidatorId], fttExceededBy: Ether) extends OutputEventPayload(EventTag.CATASTROPHE)
 }
+
+case class MsgBufferTransition(snapshotBefore: Iterable[(Brick, Brick)], snapshotAfter: Iterable[(Brick, Brick)])
 
 object EventTag {
   val BRICK_DELIVERED = 1
@@ -41,7 +43,7 @@ object EventTag {
     BRICK_PROPOSED -> "propose",
     DIRECT_ACCEPT -> "accept (direct)",
     ADDED_ENTRY_TO_BUF -> "buffering",
-    REMOVED_ENTRY_FROM_BUF -> "accept (buf)",
+    REMOVED_ENTRY_FROM_BUF -> "accept (from buf)",
     PRE_FINALITY -> "pre-finality",
     FINALITY -> "block finalized",
     EQUIVOCATION -> "equivocation",

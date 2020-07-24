@@ -11,9 +11,10 @@ import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class GenericHonestValidator(id: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
+class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
   private var localClock: SimTimepoint = SimTimepoint.zero
   val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[Brick,Brick]
+  var msgBufSnapshot: Iterable[(Brick, Brick)] = Iterable.empty
   val knownBricks = new mutable.HashSet[Brick](1000, 0.75)
 
 //  val jdagGraph: InferredDag[Brick] = new DagImpl[Brick](_.directJustifications)
@@ -33,8 +34,10 @@ class GenericHonestValidator(id: ValidatorId, context: ValidatorContext, sherloc
   val blockVsBallot = new Picker[String](context.random, Map("block" -> context.blocksFraction, "ballot" -> (1 - context.blocksFraction)))
   val brickHashGenerator = new FakeSha256Digester(context.random, 8)
   var currentFinalityDetector: ACC.FinalityDetector = _
+//  var bufferAddCounter: Int = 0
+//  var bufferRemoveCounter: Int = 0
 
-  override def toString: String = s"Validator-$id"
+  override def toString: String = s"Validator-$validatorId"
 
   def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
     val bgame: BGame = block2bgame(bGameAnchor)
@@ -65,14 +68,20 @@ class GenericHonestValidator(id: ValidatorId, context: ValidatorContext, sherloc
     registerProcessingTime(1L)
 
     if (missingDependencies.isEmpty) {
-      context.addOutputEvent(localClock, OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(msg))
+      context.addOutputEvent(localClock, OutputEventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
       runBufferPruningCascadeFor(msg)
-    } else
-      for (j <- missingDependencies) {
-        messagesBuffer.addPair(msg,j)
-        if (sherlockMode)
-          context.addOutputEvent(localClock, OutputEventPayload.AddedEntryToMsgBuffer(msg, j, messagesBuffer.toSeq))
+    } else {
+      if (sherlockMode) {
+        val bufferTransition = doBufferOp {
+          for (j <- missingDependencies)
+            messagesBuffer.addPair(msg,j)
+        }
+        context.addOutputEvent(localClock, OutputEventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferTransition))
+      } else {
+        for (j <- missingDependencies)
+          messagesBuffer.addPair(msg,j)
       }
+    }
   }
 
   override def onScheduledBrickCreation(time: SimTimepoint): Unit = {
@@ -99,14 +108,27 @@ class GenericHonestValidator(id: ValidatorId, context: ValidatorContext, sherloc
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(nextBrick))
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextBrick))
         addToLocalJdag(nextBrick)
-        if (sherlockMode && nextBrick != msg)
-          context.addOutputEvent(localClock, OutputEventPayload.RemovedEntryFromMsgBuffer(nextBrick, messagesBuffer.toSeq))
         val waitingForThisOne = messagesBuffer.findSourcesFor(nextBrick)
-        messagesBuffer.removeTarget(nextBrick)
+        if (sherlockMode && nextBrick != msg) {
+          val bufferTransition = doBufferOp {
+            messagesBuffer.removeTarget(nextBrick)
+          }
+          context.addOutputEvent(localClock, OutputEventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
+        } else {
+          messagesBuffer.removeTarget(nextBrick)
+        }
         val unblockedMessages = waitingForThisOne.filterNot(b => messagesBuffer.hasSource(b))
         queue enqueueAll unblockedMessages
       }
     }
+  }
+
+  private def doBufferOp(operation: => Unit): MsgBufferTransition = {
+    val snapshotBefore = msgBufSnapshot
+    operation
+    val snapshotAfter = messagesBuffer.toSeq
+    msgBufSnapshot = snapshotAfter
+    return MsgBufferTransition(snapshotBefore, snapshotAfter)
   }
 
   //################## PUBLISHING OF NEW MESSAGES ############################

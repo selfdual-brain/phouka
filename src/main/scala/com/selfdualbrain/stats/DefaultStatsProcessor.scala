@@ -159,9 +159,9 @@ class DefaultStatsProcessor(
 
     override def numberOfBallotsIReceived: ValidatorId = receivedBallotsCounter
 
-    override def numberOfBlocksIReceivedAndIntegratedIntoMyLocalJDag: ValidatorId = acceptedBlocksCounter
+    override def numberOfBlocksIAccepted: ValidatorId = acceptedBlocksCounter
 
-    override def numberOfBallotIReceivedAndIntegratedIntoMyLocalJDag: ValidatorId = acceptedBallotsCounter
+    override def numberOfBallotsIAccepted: ValidatorId = acceptedBallotsCounter
 
     override def numberOfMyBlocksThatICanSeeFinalized: ValidatorId = myFinalizedBlocksCounter
 
@@ -182,7 +182,7 @@ class DefaultStatsProcessor(
 
     override def numberOfBricksInTheBuffer: ValidatorId = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
 
-    override def averageBufferingChanceForIncomingBricks: Double = numberOfBricksThatEnteredMsgBuffer.toDouble / (numberOfBlocksIReceivedAndIntegratedIntoMyLocalJDag + numberOfBallotIReceivedAndIntegratedIntoMyLocalJDag)
+    override def averageBufferingChanceForIncomingBricks: Double = numberOfBricksThatEnteredMsgBuffer.toDouble / (numberOfBlocksIAccepted + numberOfBallotsIAccepted)
   }
 
   /**
@@ -226,7 +226,7 @@ class DefaultStatsProcessor(
             vStats.myBrickdagSize += 1
             vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
 
-          case OutputEventPayload.DirectlyAddedIncomingBrickToLocalDag(brick) =>
+          case OutputEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
             if (brick.isInstanceOf[NormalBlock])
               vStats.acceptedBlocksCounter += 1
             else
@@ -236,11 +236,11 @@ class DefaultStatsProcessor(
             vStats.myBrickdagSize += 1
             vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
 
-          case OutputEventPayload.AddedEntryToMsgBuffer(brick, dependency, snapshot) =>
+          case OutputEventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) =>
             vStats.numberOfBricksThatEnteredMsgBuffer += 1
             vStats.receivedHandledBricks += 1
 
-          case OutputEventPayload.RemovedEntryFromMsgBuffer(brick, snapshot) =>
+          case OutputEventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) =>
             vStats.numberOfBricksThatLeftMsgBuffer += 1
             if (brick.isInstanceOf[NormalBlock])
               vStats.acceptedBlocksCounter += 1
@@ -248,7 +248,7 @@ class DefaultStatsProcessor(
               vStats.acceptedBallotsCounter += 1
             vStats.myBrickdagSize += 1
             vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
-            vStats.sumOfBufferingTimes = eventTimepoint.micros - brick.timepoint.micros
+            vStats.sumOfBufferingTimes += eventTimepoint.micros - brick.timepoint.micros
 
           case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
             //do nothing
