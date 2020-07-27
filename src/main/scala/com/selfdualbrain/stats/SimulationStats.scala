@@ -81,12 +81,12 @@ trait SimulationStats {
   //This average is calculated over completely finalized blocks only (so orphan rate is not influencing the value).
   //f(g) = simulation(t).blocks.filter(b => g-N < b.generation <= g and b.isCompletelyFinalized).map(b => b.latencySpectrum(b)).setSum.average
   //N is a global parameter (latency moving window size)
-  //Latency is expressed in milliseconds.
+  //Latency is expressed in seconds.
   def movingWindowLatencyAverage: Int => Double
 
   //Standard deviation of latency.
   //f(g) = simulation(t).blocks.filter(b => g-N < b.generation <= g and b.isCompletelyFinalized).map(b => b.latencySpectrum(b)).setSum.standardDeviation
-  //Latency is expressed in milliseconds.
+  //Latency is expressed in seconds.
   def movingWindowLatencyStandardDeviation: Int => Double
 
   //number of blocks visibly finalized per second (calculated for last K seconds)

@@ -18,7 +18,7 @@ import scala.collection.mutable.ArrayBuffer
 class MovingWindowBeepsCounter(windowSize: Long, resolution: Long) {
   assert(windowSize % resolution == 0, "window size must be a multiple of resolution")
   private val beepsBuffer = new CircularSummingBuffer((windowSize / resolution).toInt)
-  private val checkpoints = new ArrayBuffer[Double]
+  private val checkpoints = new ArrayBuffer[Int]
   private var lastTimepoint: Long = 0
   private var lastEventId: Int = 0
   private var currentInterval: Int = 0
@@ -47,7 +47,7 @@ class MovingWindowBeepsCounter(windowSize: Long, resolution: Long) {
     moveInternalClockTo(timepoint)
   }
 
-  def numberOfBeepsInWindowEndingAt(timepoint: Long): Double = {
+  def numberOfBeepsInWindowEndingAt(timepoint: Long): Int = {
     assert (timepoint < lastTimepoint + resolution, s"timepoint=$timepoint lastTimepoint=$lastTimepoint resolution=$resolution")
     val targetInterval: Int = (timepoint / resolution).toInt - 1
     return if (targetInterval == -1)

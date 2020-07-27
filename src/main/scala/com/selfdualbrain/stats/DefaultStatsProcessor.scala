@@ -56,7 +56,7 @@ class DefaultStatsProcessor(
   //exact sum of finality delays (as microseconds) for all completely finalized blocks
   private var exactSumOfFinalityDelays: Long = 0L
   //"moving window average" of latency (the moving window is expressed in terms of certain number of generations)
-  //this array buffer is seen as a function Int ---> Double, where the argument denotes generation
+  //this array buffer is seen as a function Int ---> Double, where the argument references generation, value is average finality delay (as seconds)
   private val latencyMovingWindowAverage = new ArrayBuffer[Double]
   //... corresponding standard deviation
   private val latencyMovingWindowStandardDeviation = new ArrayBuffer[Double]
@@ -273,7 +273,7 @@ class DefaultStatsProcessor(
               assert (visiblyFinalizedBlocksCounter == finalizedBlock.generation)
               visiblyFinalizedBlocksMovingWindowCounter.beep(finalizedBlock.generation, eventTimepoint.micros)
             }
-            //special handling of "last validator observed the finality"
+            //special handling of "the last missing confirmation of finality of given block is just announced" (= now we have finality timepoints for all validators)
             if (lfbElementInfo.isCompletelyFinalized) {
               completelyFinalizedBlocksCounter += 1
               //if we done the math right, then it is impossible for higher block to reach "completely finalized" state before lower block
@@ -374,10 +374,16 @@ class DefaultStatsProcessor(
   private val throughputMovingWindowAsSeconds: Double = throughputMovingWindow.toDouble / TimeDelta.seconds(1)
 
   override def movingWindowThroughput: SimTimepoint => Double = { timepoint =>
-    assert (timepoint < lastStepTimepoint + throughputMovingWindow) //we do not support asking for throughput fot yet-unexplored future
-    val numberOfVisiblyFinalizedBlocks = visiblyFinalizedBlocksMovingWindowCounter.numberOfBeepsInWindowEndingAt(timepoint.micros)
-    val throughput: Double = numberOfVisiblyFinalizedBlocks.toDouble / throughputMovingWindowAsSeconds
-    throughput
+    assert (timepoint < lastStepTimepoint + throughputMovingWindow) //we do not support asking for throughput for yet-unexplored future
+    assert (timepoint >= SimTimepoint.zero)
+    if (timepoint == SimTimepoint.zero)
+      0.0
+    else {
+      val numberOfVisiblyFinalizedBlocks = visiblyFinalizedBlocksMovingWindowCounter.numberOfBeepsInWindowEndingAt(timepoint.micros)
+      val timeIntervalAsSeconds: Double = math.min(timepoint.asSeconds, throughputMovingWindowAsSeconds)
+      val throughput: Double = numberOfVisiblyFinalizedBlocks.toDouble / timeIntervalAsSeconds
+      throughput
+    }
   }
 
   override def perValidatorStats(validator: ValidatorId): ValidatorStats = vid2stats(validator)
