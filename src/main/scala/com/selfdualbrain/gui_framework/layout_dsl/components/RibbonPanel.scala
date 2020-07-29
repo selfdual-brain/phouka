@@ -44,7 +44,7 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
                   postGap: Int = guiLayoutConfig.ribbonPostGap,
                   wantGrow: Boolean = false): JTextField = {
     position += 1
-    val textFieldComponent = new JTextField()
+    val textFieldComponent = new SmartTextField()
     textFieldComponent.setMinimumSize(new Dimension(width, guiLayoutConfig.fieldsHeight))
     textFieldComponent.setPreferredSize(new Dimension(width, guiLayoutConfig.fieldsHeight))
     textFieldComponent.setEditable(true)

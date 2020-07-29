@@ -80,6 +80,7 @@
               <gridbag weightx="0.0" weighty="0.0"/>
             </constraints>
             <properties>
+              <font name="Ubuntu" size="11" style="0"/>
               <horizontalAlignment value="11"/>
               <preferredSize width="100" height="30"/>
             </properties>

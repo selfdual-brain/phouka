@@ -1,12 +1,17 @@
+import java.awt.Font
+
 import com.selfdualbrain.blockchain_structure.Genesis
 import com.selfdualbrain.gui._
 import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.simulator_engine.{PhoukaConfig, PhoukaEngine}
+import javax.swing
 import javax.swing.UIManager
 import org.slf4j.LoggerFactory
 
 object PresentersSandbox {
   private val log = LoggerFactory.getLogger(s"presenter-sandbox")
+
+//  val defaultFont = new Font("Ubuntu", Font.PLAIN, 13)
 
   def main(args: Array[String]): Unit = {
     for(lf <- UIManager.getInstalledLookAndFeels)
@@ -17,7 +22,16 @@ object PresentersSandbox {
     val lookAndFeel = UIManager.getSystemLookAndFeelClassName
     println(s"using look-and-feel class: $lookAndFeel")
     UIManager.setLookAndFeel(lookAndFeel)
-//    UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel")
+//    val uiManager = swing.UIManager
+
+    //default fonts
+//    UIManager.put("Table.font", defaultFont)
+//    UIManager.put("TextField.font", defaultFont)
+//    UIManager.put("Label.font", defaultFont)
+
+    println(UIManager.get("TextFieldUI"))
+
+    //    UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel")
 
 //    //load config
 //    if (args.length != 1)

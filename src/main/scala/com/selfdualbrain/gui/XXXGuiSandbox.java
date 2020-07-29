@@ -89,6 +89,8 @@ public class XXXGuiSandbox {
         gbc.insets = new Insets(5, 0, 0, 0);
         panel3.add(label1, gbc);
         textField1 = new JTextField();
+        Font textField1Font = this.$$$getFont$$$("Ubuntu", Font.PLAIN, 11, textField1.getFont());
+        if (textField1Font != null) textField1.setFont(textField1Font);
         textField1.setHorizontalAlignment(11);
         textField1.setPreferredSize(new Dimension(100, 30));
         gbc = new GridBagConstraints();
@@ -121,7 +123,27 @@ public class XXXGuiSandbox {
     /**
      * @noinspection ALL
      */
+    private Font $$$getFont$$$(String fontName, int style, int size, Font currentFont) {
+        if (currentFont == null) return null;
+        String resultName;
+        if (fontName == null) {
+            resultName = currentFont.getName();
+        } else {
+            Font testFont = new Font(fontName, Font.PLAIN, 10);
+            if (testFont.canDisplay('a') && testFont.canDisplay('1')) {
+                resultName = fontName;
+            } else {
+                resultName = currentFont.getName();
+            }
+        }
+        return new Font(resultName, style >= 0 ? style : currentFont.getStyle(), size >= 0 ? size : currentFont.getSize());
+    }
+
+    /**
+     * @noinspection ALL
+     */
     public JComponent $$$getRootComponent$$$() {
         return panel1;
     }
+
 }

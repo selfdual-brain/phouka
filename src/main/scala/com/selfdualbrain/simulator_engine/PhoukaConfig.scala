@@ -62,7 +62,7 @@ object PhoukaConfig {
   val default: PhoukaConfig = PhoukaConfig(
     cyclesLimit = Long.MaxValue,
     randomSeed = Some(new Random(42).nextLong()),
-    numberOfValidators = 10,
+    numberOfValidators = 20,
     numberOfEquivocators = 2,
     equivocationChanceAsPercentage = Some(2.0),
     validatorsWeights = IntSequenceConfig.Fixed(1),
