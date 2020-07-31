@@ -28,3 +28,4 @@ object Orientation {
   case object HORIZONTAL extends Orientation
   case object VERTICAL extends Orientation
 }
+

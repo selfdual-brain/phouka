@@ -4,6 +4,7 @@ import java.awt.{Dimension, GridBagConstraints, GridBagLayout, Insets}
 
 import com.selfdualbrain.gui_framework.{Orientation, TextAlignment}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
+import com.selfdualbrain.gui_framework.swing_tweaks.SmartTextField
 import javax.swing.{JButton, JCheckBox, JLabel, JPanel, JTextField, SwingConstants}
 
 class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) extends PlainPanel(guiLayoutConfig) {

@@ -4,6 +4,7 @@ import java.awt.{Dimension, Font, GridBagConstraints, GridBagLayout, Insets}
 
 import com.selfdualbrain.gui_framework.Orientation
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
+import com.selfdualbrain.gui_framework.swing_tweaks.SmartTextField
 import javax.swing.{JCheckBox, JLabel, JPanel, JTextField}
 
 class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) {

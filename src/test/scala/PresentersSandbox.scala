@@ -64,7 +64,7 @@ object PresentersSandbox {
         p.model = config
         p
       case 2 =>
-        val p = new EventsLogPresenter
+        val p = new EventsLogPresenterX
         p.model = simulationDisplayModel
         p
       case 3 =>
