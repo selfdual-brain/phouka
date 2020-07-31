@@ -36,7 +36,7 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
       case ColumnsScalingMode.LAST_COLUMN => ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
       case ColumnsScalingMode.OFF => ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS
     }
-    scrollPane.setVerticalScrollBarPolicy(policy)
+    scrollPane.setHorizontalScrollBarPolicy(policy)
     scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED)
 
     for (columnIndex <- tableDefinition.columns.indices) {
@@ -100,7 +100,7 @@ object SmartTable {
     headerTooltip: String,
     valueClass: Class[T],
     cellValueFunction: Int => T, //row index ---> value displayed in the cell
-    textAlignment: Option[TextAlignment], //None = retain default alignment
+    textAlignment: TextAlignment,
     cellBackgroundColorFunction: Option[(Int,T) => Option[Color]], //row index ---> color; None = retain default background color
     preferredWidth: Int,
     maxWidth: Int
@@ -134,27 +134,29 @@ object SmartTable {
   }
 
   //T - type of value in the cell
-  class GenericCellRenderer[T](alignment: Option[TextAlignment], cellBackgroundColorFunction: Option[(Int,T) => Option[Color]]) extends DefaultTableCellRenderer {
+  class GenericCellRenderer[T](alignment: TextAlignment, cellBackgroundColorFunction: Option[(Int,T) => Option[Color]]) extends DefaultTableCellRenderer {
     alignment match {
-      case Some(TextAlignment.LEFT) => this.setHorizontalAlignment(SwingConstants.LEFT)
-      case Some(TextAlignment.RIGHT) => this.setHorizontalAlignment(SwingConstants.RIGHT)
-      case None => //do nothing
+      case TextAlignment.LEFT => this.setHorizontalAlignment(SwingConstants.LEFT)
+      case TextAlignment.RIGHT => this.setHorizontalAlignment(SwingConstants.RIGHT)
     }
 
     override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): Component = {
       val result = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
 
+      def applyDefaultColor(): Unit = {
+        if (isSelected)
+          result.setBackground(table.getSelectionBackground)
+        else
+          result.setBackground(table.getBackground)
+      }
+
       cellBackgroundColorFunction match {
         case Some(f) =>
           f(row, value.asInstanceOf[T]) match {
             case Some(color) => result.setBackground(color)
-            case None => //do nothing
+            case None => applyDefaultColor()
           }
-        case None =>
-          if (isSelected)
-            result.setBackground(table.getSelectionBackground)
-          else
-            result.setBackground(table.getBackground)
+        case None => applyDefaultColor()
       }
       return result
     }

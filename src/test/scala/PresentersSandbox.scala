@@ -79,6 +79,11 @@ object PresentersSandbox {
         val p = new FilterEditorPresenter
         p.model = simulationDisplayModel
         p
+      case 6 =>
+        val p = new EventsLogPresenter
+        p.model = simulationDisplayModel
+        p
+
     }
     log.info("controller instance created")
 

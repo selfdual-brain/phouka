@@ -17,6 +17,7 @@ import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer}
 import scala.annotation.switch
 import scala.collection.mutable.ArrayBuffer
 
+@deprecated
 class EventsLogPresenterX extends Presenter[SimulationDisplayModel, SimulationDisplayModel, EventsLogPresenterX, EventsLogViewX, EventsLogPresenterX.Ev] {
 
   override def createDefaultView(): EventsLogViewX = new EventsLogViewX(guiLayoutConfig)
@@ -36,12 +37,14 @@ class EventsLogPresenterX extends Presenter[SimulationDisplayModel, SimulationDi
   }
 }
 
+@deprecated
 object EventsLogPresenterX {
   sealed abstract class Ev {}
 }
 
 //##########################################################################################
 
+@deprecated
 class EventsLogViewX(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, EventsLogPresenterX] {
   private val events_Table = new JTable()
   private val scrollPane = new JScrollPane(events_Table, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS)
@@ -91,6 +94,7 @@ class EventsLogViewX(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gu
 
 //##########################################################################################
 
+@deprecated
 class EventsLogTableModelX(simulationDisplayModel: SimulationDisplayModel) extends AbstractTableModel {
 
   simulationDisplayModel.subscribe(this) {
@@ -164,10 +168,12 @@ class EventsLogTableModelX(simulationDisplayModel: SimulationDisplayModel) exten
 
 }
 
+@deprecated
 class SimTimepointRenderer extends DefaultTableCellRenderer {
   this.setHorizontalAlignment(SwingConstants.RIGHT)
 }
 
+@deprecated
 class HumanReadableTimeAmountRenderer extends DefaultTableCellRenderer {
   this.setHorizontalAlignment(SwingConstants.RIGHT)
 
@@ -177,6 +183,7 @@ class HumanReadableTimeAmountRenderer extends DefaultTableCellRenderer {
   }
 }
 
+@deprecated
 class EventTypeCellRenderer extends DefaultTableCellRenderer {
   private val FINALITY_COLOR = new Color(150, 200, 255)
 

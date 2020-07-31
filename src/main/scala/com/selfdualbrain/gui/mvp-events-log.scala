@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui
 
-import java.awt.Color
+import java.awt.{BorderLayout, Color, Dimension}
 
 import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.des.Event
@@ -12,9 +12,9 @@ import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
 import com.selfdualbrain.simulator_engine.{EventTag, NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.SimTimepoint
 
-class EventsLogPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, EventsLogPresenterX, EventsLogViewX, EventsLogPresenterX.Ev] {
+class EventsLogPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, EventsLogPresenter, EventsLogView, EventsLogPresenter.Ev] {
 
-  override def createDefaultView(): EventsLogViewX = new EventsLogViewX(guiLayoutConfig)
+  override def createDefaultView(): EventsLogView = new EventsLogView(guiLayoutConfig)
 
   override def createDefaultModel(): SimulationDisplayModel = SimulationDisplayModel.createDefault()
 
@@ -35,8 +35,11 @@ object EventsLogPresenter {
   sealed abstract class Ev {}
 }
 
-class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, EventsLogPresenterX] {
+class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, EventsLogPresenter] {
   private val events_Table = new SmartTable(guiLayoutConfig)
+
+  this.setPreferredSize(new Dimension(1000,800))
+  this.add(events_Table, BorderLayout.CENTER)
 
   override def afterModelConnected(): Unit = {
     events_Table.initDefinition(new TableStructure(this.model))
@@ -55,7 +58,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           stepId
         },
-        textAlignment = None,
+        textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
         preferredWidth = 60,
         maxWidth = 100
@@ -68,7 +71,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.id
         },
-        textAlignment = None,
+        textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
         preferredWidth = 60,
         maxWidth = 100
@@ -81,9 +84,9 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.timepoint
         },
-        textAlignment = Some(TextAlignment.RIGHT),
+        textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 60,
+        preferredWidth = 100,
         maxWidth = 100
       ),
       ColumnDefinition[String](
@@ -94,7 +97,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.timepoint.asHumanReadable.toStringCutToSeconds
         },
-        textAlignment = Some(TextAlignment.RIGHT),
+        textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
         preferredWidth = 80,
         maxWidth = 80
@@ -107,7 +110,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.loggingAgent
         },
-        textAlignment = None,
+        textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
         preferredWidth = 30,
         maxWidth = 40
@@ -121,7 +124,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           val tag = EventTag.of(event)
           EventTag.tag2description(tag)
         },
-        textAlignment = Some(TextAlignment.LEFT),
+        textAlignment = TextAlignment.LEFT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: String) =>
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           if (EventTag.of(event) == EventTag.FINALITY)
@@ -140,10 +143,10 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           eventDetails(event)
         },
-        textAlignment = None,
+        textAlignment = TextAlignment.LEFT,
         cellBackgroundColorFunction = None,
         preferredWidth = 2000,
-        maxWidth = -1
+        maxWidth = 10000
       )
 
     )
