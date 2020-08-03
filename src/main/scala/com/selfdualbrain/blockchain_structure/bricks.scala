@@ -37,6 +37,7 @@ trait Brick extends BlockchainVertex {
 
 trait Block extends BlockchainVertex {
   def generation: Int
+  def slashedInThisBlock: Iterable[ValidatorId]
 }
 
 case class Ballot(
@@ -59,6 +60,7 @@ case class NormalBlock(
                         positionInSwimlane: Int,
                         timepoint: SimTimepoint,
                         justifications: Iterable[Brick],
+                        slashedInThisBlock: Iterable[ValidatorId],
                         creator: ValidatorId,
                         prevInSwimlane: Option[Brick],
                         parent: Block,
@@ -75,6 +77,6 @@ case class Genesis(id: VertexId) extends Block {
   override def timepoint: SimTimepoint = SimTimepoint.zero
   override def generation: Int = 0
   override def daglevel: Int = 0
-
+  override def slashedInThisBlock: Iterable[ValidatorId] = Iterable.empty
   override def toString: String = "Genesis"
 }

@@ -38,12 +38,13 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   var lastFinalizedBlock: Block = context.genesis
   var globalPanorama: ACC.Panorama = ACC.Panorama.empty
   val panoramasBuilder = new ACC.PanoramaBuilder
-  val equivocatorsRegistry = new EquivocatorsRegistry(context.numberOfValidators)
+  val equivocatorsRegistry = new EquivocatorsRegistry(context.numberOfValidators, context.weightsOfValidators, context.absoluteFTT)
   val blockVsBallot = new Picker[String](context.random, Map("block" -> context.blocksFraction, "ballot" -> (1 - context.blocksFraction)))
   val brickHashGenerator = new FakeSha256Digester(context.random, 8)
   var currentFinalityDetector: ACC.FinalityDetector = _
 //  var bufferAddCounter: Int = 0
 //  var bufferRemoveCounter: Int = 0
+  var absoluteFtt: Ether = _
 
   override def toString: String = s"Validator-$validatorId"
 
@@ -51,6 +52,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
     val bgame: BGame = block2bgame(bGameAnchor)
     return new ACC.ReferenceFinalityDetector(
       relativeFTT = context.relativeFTT,
+      context.absoluteFTT,
       ackLevel = context.ackLevel,
       weightsOfValidators = context.weightsOfValidators,
       totalWeight = context.totalWeight,
@@ -67,6 +69,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
     val newBGame = new BGame(context.genesis, context.weightsOfValidators, equivocatorsRegistry)
     block2bgame += context.genesis -> newBGame
     currentFinalityDetector = createFinalityDetector(context.genesis)
+    absoluteFtt = currentFinalityDetector.getAbsoluteFtt
     scheduleNextWakeup()
   }
 
@@ -172,18 +175,27 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
     val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](globalPanorama.honestSwimlanesTips.values.toSet.toArray)
 
     val brick =
-      if (shouldBeBlock || forkChoiceWinner == context.genesis)
+      if (shouldBeBlock || forkChoiceWinner == context.genesis) {
+        val currentlyVisibleEquivocators: Set[ValidatorId] = globalPanorama.equivocators
+        val parentBlockEquivocators: Set[ValidatorId] =
+          if (forkChoiceWinner == context.genesis)
+            Set.empty
+          else
+            panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
+        val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
+
         NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
           timepoint = localClock,
           justifications,
+          toBeSlashedInThisBlock,
           creator,
           prevInSwimlane = myLastMessagePublished,
           parent = forkChoiceWinner,
           hash = brickHashGenerator.generateHash()
         )
-      else
+      } else
         Ballot(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
@@ -214,6 +226,12 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
       for (vid <- equivocatorsRegistry.getNewEquivocators(oldLastEq)) {
         val (m1,m2) = globalPanorama.evidences(vid)
         context.addOutputEvent(localTime, OutputEventPayload.EquivocationDetected(vid, m1, m2))
+        if (equivocatorsRegistry.areWeAtEquivocationCatastropheSituation) {
+          val equivocators = equivocatorsRegistry.allKnownEquivocators
+          val absoluteFttOverrun: Ether = equivocatorsRegistry.totalWeightOfEquivocators - absoluteFtt
+          val relativeFttOverrun: Double = equivocatorsRegistry.totalWeightOfEquivocators.toDouble / context.totalWeight - context.relativeFTT
+          context.addOutputEvent(localTime, OutputEventPayload.EquivocationCatastrophe(equivocators, absoluteFttOverrun, relativeFttOverrun))
+        }
       }
     }
 

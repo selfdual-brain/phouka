@@ -7,6 +7,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
   //Implementation of finality criterion based on summits theory.
   class ReferenceFinalityDetector(
                                    relativeFTT: Double,
+                                   absoluteFTT: Ether,
                                    ackLevel: Int,
                                    weightsOfValidators: ValidatorId => Ether,
                                    totalWeight: Ether,
@@ -16,11 +17,13 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                                    estimator: Estimator
                                  ) extends FinalityDetector {
 
-    val absoluteFTT: Ether = math.ceil(relativeFTT * totalWeight).toLong
+//    val absoluteFTT: Ether = math.ceil(relativeFTT * totalWeight).toLong
     val quorum: Ether = {
       val q: Double = (absoluteFTT.toDouble / (1 - math.pow(2, - ackLevel)) + totalWeight.toDouble) / 2
       math.ceil(q).toLong
     }
+
+    override def getAbsoluteFtt: Ether = absoluteFTT
 
     def onLocalJDagUpdated(latestPanorama: Panorama): Option[Summit] = {
       estimator.winnerConsensusValue match {

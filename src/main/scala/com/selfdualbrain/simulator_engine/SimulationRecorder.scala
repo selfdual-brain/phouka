@@ -45,8 +45,8 @@ class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
             s"(validator $source) finalized $finalizedBlock - generation=${finalizedBlock.generation}"
           case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
             s"(validator $source) detected equivocation by $evilValidator - conflicting bricks are ${brick1.id} and ${brick2.id}"
-          case OutputEventPayload.EquivocationCatastrophe(validators, fttExceededBy) =>
-            s"(validator $source) detected equivocation catastrophe - evil validators are ${validators.mkString(",")} absolute ftt exceeded by $fttExceededBy"
+          case OutputEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
+            s"(validator $source) detected equivocation catastrophe - evil validators are ${validators.mkString(",")} absolute ftt exceeded by $absoluteFttExceededBy"
         }
     }
 

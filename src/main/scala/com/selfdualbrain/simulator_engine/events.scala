@@ -20,7 +20,7 @@ object OutputEventPayload {
   case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends OutputEventPayload(EventTag.PRE_FINALITY)
   case class BlockFinalized(bGameAnchor: Block, finalizedBlock: NormalBlock, summit: ACC.Summit) extends OutputEventPayload(EventTag.FINALITY)
   case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends OutputEventPayload(EventTag.EQUIVOCATION)
-  case class EquivocationCatastrophe(validators: Iterable[ValidatorId], fttExceededBy: Ether) extends OutputEventPayload(EventTag.CATASTROPHE)
+  case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends OutputEventPayload(EventTag.CATASTROPHE)
 }
 
 case class MsgBufferTransition(snapshotBefore: Iterable[(Brick, Brick)], snapshotAfter: Iterable[(Brick, Brick)])

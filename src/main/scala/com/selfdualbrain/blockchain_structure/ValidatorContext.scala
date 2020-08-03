@@ -1,8 +1,8 @@
 package com.selfdualbrain.blockchain_structure
 
-import com.selfdualbrain.randomness.{IntSequenceConfig, IntSequenceGenerator}
+import com.selfdualbrain.randomness.IntSequenceGenerator
 import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload}
-import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.time.SimTimepoint
 
 import scala.util.Random
 
@@ -21,15 +21,6 @@ trait ValidatorContext {
   def ackLevel: Int
   def brickProposeDelaysGenerator: IntSequenceGenerator
   def broadcast(localTime: SimTimepoint, brick: Brick): Unit
-//  def addedIncomingBrickToLocalDag(brick: Brick): Unit
   def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: NodeEventPayload)
   def addOutputEvent(timepoint: SimTimepoint, payload: OutputEventPayload)
-//  @deprecated
-//  def setNextWakeUp(relativeTime: TimeDelta): Unit
-//  @deprecated
-//  def summitEstablished(bGameAnchor: Block, summit: ACC.Summit): Unit
-//  @deprecated
-//  def equivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit
-//  @deprecated
-//  def equivocationCatastrophe(validators: Iterable[ValidatorId], fttExceededBy: Ether): Unit
 }
