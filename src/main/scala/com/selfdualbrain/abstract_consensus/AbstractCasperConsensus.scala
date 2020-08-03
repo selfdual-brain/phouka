@@ -3,7 +3,7 @@ package com.selfdualbrain.abstract_consensus
 trait AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
   type Ether = Long
 
-  //Messages exchanged by validators.
+  //Abstraction of features that consensus messages must expose.
   trait ConsensusMessageApi {
     def id(m: ConsensusMessage): MessageId
     def creator(m: ConsensusMessage): ValidatorId
@@ -19,18 +19,20 @@ trait AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
   //that is "parallel" to the local j-dag
   case class Panorama(
                        honestSwimlanesTips: Map[ValidatorId,ConsensusMessage],
-                       equivocators: Set[ValidatorId]
+                       equivocators: Set[ValidatorId],
+                       evidences: Map[ValidatorId, (ConsensusMessage,ConsensusMessage)]
                      ) {
 
     def honestValidatorsWithNonEmptySwimlane: Iterable[ValidatorId] = honestSwimlanesTips.keys
   }
 
   object Panorama {
-    val empty: Panorama = Panorama(honestSwimlanesTips = Map.empty, equivocators = Set.empty)
+    val empty: Panorama = Panorama(honestSwimlanesTips = Map.empty, equivocators = Set.empty, evidences = Map.empty)
 
     def atomic(msg: ConsensusMessage): Panorama = Panorama(
       honestSwimlanesTips = Map(cmApi.creator(msg) -> msg),
-      equivocators = Set.empty[ValidatorId]
+      equivocators = Set.empty[ValidatorId],
+      evidences = Map.empty
     )
   }
 

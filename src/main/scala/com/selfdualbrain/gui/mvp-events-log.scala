@@ -91,7 +91,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ),
       ColumnDefinition[String](
         name = "HH:MM:SS",
-        headerTooltip = "Event's timepoint (converted to hours-minutes-seconds, rounded to full seconds)",
+        headerTooltip = "Event's timepoint (converted to days-hours:minutes:seconds, rounded to full seconds)",
         valueClass = classOf[String],
         cellValueFunction = {rowIndex =>
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)

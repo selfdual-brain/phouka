@@ -27,6 +27,10 @@ class EquivocatorsRegistry(numberOfValidators: Int) {
 //  }
 
   def atomicallyReplaceEquivocatorsCollection(updatedEquivocatorsCollection: Set[ValidatorId]): Unit = {
+    //aggressive performance optimization - we assume here that equivocators collection can only grow
+    if (set.size == updatedEquivocatorsCollection.size)
+      return
+
     val diff = updatedEquivocatorsCollection.diff(set).toSeq
     if (diff.nonEmpty) {
       set = updatedEquivocatorsCollection

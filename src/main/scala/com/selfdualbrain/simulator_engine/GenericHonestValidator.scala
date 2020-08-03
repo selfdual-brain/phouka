@@ -11,6 +11,14 @@ import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
+/**
+  * Implementation of a "honest" validator, i.e. a validator which never produces equivocations.
+  * Technically, a validator is an "agent" withing enclosing simulation engine.
+  *
+  * @param validatorId integer id of a validator; simulation engine allocates these ids from 0,...,n-1 interval
+  * @param context encapsulates features to be provided by hosting simulation engine
+  * @param sherlockMode flag that enables emitting semantic events around msg buffer operations
+  */
 class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
   private var localClock: SimTimepoint = SimTimepoint.zero
   val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[Brick,Brick]
@@ -199,7 +207,15 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   def addToLocalJdag(brick: Brick): Unit = {
     registerProcessingTime(1L)
     knownBricks += brick
+    val oldLastEq = equivocatorsRegistry.lastSeqNumber
     equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(globalPanorama.equivocators)
+    val newLastEq = equivocatorsRegistry.lastSeqNumber
+    if (newLastEq > oldLastEq) {
+      for (vid <- equivocatorsRegistry.getNewEquivocators(oldLastEq)) {
+        val (m1,m2) = globalPanorama.evidences(vid)
+        context.addOutputEvent(localTime, OutputEventPayload.EquivocationDetected(vid, m1, m2))
+      }
+    }
 
     brick match {
       case x: NormalBlock =>

@@ -38,7 +38,14 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
   }
   val validatorsToBeLogged: Set[ValidatorId] = config.validatorsToBeLogged.toSet
   val statsProcessor: Option[IncrementalStatsProcessor with SimulationStats] = config.statsProcessor map { cfg =>
-    new DefaultStatsProcessor(cfg.latencyMovingWindow, TimeDelta.seconds(cfg.throughputMovingWindow), TimeDelta.seconds(cfg.throughputCheckpointsDelta), config.numberOfValidators)
+    new DefaultStatsProcessor(
+      latencyMovingWindow = cfg.latencyMovingWindow,
+      throughputMovingWindow = TimeDelta.seconds(cfg.throughputMovingWindow),
+      throughputCheckpointsDelta = TimeDelta.seconds(cfg.throughputCheckpointsDelta),
+      numberOfValidators = config.numberOfValidators,
+      weightsMap = weightsArray,
+      absoluteFtt
+    )
   }
   //initialize validators
   private val validators = new Array[Validator[ValidatorId, NodeEventPayload, OutputEventPayload]](config.numberOfValidators)

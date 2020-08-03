@@ -29,8 +29,12 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] ex
     def mergePanoramas(p1: Panorama, p2: Panorama): Panorama = {
       val mergedTips = new mutable.HashMap[ValidatorId, ConsensusMessage]
       val mergedEquivocators = new mutable.HashSet[ValidatorId]()
+      val mergedEvidences = new mutable.HashMap[ValidatorId, (ConsensusMessage,ConsensusMessage)]
+
       mergedEquivocators ++= p1.equivocators
       mergedEquivocators ++= p2.equivocators
+      mergedEvidences ++= p1.evidences
+      mergedEvidences ++= p2.evidences
 
       for (validatorId <- p1.honestValidatorsWithNonEmptySwimlane ++ p2.honestValidatorsWithNonEmptySwimlane) {
         if (! mergedEquivocators.contains(validatorId) && ! mergedTips.contains(validatorId)) {
@@ -44,21 +48,24 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] ex
             case (Some(m1), Some(m2)) =>
               if (m1 == m2)
                 mergedTips += (validatorId -> m1)
-              else if (cmApi.daglevel(m1) == cmApi.daglevel(m2))
+              else if (cmApi.daglevel(m1) == cmApi.daglevel(m2)) {
                 mergedEquivocators += validatorId
-              else {
+                mergedEvidences += validatorId -> (m1,m2)
+              } else {
                 val higher: ConsensusMessage = if (cmApi.daglevel(m1) > cmApi.daglevel(m2)) m1 else m2
                 val lower: ConsensusMessage = if (cmApi.daglevel(m1) < cmApi.daglevel(m2)) m1 else m2
-                if (isEquivocation(higher, lower))
+                if (isEquivocation(higher, lower)) {
                   mergedEquivocators += validatorId
-                else
+                  mergedEvidences += validatorId -> (lower,higher)
+                } else {
                   mergedTips += (validatorId -> higher)
+                }
               }
           }
         }
       }
 
-      return Panorama(mergedTips.toMap, mergedEquivocators.toSet)
+      return Panorama(mergedTips.toMap, mergedEquivocators.toSet, mergedEvidences.toMap)
     }
 
     //tests if given messages pair from the same swimlane is an equivocation

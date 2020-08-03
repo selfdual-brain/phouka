@@ -1,6 +1,6 @@
 package com.selfdualbrain.stats
 
-import com.selfdualbrain.blockchain_structure.{Ballot, NormalBlock, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, Ether, NormalBlock, ValidatorId}
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -28,7 +28,9 @@ class DefaultStatsProcessor(
                              latencyMovingWindow: Int,
                              throughputMovingWindow: TimeDelta,
                              throughputCheckpointsDelta: TimeDelta,
-                             numberOfValidators: Int
+                             numberOfValidators: Int,
+                             weightsMap: Array[Ether],
+                             absoluteFTT: Ether
                            ) extends IncrementalStatsProcessor with SimulationStats {
 
   assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
@@ -64,6 +66,8 @@ class DefaultStatsProcessor(
   private var vid2stats = new Array[PerValidatorCounters](numberOfValidators)
   //counter of visibly finalized blocks; this counter is used for blockchain throughput calculation
   private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounter(throughputMovingWindow, throughputCheckpointsDelta)
+
+  private val totalWeightOfValidators: Ether = weightsMap.sum
 
   for (i <- 0 until numberOfValidators)
     vid2stats(i) = new PerValidatorCounters(i)
@@ -350,6 +354,12 @@ class DefaultStatsProcessor(
   override def numberOfCompletelyFinalizedBlocks: Long = completelyFinalizedBlocksCounter
 
   override def numberOfObservedEquivocators: Int = equivocators.size
+
+  override def weightOfObservedEquivocators: Ether = equivocators.map(vid => weightsMap(vid)).sum
+
+  override def weightOfObservedEquivocatorsAsPercentage: Double = weightOfObservedEquivocators.toDouble / totalWeightOfValidators * 100
+
+  override def isFttExceeded: Boolean = weightOfObservedEquivocators > absoluteFTT
 
   override def movingWindowLatencyAverage: Int => Double = { n =>
     assert (n >= 0)

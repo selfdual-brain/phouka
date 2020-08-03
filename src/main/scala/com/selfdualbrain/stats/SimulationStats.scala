@@ -1,6 +1,6 @@
 package com.selfdualbrain.stats
 
-import com.selfdualbrain.blockchain_structure.ValidatorId
+import com.selfdualbrain.blockchain_structure.{Ether, ValidatorId}
 import com.selfdualbrain.time.SimTimepoint
 
 /**
@@ -67,6 +67,32 @@ trait SimulationStats {
   //We count a validator V as an equivocator only after some other validator managed to observe at least one equivocation by V.
   //validators.map(v => eq(t,v)).setSum.size
   def numberOfObservedEquivocators: Int
+
+  /**
+    * Total weight of observed equivocators
+    * validators.map(v => eq(t,v)).setSum.map(v => v.weight).sum
+    */
+  def weightOfObservedEquivocators: Ether
+
+  def weightOfObservedEquivocatorsAsPercentage: Double
+
+  //Returns true if weight of observed validators exceeds fault tolerance threshold used by the finalizer.
+  //Please observe that usually this flag will turns on BEFORE any individual validator observes equivocation catastrophe.
+  //This is caused by us having a "universal view" in calculating total weight of equivocators.
+  //As an example consider an experiment with 4 equivocators: Alice, Bob and Charlie and Diana. Let finalizer's FTT = 0.3 and
+  //all validators have equal weights. Assume at some state of the simulation Charlie and Diana emitted equivocations but Alice and Bob
+  //have not seen these equivocations yet. Also assume Charlie has not seen the equivocation by Diana and assume Diana has not seen
+  //the equivocation by Charlie. Now let us do the math:
+  //- Alice can see no equivocators yet
+  //- Bob can see no equivocators yet
+  //- Charlie can see only himself equivocating, which makes total weight of equivocators = 0.25 (less than FTT)
+  //- Diana can see only herself equivocating, which makes total weight of equivocators = 0.25 (less than FTT)
+  //
+  //So, no validator emitted "equivocation catastrophe" event yet. Nevertheless, stats processor will count two equivocators
+  //as "globally discovered" (Charlie "discovering" himself and Diana "discovering" herself), which gives total weight
+  //of equivocators equal 0.5, which is more than FTT, hence the "isFttExceeded" flag will turn on.
+  //Caution: for this check, absoluteFtt is used (so the single point of rounding effects is where an equivocator converts relative FTT to absolute FTT)
+  def isFttExceeded: Boolean
 
   //Average time from block creation to block becoming finalized - in seconds (calculated for the whole time of simulation)
   //simulation(t).blocks.filter(b => b.isCompletelyFinalized).map(b => b.latencySpectrum(b)).setSum.average
