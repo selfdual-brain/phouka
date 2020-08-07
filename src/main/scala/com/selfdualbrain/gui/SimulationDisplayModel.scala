@@ -73,7 +73,7 @@ import scala.collection.mutable.ArrayBuffer
   * @param engine
   * @param genesis
   */
-class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: SimulationEngine[ValidatorId], genesis: Genesis) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
+class SimulationDisplayModel(val experimentConfig: ExperimentConfig, val engine: SimulationEngine[ValidatorId], genesis: Genesis) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
 
   //only-growing collection of (all) events
   //index in this collection coincides with step-id
@@ -184,7 +184,7 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
               lastPartialSummitForCurrentBGame = None
             case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
               equivocators += evilValidator
-            case OutputEventPayload.EquivocationCatastrophe(validators, fttExceededBy) =>
+            case OutputEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
               equivocationCatastrophe = true
           }
       }
@@ -222,7 +222,7 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
               lastPartialSummitForCurrentBGame = partialSummit
             case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
               equivocators -= evilValidator
-            case OutputEventPayload.EquivocationCatastrophe(validators, fttExceededBy) =>
+            case OutputEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
               equivocationCatastrophe = false
           }
       }
@@ -410,7 +410,7 @@ class SimulationDisplayModel(val experimentConfig: PhoukaConfig, engine: Simulat
 object SimulationDisplayModel {
 
   def createDefault(): SimulationDisplayModel = {
-    val config = PhoukaConfig.default
+    val config = ExperimentConfig.default
     val engine = new PhoukaEngine(config)
     val genesis = engine.genesis
     new SimulationDisplayModel(config, engine, genesis)

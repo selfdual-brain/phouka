@@ -7,6 +7,10 @@ import com.selfdualbrain.gui_framework._
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{RibbonPanel, StaticSplitPanel, RadioButtonsListPanel}
 
+/**
+  * Component that offers control over starting the simulation engine.
+  * This equivalently can be seen as "extending" the simulation, ie. calculating the evolution of the world for another X seconds.
+  */
 class ContinueSimulationPresenter extends Presenter[SimulationDisplayModel,SimulationDisplayModel, ContinueSimulationPresenter, ContinueSimulationView, ContinueSimulationPresenter.Ev] {
 
   override def createDefaultView(): ContinueSimulationView = new ContinueSimulationView(guiLayoutConfig)

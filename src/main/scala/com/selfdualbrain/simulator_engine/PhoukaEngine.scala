@@ -5,28 +5,20 @@ import java.io.File
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
 import com.selfdualbrain.randomness.IntSequenceGenerator
-import com.selfdualbrain.stats.{DefaultStatsProcessor, SimulationStats, IncrementalStatsProcessor}
-import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.stats.{DefaultStatsProcessor, IncrementalStatsProcessor, SimulationStats}
+import com.selfdualbrain.time.SimTimepoint
 import org.slf4j.LoggerFactory
 
 import scala.util.Random
 
-class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
+class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorId] {
   self =>
   private val log = LoggerFactory.getLogger("** sim-engine")
-  val randomSeed: Long = config.randomSeed.getOrElse(new Random().nextLong())
-  val random: Random = new Random(randomSeed)
-  val weightsGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.validatorsWeights, random)
-  val weightsArray: Array[Ether] = new Array[Ether](config.numberOfValidators)
-  for (i <- weightsArray.indices)
-    weightsArray(i) = weightsGenerator.next()
-  val totalWeight: Ether = weightsArray.sum
-  val absoluteFtt: Ether = math.floor(totalWeight * config.relativeFtt).toLong
+  val experimentSetup = new ExperimentSetup(config)
   val genesis: Genesis = Genesis(0)
 //  val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
-  val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, random)
+  val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, experimentSetup.random)
   val desQueue: SimEventsQueue[ValidatorId, NodeEventPayload, OutputEventPayload] = new ClassicDesQueue[ValidatorId, NodeEventPayload, OutputEventPayload]
-  val validatorId2Weight: ValidatorId => Ether = vid => weightsArray(vid)
   var lastBrickId: VertexId = 0
   private var stepId: Long = -1L
   val recorder: Option[SimulationRecorder[ValidatorId]] = config.simLogDir map {dir =>
@@ -37,16 +29,8 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     new SimulationRecorder[ValidatorId](file, eagerFlush = true)
   }
   val validatorsToBeLogged: Set[ValidatorId] = config.validatorsToBeLogged.toSet
-  val statsProcessor: Option[IncrementalStatsProcessor with SimulationStats] = config.statsProcessor map { cfg =>
-    new DefaultStatsProcessor(
-      latencyMovingWindow = cfg.latencyMovingWindow,
-      throughputMovingWindow = TimeDelta.seconds(cfg.throughputMovingWindow),
-      throughputCheckpointsDelta = TimeDelta.seconds(cfg.throughputCheckpointsDelta),
-      numberOfValidators = config.numberOfValidators,
-      weightsMap = weightsArray,
-      absoluteFtt
-    )
-  }
+  val statsProcessor: Option[IncrementalStatsProcessor with SimulationStats] = config.statsProcessor map { cfg => new DefaultStatsProcessor(experimentSetup) }
+
   //initialize validators
   private val validators = new Array[Validator[ValidatorId, NodeEventPayload, OutputEventPayload]](config.numberOfValidators)
   for (i <- validators.indices) {
@@ -122,7 +106,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
     desQueue.addOutputEvent(validatorTime, sender, OutputEventPayload.BrickProposed(forkChoiceWinner, brick))
 
     for (i <- 0 until config.numberOfValidators if i != sender) {
-      val qf: Long = random.between(-500, 500).toLong //quantum fluctuation
+      val qf: Long = experimentSetup.random.between(-500, 500).toLong //quantum fluctuation
       val effectiveDelay: Long = math.max(1, networkDelayGenerator.next() * 1000 + qf) // we enforce minimum delay = 1 microsecond
       val targetTimepoint: SimTimepoint = validatorTime + effectiveDelay
       desQueue.addMessagePassingEvent(targetTimepoint, sender, i, NodeEventPayload.BrickDelivered(brick))
@@ -134,17 +118,17 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
 
     override def validatorId: ValidatorId = vid
 
-    override def weightsOfValidators: ValidatorId => Ether = self.validatorId2Weight
+    override def weightsOfValidators: ValidatorId => Ether = experimentSetup.weightsOfValidators
 
     override def numberOfValidators: VertexId = config.numberOfValidators
 
-    override def totalWeight: Ether = self.totalWeight
+    override def totalWeight: Ether = experimentSetup.totalWeight
 
     override def generateBrickId(): VertexId = self.nextBrickId()
 
     override def genesis: Genesis = self.genesis
 
-    override def random: Random = self.random
+    override def random: Random = experimentSetup.random
 
     override def blocksFraction: Double = config.blocksFractionAsPercentage / 100
 
@@ -152,7 +136,7 @@ class PhoukaEngine(config: PhoukaConfig) extends SimulationEngine[ValidatorId] {
 
     override def relativeFTT: Double = config.relativeFtt
 
-    override def absoluteFTT: Ether = self.absoluteFtt
+    override def absoluteFTT: Ether = experimentSetup.absoluteFtt
 
     override def ackLevel: ValidatorId = config.finalizerAckLevel
 

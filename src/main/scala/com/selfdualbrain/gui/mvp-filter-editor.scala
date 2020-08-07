@@ -89,9 +89,9 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
   private val eventsContainerPanel = new StaticSplitPanel(guiLayoutConfig, PanelEdge.NORTH)
 
   validatorsContainerPanel.mountChildPanels(validatorsSelectionPanel, allValidatorsSwitchPanel)
-  validatorsContainerPanel.surroundWithTitledBorder("filter validators")
+  validatorsContainerPanel.surroundWithTitledBorder("Filter validators")
   eventsContainerPanel.mountChildPanels(eventTypesSelectionPanel, allEventsSwitchPanel)
-  eventsContainerPanel.surroundWithTitledBorder("filter event types")
+  eventsContainerPanel.surroundWithTitledBorder("Filter event types")
   eventsContainerPanel.setPreferredSize(new Dimension(170, -1))
   allValidatorsSwitchPanel.add(allValidatorsCheckbox, BorderLayout.WEST)
   allEventsSwitchPanel.add(allEventsCheckbox, BorderLayout.WEST)

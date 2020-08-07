@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui_framework.layout_dsl.components
 
-import java.awt.{Dimension, GridBagConstraints, GridBagLayout, Insets}
+import java.awt.{Color, Dimension, GridBagConstraints, GridBagLayout, Insets}
 
 import com.selfdualbrain.gui_framework.{Orientation, TextAlignment}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
@@ -17,6 +17,7 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
   def addLabel(text: String, preGap: Int = guiLayoutConfig.ribbonPreGap, postGap: Int = guiLayoutConfig.ribbonPostGap): JLabel = {
     position += 1
     val labelComponent = new JLabel(text)
+    labelComponent.setForeground(Color.BLUE)
     val gbc = new GridBagConstraints
     orientation match {
       case Orientation.HORIZONTAL =>
@@ -39,11 +40,19 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
   }
 
   def addTxtField(width: Int,
-                  isEditable: Boolean,
-                  alignment: TextAlignment,
+                  isEditable: Boolean = false,
+                  alignment: TextAlignment = TextAlignment.LEFT,
                   preGap: Int = guiLayoutConfig.ribbonPreGap,
                   postGap: Int = guiLayoutConfig.ribbonPostGap,
-                  wantGrow: Boolean = false): JTextField = {
+                  wantGrow: Boolean = false,
+                  label: String = ""): JTextField = {
+
+    val declaredPreGap = preGap
+    if (label != "")
+      this.addLabel(label, preGap = declaredPreGap)
+
+    val preGapForTheField: Int = if (label == "") declaredPreGap else guiLayoutConfig.ribbonPreGap
+
     position += 1
     val textFieldComponent = new SmartTextField()
     textFieldComponent.setMinimumSize(new Dimension(width, guiLayoutConfig.fieldsHeight))

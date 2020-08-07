@@ -10,7 +10,26 @@ import com.selfdualbrain.time.TimeUnit
 
 import scala.util.Random
 
-case class PhoukaConfig(
+/**
+  * Simulation experiment layout as defined by the end-user.
+  *
+  * @param cyclesLimit
+  * @param randomSeed
+  * @param numberOfValidators
+  * @param numberOfEquivocators
+  * @param equivocationChanceAsPercentage
+  * @param validatorsWeights
+  * @param simLogDir
+  * @param validatorsToBeLogged
+  * @param finalizerAckLevel
+  * @param relativeFtt
+  * @param brickProposeDelays
+  * @param blocksFractionAsPercentage
+  * @param networkDelays
+  * @param runForkChoiceFromGenesis
+  * @param statsProcessor
+  */
+case class ExperimentConfig(
                          cyclesLimit: Long,
                          randomSeed: Option[Long],
                          numberOfValidators: Int,
@@ -34,12 +53,12 @@ case class StatsProcessorConfig(
                          throughputCheckpointsDelta: Int //in seconds
   )
 
-object PhoukaConfig {
+object ExperimentConfig {
 
-  def loadFrom(file: File): PhoukaConfig = {
+  def loadFrom(file: File): ExperimentConfig = {
     val config = Hocon.fromFile(file)
 
-    return PhoukaConfig(
+    return ExperimentConfig(
       cyclesLimit = config.primitiveValue("cycles-limit", LONG),
       randomSeed = config.asOptional.primitiveValue("random-seed", LONG),
       numberOfValidators = config.primitiveValue("number-of-validators", INT),
@@ -59,7 +78,7 @@ object PhoukaConfig {
 
   }
 
-  val default: PhoukaConfig = PhoukaConfig(
+  val default: ExperimentConfig = ExperimentConfig(
     cyclesLimit = Long.MaxValue,
     randomSeed = Some(new Random(42).nextLong()),
     numberOfValidators = 20,

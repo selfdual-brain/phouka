@@ -1,10 +1,9 @@
-import java.awt.Font
-
 import com.selfdualbrain.blockchain_structure.Genesis
 import com.selfdualbrain.gui._
 import com.selfdualbrain.gui_framework.SwingSessionManager
-import com.selfdualbrain.simulator_engine.{PhoukaConfig, PhoukaEngine}
-import javax.swing
+import com.selfdualbrain.simulator_engine.{ExperimentConfig, PhoukaEngine}
+import com.selfdualbrain.stats.StatsPrinter
+import com.selfdualbrain.textout.TextOutput
 import javax.swing.UIManager
 import org.slf4j.LoggerFactory
 
@@ -12,6 +11,10 @@ object PresentersSandbox {
   private val log = LoggerFactory.getLogger(s"presenter-sandbox")
 
 //  val defaultFont = new Font("Ubuntu", Font.PLAIN, 13)
+
+  val config: ExperimentConfig = ExperimentConfig.default
+  val engine: PhoukaEngine = new PhoukaEngine(config)
+  val genesis: Genesis = engine.genesis
 
   def main(args: Array[String]): Unit = {
     for(lf <- UIManager.getInstalledLookAndFeels)
@@ -43,9 +46,6 @@ object PresentersSandbox {
 //    config = PhoukaConfig.loadFrom(configFile)
 
     //initialize engine
-    val config: PhoukaConfig = PhoukaConfig.default
-    val engine: PhoukaEngine = new PhoukaEngine(config)
-    val genesis: Genesis = engine.genesis
     log.info("engine initialized")
 
     //initialize display model
@@ -64,7 +64,7 @@ object PresentersSandbox {
         p.model = config
         p
       case 2 =>
-        val p = new EventsLogPresenterX
+        val p = new SimulationStatsPresenter
         p.model = simulationDisplayModel
         p
       case 3 =>
@@ -89,6 +89,14 @@ object PresentersSandbox {
 
     //show the controller
     sessionManager.mountTopPresenter(presenter, Some("test"))
+
+    printStatsToConsole()
+  }
+
+  def printStatsToConsole(): Unit = {
+    val statsPrinter = new StatsPrinter(TextOutput.overConsole(4), config.numberOfValidators)
+    println("========================== STATISTICS ==========================")
+    statsPrinter.print(engine.stats)
   }
 
 }

@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui_framework.layout_dsl.components
 
-import java.awt.{Dimension, Font, GridBagConstraints, GridBagLayout, Insets}
+import java.awt.{Dimension, GridBagConstraints, GridBagLayout, Insets}
 
 import com.selfdualbrain.gui_framework.Orientation
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
@@ -14,11 +14,11 @@ class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
   this.setLayout(new GridBagLayout)
 
-  def addTxtField(label: String, isEditable: Boolean): JTextField = {
+  def addTxtField(width: Int, label: String, isEditable: Boolean, wantGrow: Boolean = false): JTextField = {
     addLabel(label)
     val textFieldComponent = new SmartTextField()
-    textFieldComponent.setMinimumSize(new Dimension(49, guiLayoutConfig.fieldsHeight))
-    textFieldComponent.setPreferredSize(new Dimension(49, guiLayoutConfig.fieldsHeight))
+    textFieldComponent.setMinimumSize(new Dimension(width, guiLayoutConfig.fieldsHeight))
+    textFieldComponent.setPreferredSize(new Dimension(width, guiLayoutConfig.fieldsHeight))
     textFieldComponent.setEditable(true)
     textFieldComponent.setEnabled(isEditable)
     val gbc = new GridBagConstraints
@@ -27,7 +27,7 @@ class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     gbc.anchor = GridBagConstraints.WEST
     gbc.weightx = 1.0
     gbc.weighty = 0.0
-    gbc.fill = GridBagConstraints.HORIZONTAL
+    gbc.fill = if (wantGrow) GridBagConstraints.HORIZONTAL else GridBagConstraints.NONE
     gbc.insets = new Insets(0, 2, 0, 2)
     this.add(textFieldComponent, gbc)
     return textFieldComponent
@@ -91,7 +91,7 @@ class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     gbc.anchor = GridBagConstraints.EAST
     gbc.weightx = 0.0
     gbc.weighty = 0.0
-    gbc.insets = new Insets(0, 2, 0, 2)
+    gbc.insets = new Insets(0, 2, 0, 4)
     this.add(labelComponent, gbc)
   }
 

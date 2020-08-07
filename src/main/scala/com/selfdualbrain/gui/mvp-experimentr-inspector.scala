@@ -4,8 +4,11 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.StaticSplitPanel
 import com.selfdualbrain.gui_framework.{MvpView, PanelEdge, Presenter}
 
+/**
+  * Composite view of one simulation experiment. Displays configuration, log of events and statistics. Allows user interaction with the experiment.
+  */
 class ExperimentInspectorPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, ExperimentInspectorPresenter,ExperimentInspectorView, ExperimentInspectorPresenter.Ev] {
-  private val eventsLog = new EventsLogPresenterX
+  private val eventsLog = new EventsLogPresenter
   private val experimentConfig = new ExperimentInspectorPresenter
   private val simulationStats = new SimulationStatsPresenter
   private val continueSimulation = new ContinueSimulationPresenter

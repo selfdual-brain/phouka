@@ -11,7 +11,7 @@ class StatsPrinter(out: AbstractTextOutput, numberOfValidators: Int) {
       out.print(s"number of events: ${stats.numberOfEvents}")
       out.print(s"published bricks: ${stats.numberOfBlocksPublished + stats.numberOfBallotsPublished} (${stats.numberOfBlocksPublished} blocks, ${stats.numberOfBallotsPublished} ballots)")
       out.print(f"fraction of ballots [$percentChar]: ${stats.fractionOfBallots * 100}%.2f")
-      val orphanRateAsPercent: Double = stats.orphanRateCurve(stats.numberOfVisiblyFinalizedBlocks.toInt) * 100
+      val orphanRateAsPercent: Double = stats.orphanRate * 100
       out.print(f"orphan rate [$percentChar]: $orphanRateAsPercent%.2f")
       out.print(s"number of finalized blocks: ${stats.numberOfVisiblyFinalizedBlocks} visibly, ${stats.numberOfCompletelyFinalizedBlocks} completely")
       out.print(s"number of observed equivocators: ${stats.numberOfObservedEquivocators}")

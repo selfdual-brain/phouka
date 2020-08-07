@@ -2,7 +2,7 @@ package com.selfdualbrain.stats
 
 import com.selfdualbrain.blockchain_structure.{Ballot, Ether, NormalBlock, ValidatorId}
 import com.selfdualbrain.des.Event
-import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload}
+import com.selfdualbrain.simulator_engine.{ExperimentSetup, NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -24,16 +24,17 @@ import scala.collection.mutable.ArrayBuffer
   * @param throughputCheckpointsDelta
   * @param numberOfValidators
   */
-class DefaultStatsProcessor(
-                             latencyMovingWindow: Int,
-                             throughputMovingWindow: TimeDelta,
-                             throughputCheckpointsDelta: TimeDelta,
-                             numberOfValidators: Int,
-                             weightsMap: Array[Ether],
-                             absoluteFTT: Ether
-                           ) extends IncrementalStatsProcessor with SimulationStats {
+class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends IncrementalStatsProcessor with SimulationStats {
+
+  private val latencyMovingWindow: Int = experimentSetup.config.statsProcessor.get.latencyMovingWindow
+  private val throughputMovingWindow: TimeDelta = experimentSetup.config.statsProcessor.get.throughputMovingWindow
+  private val throughputCheckpointsDelta: TimeDelta = experimentSetup.config.statsProcessor.get.throughputCheckpointsDelta
+  private val numberOfValidators: Int = experimentSetup.config.numberOfValidators
+  private val weightsMap: ValidatorId => Ether = experimentSetup.weightsOfValidators
+  private val absoluteFTT: Ether = experimentSetup.absoluteFtt
 
   assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
+
 
   //id of last simulation step that we processed
   private var lastStepId: Long = -1
@@ -67,7 +68,7 @@ class DefaultStatsProcessor(
   //counter of visibly finalized blocks; this counter is used for blockchain throughput calculation
   private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounter(throughputMovingWindow, throughputCheckpointsDelta)
 
-  private val totalWeightOfValidators: Ether = weightsMap.sum
+  private val totalWeightOfValidators: Ether = experimentSetup.totalWeight
 
   for (i <- 0 until numberOfValidators)
     vid2stats(i) = new PerValidatorCounters(i)
@@ -313,7 +314,7 @@ class DefaultStatsProcessor(
           case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
             equivocators += evilValidator
 
-          case OutputEventPayload.EquivocationCatastrophe(validators, fttExceededBy) =>
+          case OutputEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
             //ignore (at this point the simulation must be stopped anyway, because finality theorem no longer holds)
 
         }

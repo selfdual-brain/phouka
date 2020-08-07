@@ -3,7 +3,9 @@ package com.selfdualbrain.gui_framework
 /**
   * Base class for presenters.
   *
-  * @tparam M type of models that are compatible with this presenter.
+  * @tparam M type of models that are compatible with this presenter
+  * @tparam VM contract of model expected by compatible views
+  * @tparam VP contract of presenter expected by compatible views
   * @tparam V type of views that are compatible with this presenter
   * @tparam E triggered events base type
   */

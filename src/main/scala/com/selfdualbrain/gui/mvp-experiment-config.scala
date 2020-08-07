@@ -7,15 +7,17 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{FieldsLadderPanel, RibbonPanel}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import com.selfdualbrain.randomness.IntSequenceConfig
-import com.selfdualbrain.simulator_engine.PhoukaConfig
+import com.selfdualbrain.simulator_engine.ExperimentConfig
 import javax.swing.{JCheckBox, JTextField}
 
-
-class ExperimentConfigPresenter extends Presenter[PhoukaConfig, PhoukaConfig, ExperimentConfigPresenter, ExperimentConfigView, Nothing] {
+/**
+  * Presents configuration of a simulation engine, i.e the definition of given experiment.
+  */
+class ExperimentConfigPresenter extends Presenter[ExperimentConfig, ExperimentConfig, ExperimentConfigPresenter, ExperimentConfigView, Nothing] {
 
   override def createDefaultView(): ExperimentConfigView = new ExperimentConfigView(guiLayoutConfig)
 
-  override def createDefaultModel(): PhoukaConfig = PhoukaConfig.default
+  override def createDefaultModel(): ExperimentConfig = ExperimentConfig.default
 
   override def afterViewConnected(): Unit = {
     //do nothing
@@ -28,34 +30,33 @@ class ExperimentConfigPresenter extends Presenter[PhoukaConfig, PhoukaConfig, Ex
 
 //##################################################################################################################################################
 
-class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadderPanel(guiLayoutConfig) with MvpView[PhoukaConfig, ExperimentConfigPresenter] {
+class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadderPanel(guiLayoutConfig) with MvpView[ExperimentConfig, ExperimentConfigPresenter] {
   import com.selfdualbrain.gui_framework.TextAlignment._
 
-  private val randomSeed_TextField: JTextField = addTxtField("Random seed", isEditable = false)
+  private val randomSeed_TextField: JTextField = addTxtField(width = 140, label = "Random seed", isEditable = false)
 
-  private val validators_Ribbon: RibbonPanel = addRibbon("Number of validators")
-  private val numberOfValidators_TextField: JTextField = validators_Ribbon.addTxtField(width= 30, isEditable = false, alignment = LEFT, preGap = 0)
-  validators_Ribbon.addLabel("Weights")
-  private val validatorsWeights_TextField: JTextField = validators_Ribbon.addTxtField(width = 30, isEditable = false, LEFT, postGap = 0, wantGrow = true)
+  private val numberOfValidators_TextField: JTextField = addTxtField(label = "Number of validators", width= 80, isEditable = false)
+  private val validatorsWeights_TextField: JTextField = addTxtField(label = "Weights distribution", width = 100, isEditable = false, wantGrow = true)
 
-  private val equivocators_Ribbon: RibbonPanel = addRibbon("Number of equivocators")
-  private val numberOfEquivocators_TextField: JTextField = equivocators_Ribbon.addTxtField(width = 30, isEditable = false, alignment = LEFT, preGap = 0)
-  equivocators_Ribbon.addLabel("Equivocation chance [%]")
-  private val equivocationChance_TextField: JTextField = equivocators_Ribbon.addTxtField(width = 30, wantGrow = true, isEditable = false, alignment = LEFT ,postGap = 0)
+  private val equivocators_Ribbon: RibbonPanel = addRibbon("Equivocators")
+  private val numberOfEquivocators_TextField: JTextField = equivocators_Ribbon.addTxtField(label = "number of", width = 40, preGap = 0)
+  private val equivocationChance_TextField: JTextField = equivocators_Ribbon.addTxtField(label = "equivocation chance [%]", width = 50, postGap = 0)
+  equivocators_Ribbon.addSpacer()
 
-  private val finalizer_Ribbon: RibbonPanel = addRibbon("Finalizer ack level")
-  private val finalizerAckLevel_TextField: JTextField = finalizer_Ribbon.addTxtField(width = 30, isEditable = false, alignment = LEFT, preGap = 0)
-  finalizer_Ribbon.addLabel("Relative FTT")
-  private val relativeFtt_TextField: JTextField = finalizer_Ribbon.addTxtField(width = 30, isEditable = false, wantGrow = true, alignment = LEFT, postGap = 0)
+  private val finalizer_Ribbon: RibbonPanel = addRibbon("Finalizer")
+  private val finalizerAckLevel_TextField: JTextField = finalizer_Ribbon.addTxtField(label = "ack level", width = 40, preGap = 0)
+  private val relativeFtt_TextField: JTextField = finalizer_Ribbon.addTxtField(label = "relative FTT", width = 50, postGap = 0)
+  finalizer_Ribbon.addSpacer()
 
-  private val brickProposeDelays_TextField: JTextField = addTxtField("Brick propose delays", isEditable = false)
-  private val blocksFraction_TextField: JTextField = addTxtField("Blocks fraction [%]", isEditable = false)
-  private val networkDelays_TextField: JTextField = addTxtField("Network delays", isEditable = false)
-  private val runForkChoiceFromGenesis_JCheckBox: JCheckBox = addCheckBox("Start fork-choice at Genesis", isEditable = false)
+  private val brickProposeDelays_TextField: JTextField = addTxtField(width = 50, label = "Brick propose delays", isEditable = false, wantGrow = true)
+  private val blocksFraction_TextField: JTextField = addTxtField(width = 50, label = "Blocks fraction [%]", isEditable = false)
+  private val networkDelays_TextField: JTextField = addTxtField(width = 50, label = "Network delays", isEditable = false, wantGrow = true)
+  private val runForkChoiceFromGenesis_JCheckBox: JCheckBox = addCheckBox(label = "Start fork-choice at Genesis", isEditable = false)
 
+  this.surroundWithTitledBorder("Experiment config")
   sealLayout()
 
-  setPreferredSize(new Dimension(450, 330))
+  setPreferredSize(new Dimension(500, 330))
 
   override def afterModelConnected(): Unit = {
     randomSeed_TextField <-- model.randomSeed

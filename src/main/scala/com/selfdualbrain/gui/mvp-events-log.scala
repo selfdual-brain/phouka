@@ -12,6 +12,9 @@ import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
 import com.selfdualbrain.simulator_engine.{EventTag, NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.SimTimepoint
 
+/**
+  * Shows history of a simulation (as list of events).
+  */
 class EventsLogPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, EventsLogPresenter, EventsLogView, EventsLogPresenter.Ev] {
 
   override def createDefaultView(): EventsLogView = new EventsLogView(guiLayoutConfig)

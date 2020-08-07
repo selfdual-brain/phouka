@@ -1,6 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.blockchain_structure.{Ether, ValidatorId}
+import com.selfdualbrain.simulator_engine.ExperimentSetup
 import com.selfdualbrain.time.SimTimepoint
 
 /**
@@ -38,6 +39,8 @@ import com.selfdualbrain.time.SimTimepoint
   */
 trait SimulationStats {
 
+  def experimentSetup: ExperimentSetup
+
   //timepoint of the last event of the simulation
   def totalTime: SimTimepoint
 
@@ -52,6 +55,17 @@ trait SimulationStats {
 
   //simulation(t).ballots.size / simulation(t).bricks.size
   def fractionOfBallots: Double
+
+  //Fraction of blocks that are published but will not get finalized.
+  //We calculate a block B as orphaned as soon as some other block C with B.generation == C.generation gets finalized.
+  //This is "orphan rate curve" value calculated at the generation of the newest visibly finalized block
+  def orphanRate: Double = {
+    val n: Long = this.numberOfVisiblyFinalizedBlocks
+    return if (n == 0)
+      0.0
+    else
+      orphanRateCurve(n.toInt)
+  }
 
   //Fraction of blocks that are published but will not get finalized.
   //We calculate a block B as orphaned as soon as some other block C with B.generation == C.generation gets finalized.
@@ -110,10 +124,26 @@ trait SimulationStats {
   //Latency is expressed in seconds.
   def movingWindowLatencyAverage: Int => Double
 
+  def movingWindowLatencyAverageLatestValue: Double = {
+    val n: Long = this.numberOfCompletelyFinalizedBlocks
+    return if (n == 0)
+      0.0
+    else
+      movingWindowLatencyAverage(n.toInt)
+  }
+
   //Standard deviation of latency.
   //f(g) = simulation(t).blocks.filter(b => g-N < b.generation <= g and b.isCompletelyFinalized).map(b => b.latencySpectrum(b)).setSum.standardDeviation
   //Latency is expressed in seconds.
   def movingWindowLatencyStandardDeviation: Int => Double
+
+  def movingWindowLatencyStandardDeviationLatestValue: Double = {
+    val n: Long = this.numberOfCompletelyFinalizedBlocks
+    return if (n == 0)
+      0.0
+    else
+      movingWindowLatencyStandardDeviation(n.toInt)
+  }
 
   //number of blocks visibly finalized per second (calculated for last K seconds)
   //throughput(t) = simulation(t).blocks.filter(b => b.isVisiblyFinalized and t - K <= b.vfTime <= t) / K
