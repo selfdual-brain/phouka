@@ -27,8 +27,8 @@ import scala.collection.mutable.ArrayBuffer
 class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends IncrementalStatsProcessor with SimulationStats {
 
   private val latencyMovingWindow: Int = experimentSetup.config.statsProcessor.get.latencyMovingWindow
-  private val throughputMovingWindow: TimeDelta = experimentSetup.config.statsProcessor.get.throughputMovingWindow
-  private val throughputCheckpointsDelta: TimeDelta = experimentSetup.config.statsProcessor.get.throughputCheckpointsDelta
+  private val throughputMovingWindow: TimeDelta = TimeDelta.seconds(experimentSetup.config.statsProcessor.get.throughputMovingWindow)
+  private val throughputCheckpointsDelta: TimeDelta = TimeDelta.seconds(experimentSetup.config.statsProcessor.get.throughputCheckpointsDelta)
   private val numberOfValidators: Int = experimentSetup.config.numberOfValidators
   private val weightsMap: ValidatorId => Ether = experimentSetup.weightsOfValidators
   private val absoluteFTT: Ether = experimentSetup.absoluteFtt
@@ -384,9 +384,9 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
 
   private val throughputMovingWindowAsSeconds: Double = throughputMovingWindow.toDouble / TimeDelta.seconds(1)
 
-  override def movingWindowThroughput: SimTimepoint => Double = { timepoint =>
-    assert (timepoint < lastStepTimepoint + throughputMovingWindow) //we do not support asking for throughput for yet-unexplored future
-    assert (timepoint >= SimTimepoint.zero)
+  override def movingWindowThroughput: SimTimepoint => Double = (timepoint: SimTimepoint) => {
+    assert(timepoint < lastStepTimepoint + throughputMovingWindow) //we do not support asking for throughput for yet-unexplored future
+    assert(timepoint >= SimTimepoint.zero)
     if (timepoint == SimTimepoint.zero)
       0.0
     else {

@@ -5,7 +5,7 @@ import com.selfdualbrain.des.{Event, SimulationEngine}
 import com.selfdualbrain.gui.SimulationDisplayModel.{Ev, SimulationEngineStopCondition}
 import com.selfdualbrain.gui_framework.EventsBroadcaster
 import com.selfdualbrain.simulator_engine._
-import com.selfdualbrain.stats.ValidatorStats
+import com.selfdualbrain.stats.{SimulationStats, ValidatorStats}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -92,10 +92,6 @@ class SimulationDisplayModel(val experimentConfig: ExperimentConfig, val engine:
   //subset of all-events, obtained via filtering; this is what "events log" table is showing
   //gets re-populated from scratch every time filter is changed
   private var filteredEvents = new ArrayBuffer[(Int, Event[ValidatorId])]
-
-  //stats of the validators as calculated for the last event in allEvents
-  //(this array is used as a map, where the key is validator id and it corresponds to array index)
-  private val validatorsStats = new Array[ValidatorStats](experimentConfig.numberOfValidators)
 
   //the id of validator for which the jdag graph is displayed
   private var currentlyObservedValidator: ValidatorId = 0
@@ -278,6 +274,12 @@ class SimulationDisplayModel(val experimentConfig: ExperimentConfig, val engine:
 
 //################################ PUBLIC ################################################
 
+  //--------------------- SIMULATION STATS -------------------------
+
+  def simulationStatistics: SimulationStats = engine.asInstanceOf[PhoukaEngine].stats
+
+  def perValidatorStats(vid: ValidatorId): ValidatorStats = simulationStatistics.perValidatorStats(vid)
+
   //--------------------- HORIZON -------------------------
 
   //the number of last event generated from the engine
@@ -351,8 +353,6 @@ class SimulationDisplayModel(val experimentConfig: ExperimentConfig, val engine:
     else
       None
   }
-
-  def getStatsOf(vid: ValidatorId): ValidatorStats = validatorsStats(vid)
 
   //--------------------- EVENTS LOG -------------------------
 

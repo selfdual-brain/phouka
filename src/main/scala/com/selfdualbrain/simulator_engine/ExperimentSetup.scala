@@ -20,9 +20,11 @@ class ExperimentSetup(val config: ExperimentConfig) {
   for (i <- weightsArray.indices)
     weightsArray(i) = weightsGenerator.next()
 
-  def weightsOfValidators: ValidatorId => Ether = {vid => weightsArray(vid)}
+  def weightsOfValidators: ValidatorId => Ether = (vid: ValidatorId) => weightsArray(vid)
 
   val totalWeight: Ether = weightsArray.sum
+
+  def relativeWeightsOfValidators: ValidatorId => Double = (vid: ValidatorId) => weightsArray(vid).toDouble / totalWeight
 
   val absoluteFtt: Ether = math.floor(totalWeight * config.relativeFtt).toLong
 

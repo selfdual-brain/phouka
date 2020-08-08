@@ -9,8 +9,9 @@ import scala.collection.mutable.ArrayBuffer
   * 1. All time values are Long and we interpret them as microseconds.
   * 2. "Naive" implementation of throughput calculation would be slower (always need to count beeps over the moving window)
   * but way simpler and also more precise. Here we sacrifice simplicity and accuracy for performance.
-  * 3. We divide the time axis into intervals of length resolution. Every interval corresponds to one checkpoint.
-  * 4. Circular buffer is used to accumulate and count beeps in the "moving window"
+  * 3. We divide the time axis into intervals of length equal to resolution. Every interval corresponds to one checkpoint.
+  * 4. Moving window contains a fixed number of intervals.
+  * 5. Circular buffer is used to accumulate and count beeps in the "moving window".
   *
   * @param windowSize size of the "moving average" time window; must be a multiple of resolution
   * @param resolution how frequent are checkpoints (smaller value = more accuracy)

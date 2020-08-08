@@ -6,7 +6,7 @@ import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.gui.SimulationDisplayModel.Ev
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.{ColumnDefinition, TableDefinition}
+import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.ColumnDefinition
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartTable}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
 import com.selfdualbrain.simulator_engine.{EventTag, NodeEventPayload, OutputEventPayload}
@@ -40,15 +40,14 @@ object EventsLogPresenter {
 
 class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, EventsLogPresenter] {
   private val events_Table = new SmartTable(guiLayoutConfig)
-
   this.setPreferredSize(new Dimension(1000,800))
   this.add(events_Table, BorderLayout.CENTER)
 
   override def afterModelConnected(): Unit = {
-    events_Table.initDefinition(new TableStructure(this.model))
+    events_Table.initDefinition(new TableDef(this.model))
   }
 
-  class TableStructure(simulationDisplayModel: SimulationDisplayModel) extends TableDefinition {
+  class TableDef(simulationDisplayModel: SimulationDisplayModel) extends SmartTable.Model {
 
     private val FINALITY_COLOR = new Color(150, 200, 255)
 
@@ -183,11 +182,13 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
     //handling data change events emitted by simulation display model
     simulationDisplayModel.subscribe(this) {
-      case Ev.FilterChanged => dataChangeHandler.onGeneralDataChange()
+      case Ev.FilterChanged => trigger(SmartTable.DataEvent.GeneralDataChange)
       case Ev.SimulationAdvanced(numberOfSteps, lastStep, firstInsertedRow, lastInsertedRow) =>
-        if (firstInsertedRow.isDefined) dataChangeHandler.onRowsAdded(firstInsertedRow.get, lastInsertedRow.get)
+        if (firstInsertedRow.isDefined)
+          trigger(SmartTable.DataEvent.RowsAdded(firstInsertedRow.get, lastInsertedRow.get))
       case other => //ignore
     }
+
   }
 
 }

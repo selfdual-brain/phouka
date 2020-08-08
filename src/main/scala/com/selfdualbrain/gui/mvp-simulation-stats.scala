@@ -36,15 +36,15 @@ class SimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLa
 
   //SIMULATION RANGE
   private val simulationRange_Ribbon: RibbonPanel = addRibbon("Simulation range")
-  private val totalTime_TextField: JTextField = simulationRange_Ribbon.addTxtField(label = "time [sec.micros]", width = 100, preGap = 0)
+  private val totalTime_TextField: JTextField = simulationRange_Ribbon.addTxtField(label = "time [sec.micros]", width = 120, preGap = 0)
   private val totalTimeHHMMSS_TextField: JTextField = simulationRange_Ribbon.addTxtField(label = "[DD-HH:MM:SS]", width = 90)
-  private val numberOfEvents_TextField: JTextField = simulationRange_Ribbon.addTxtField(width = 70, label = "number of events", isEditable = false, postGap = 0)
+  private val numberOfEvents_TextField: JTextField = simulationRange_Ribbon.addTxtField(width = 70, label = "number of events", postGap = 0)
   simulationRange_Ribbon.addSpacer()
 
   //TOTAL WEIGHT
   private val totalWeight_Ribbon: RibbonPanel = addRibbon("Validators weights")
-  private val totalWeightOfValidators_TextField: JTextField = totalWeight_Ribbon.addTxtField(label = "sum", width = 40, preGap = 0)
-  private val absoluteFtt_TextField: JTextField = totalWeight_Ribbon.addTxtField(label = "absolute FTT", width = 40)
+  private val totalWeightOfValidators_TextField: JTextField = totalWeight_Ribbon.addTxtField(label = "sum", width = 50, preGap = 0)
+  private val absoluteFtt_TextField: JTextField = totalWeight_Ribbon.addTxtField(label = "absolute FTT", width = 50)
   totalWeight_Ribbon.addSpacer()
 
   //PUBLISHED BRICKS
@@ -64,23 +64,23 @@ class SimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLa
 
   //LATENCY
   private val latency_Ribbon: RibbonPanel = addRibbon("Latency [sec]")
-  private val latencyOverall_TextField: JTextField = latency_Ribbon.addTxtField(label = "overall", width = 60, preGap = 0)
-  private val latencyMovingWindowAverage_TextField: JTextField = latency_Ribbon.addTxtField(label = "moving window average/standard deviation", width = 60)
-  private val latencyMovingWindowStandardDeviation_TextField: JTextField = latency_Ribbon.addTxtField(label = "/", width = 60)
+  private val latencyOverall_TextField: JTextField = latency_Ribbon.addTxtField(label = "overall", width = 70, preGap = 0)
+  private val latencyMovingWindowAverage_TextField: JTextField = latency_Ribbon.addTxtField(label = "moving window average/standard deviation", width = 70)
+  private val latencyMovingWindowStandardDeviation_TextField: JTextField = latency_Ribbon.addTxtField(label = "/", width = 70)
   latency_Ribbon.addSpacer()
 
   //THROUGHPUT (OVERALL)
   private val throughputOverall_Ribbon: RibbonPanel = addRibbon(" Throughput (tot)")
-  private val throughputOverallPerSecond_TextField: JTextField = throughputOverall_Ribbon.addTxtField(label = "blocks per-second", width = 60, preGap = 0)
-  private val throughputOverallPerMinute_TextField: JTextField = throughputOverall_Ribbon.addTxtField(label = "per-minute", width = 60)
-  private val throughputOverallHour_TextField: JTextField = throughputOverall_Ribbon.addTxtField(label = "per-hour", width = 60)
+  private val throughputOverallPerSecond_TextField: JTextField = throughputOverall_Ribbon.addTxtField(label = "blocks per-second", width = 70, preGap = 0)
+  private val throughputOverallPerMinute_TextField: JTextField = throughputOverall_Ribbon.addTxtField(label = "per-minute", width = 70)
+  private val throughputOverallHour_TextField: JTextField = throughputOverall_Ribbon.addTxtField(label = "per-hour", width = 70)
   throughputOverall_Ribbon.addSpacer()
 
   //THROUGHPUT (MOVING WINDOW)
   private val throughputMovingWindow_Ribbon: RibbonPanel = addRibbon("Throughput (mov-win)")
-  private val throughputMovingWindowPerSecond_TextField: JTextField = throughputMovingWindow_Ribbon.addTxtField(label = "blocks per-second", width = 60, preGap = 0)
-  private val throughputMovingWindowPerMinute_TextField: JTextField = throughputMovingWindow_Ribbon.addTxtField(label = "per-minute", width = 60)
-  private val throughputMovingWindowPerHour_TextField: JTextField = throughputMovingWindow_Ribbon.addTxtField(label = "per-hour", width = 60)
+  private val throughputMovingWindowPerSecond_TextField: JTextField = throughputMovingWindow_Ribbon.addTxtField(label = "blocks per-second", width = 70, preGap = 0)
+  private val throughputMovingWindowPerMinute_TextField: JTextField = throughputMovingWindow_Ribbon.addTxtField(label = "per-minute", width = 70)
+  private val throughputMovingWindowPerHour_TextField: JTextField = throughputMovingWindow_Ribbon.addTxtField(label = "per-hour", width = 70)
   throughputMovingWindow_Ribbon.addSpacer()
 
   //EQUIVOCATORS

@@ -2,9 +2,9 @@ package com.selfdualbrain.gui_framework.layout_dsl.components
 
 import java.awt.{BorderLayout, Color, Component}
 
-import com.selfdualbrain.gui_framework.TextAlignment
+import com.selfdualbrain.gui_framework.{EventsBroadcaster, TextAlignment}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.{ColumnDefinition, ColumnsScalingMode, GenericCellRenderer, SmartTableModelAdapter, TableDefinition}
+import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.{ColumnDefinition, ColumnsScalingMode, GenericCellRenderer, SmartTableModelAdapter}
 import com.selfdualbrain.gui_framework.swing_tweaks.TableHeaderWithTooltipsSupport
 import javax.swing._
 import javax.swing.event.ListSelectionEvent
@@ -18,7 +18,7 @@ import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer}
   * limited API, but fitting better for the needs we have in Phouka GUI. We just have a single, simplified definition of the table and this is it.
   */
 class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) {
-  private var tableDefinition: TableDefinition = _
+  private var tableDefinition: SmartTable.Model = _
 
   private val swingTable = new JTable()
   private val scrollPane = new JScrollPane(swingTable)
@@ -26,7 +26,7 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
 
   //connecting the definition is deferred on purpose
   //among other things, table definition must trigger data change events, so the underlying data model must be known and "connected" first
-  def initDefinition(definition: TableDefinition): Unit = {
+  def initDefinition(definition: SmartTable.Model): Unit = {
     assert (tableDefinition == null)
 
     tableDefinition = definition
@@ -69,12 +69,12 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
 
 object SmartTable {
 
-  trait TableDataChangeHandler {
-    def onRowsAdded(from: Int, to: Int)
-    def onRowsDeleted(from: Int, to: Int)
-    def onRowsUpdated(from: Int, to: Int)
-    def onGeneralDataChange()
-  }
+//  trait TableDataChangeHandler {
+//    def onRowsAdded(from: Int, to: Int)
+//    def onRowsDeleted(from: Int, to: Int)
+//    def onRowsUpdated(from: Int, to: Int)
+//    def onGeneralDataChange()
+//  }
 
   sealed abstract class ColumnsScalingMode
   object ColumnsScalingMode {
@@ -83,16 +83,19 @@ object SmartTable {
     case object ALL_COLUMNS extends ColumnsScalingMode
   }
 
-  abstract class TableDefinition {
-    protected var dataChangeHandler: TableDataChangeHandler = _
+  abstract class Model extends EventsBroadcaster[DataEvent] {
     val columns: Array[ColumnDefinition[_]]
     def onRowSelected(rowIndex: Int)
     val columnsScalingMode: ColumnsScalingMode
     def calculateNumberOfRows: Int
+  }
 
-    final def setDataChangeHandler(h: TableDataChangeHandler): Unit = {
-      dataChangeHandler = h
-    }
+  sealed abstract class DataEvent
+  object DataEvent {
+    case class RowsAdded(from: Int, to: Int) extends DataEvent
+    case class RowsDeleted(from: Int, to: Int) extends DataEvent
+    case class RowsUpdated(from: Int, to: Int) extends DataEvent
+    case object GeneralDataChange extends DataEvent
   }
 
   case class ColumnDefinition[T](
@@ -100,37 +103,72 @@ object SmartTable {
     headerTooltip: String,
     valueClass: Class[T],
     cellValueFunction: Int => T, //row index ---> value displayed in the cell
+    decimalRounding: Option[Int] = None, //decimal rounding (applicable only to Double values, otherwise ignored)
     textAlignment: TextAlignment,
     cellBackgroundColorFunction: Option[(Int,T) => Option[Color]], //row index ---> color; None = retain default background color
     preferredWidth: Int,
     maxWidth: Int
   )
 
-  //a glue between out "table definition" concept and what Swing requires
-  class SmartTableModelAdapter(definition: TableDefinition) extends AbstractTableModel {
+  //a glue between our "smart table model" concept and what Swing requires
+  class SmartTableModelAdapter(stm: Model) extends AbstractTableModel {
     self =>
 
-    definition.setDataChangeHandler(new TableDataChangeHandler {
-      override def onRowsAdded(from: Int, to: Int): Unit = self.fireTableRowsInserted(from, to)
+    stm.subscribe(this) {
+      case DataEvent.RowsAdded(from, to) => self.fireTableRowsInserted(from, to)
+      case DataEvent.RowsDeleted(from, to) => self.fireTableRowsDeleted(from, to)
+      case DataEvent.RowsUpdated(from, to) => self.fireTableRowsUpdated(from, to)
+      case DataEvent.GeneralDataChange => self.fireTableDataChanged()
+    }
 
-      override def onRowsDeleted(from: Int, to: Int): Unit = self.fireTableRowsDeleted(from, to)
+    override def getRowCount: Int = stm.calculateNumberOfRows
 
-      override def onRowsUpdated(from: Int, to: Int): Unit = self.fireTableRowsUpdated(from, to)
+    override def getColumnCount: Int = stm.columns.length
 
-      override def onGeneralDataChange(): Unit = self.fireTableDataChanged()
-    })
+    override def getColumnName(columnIndex: Int): String = stm.columns(columnIndex).name
 
-    override def getRowCount: Int = definition.calculateNumberOfRows
-
-    override def getColumnCount: Int = definition.columns.length
-
-    override def getColumnName(columnIndex: Int): String = definition.columns(columnIndex).name
-
-    override def getColumnClass(columnIndex: Int): Class[_] = definition.columns(columnIndex).valueClass
+    override def getColumnClass(columnIndex: Int): Class[_] = {
+      val nominalClass = stm.columns(columnIndex).valueClass
+      return if (nominalClass == classOf[Double] && stm.columns(columnIndex).decimalRounding.isDefined)
+        classOf[String]
+      else
+        nominalClass
+    }
 
     override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
 
-    override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = definition.columns(columnIndex).cellValueFunction(rowIndex).asInstanceOf[AnyRef]
+    override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = {
+      val rawValue = stm.columns(columnIndex).cellValueFunction(rowIndex)
+      val result: Any = rawValue match {
+        case x: Double =>
+          stm.columns(columnIndex).decimalRounding match {
+            case None => rawValue
+            case Some(d) => decimalRounding(rawValue.asInstanceOf[Double], d)
+          }
+        case other => other
+      }
+      return result.asInstanceOf[AnyRef]
+    }
+
+    def decimalRounding(value: Double, decimalDigits: Int): String =
+      decimalDigits match {
+        case 0 => f"$value%.0f"
+        case 1 => f"$value%.1f"
+        case 2 => f"$value%.2f"
+        case 3 => f"$value%.3f"
+        case 4 => f"$value%.4f"
+        case 5 => f"$value%.5f"
+        case 6 => f"$value%.6f"
+        case 7 => f"$value%.7f"
+        case 8 => f"$value%.8f"
+        case 9 => f"$value%.9f"
+        case 10 => f"$value%.10f"
+        case 11 => f"$value%.11f"
+        case 12 => f"$value%.12f"
+        case 13 => f"$value%.13f"
+        case 14 => f"$value%.14f"
+        case 15 => f"$value%.15f"
+      }
   }
 
   //T - type of value in the cell
