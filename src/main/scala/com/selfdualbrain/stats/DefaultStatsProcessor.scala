@@ -17,12 +17,6 @@ import scala.collection.mutable.ArrayBuffer
   * TreeNodesByGenerationCounter - helps counting incrementally the number of blocks below certain generation (but this is done for all generations at once)
   * MovingWindowBeepsCounter - helps counting finality events in a way that a moving-average of blocks-per-second performance metric can be calculated periodically
   * CircularSummingBuffer - helps in implementing MovingWindowBeepsCounter
-  *
-  * todo: fix constructor params documentation
-  * @param latencyMovingWindow
-  * @param throughputMovingWindow
-  * @param throughputCheckpointsDelta
-  * @param numberOfValidators
   */
 class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends IncrementalStatsProcessor with SimulationStats {
 
@@ -362,16 +356,16 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
 
   override def isFttExceeded: Boolean = weightOfObservedEquivocators > absoluteFTT
 
-  override def movingWindowLatencyAverage: Int => Double = { n =>
-    assert (n >= 0)
+  override val movingWindowLatencyAverage: Int => Double = (n: Int) => {
+    assert(n >= 0)
     if (n <= this.numberOfCompletelyFinalizedBlocks)
       latencyMovingWindowAverage(n)
     else
       throw new RuntimeException(s"latency undefined yet for generation $n")
   }
 
-  override def movingWindowLatencyStandardDeviation: Int => Double = { n =>
-    assert (n >= 0)
+  override val movingWindowLatencyStandardDeviation: Int => Double = (n: Int) => {
+    assert(n >= 0)
     if (n <= this.numberOfCompletelyFinalizedBlocks)
       latencyMovingWindowStandardDeviation(n)
     else
@@ -384,7 +378,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
 
   private val throughputMovingWindowAsSeconds: Double = throughputMovingWindow.toDouble / TimeDelta.seconds(1)
 
-  override def movingWindowThroughput: SimTimepoint => Double = (timepoint: SimTimepoint) => {
+  override val movingWindowThroughput: SimTimepoint => Double = (timepoint: SimTimepoint) => {
     assert(timepoint < lastStepTimepoint + throughputMovingWindow) //we do not support asking for throughput for yet-unexplored future
     assert(timepoint >= SimTimepoint.zero)
     if (timepoint == SimTimepoint.zero)

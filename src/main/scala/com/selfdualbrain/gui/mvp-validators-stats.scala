@@ -42,7 +42,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
       ColumnDefinition[Int](
         name = "Vid",
         headerTooltip = "Validator id",
-        valueClass = classOf[Int],
+        runtimeClassOfValues = classOf[Int],
         cellValueFunction = (rowIndex: Int) => rowIndex,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
@@ -52,7 +52,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
       ColumnDefinition[Ether](
         name = "Weight",
         headerTooltip = "Absolute weight",
-        valueClass = classOf[Ether],
+        runtimeClassOfValues = classOf[Ether],
         cellValueFunction = (rowIndex: Int) => model.simulationStatistics.experimentSetup.weightsOfValidators(rowIndex),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
@@ -62,7 +62,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
       ColumnDefinition[Double](
         name = "[%]",
         headerTooltip = "Relative weight",
-        valueClass = classOf[Double],
+        runtimeClassOfValues = classOf[Double],
         cellValueFunction = (rowIndex: Int) => model.simulationStatistics.experimentSetup.relativeWeightsOfValidators(rowIndex),
         decimalRounding = Some(4),
         textAlignment = TextAlignment.RIGHT,
@@ -73,7 +73,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
       ColumnDefinition[Ether](
         name = "Received",
         headerTooltip = "Number of bricks (= blocks + ballots) received",
-        valueClass = classOf[Ether],
+        runtimeClassOfValues = classOf[Ether],
         cellValueFunction = (rowIndex: Int) => model.simulationStatistics.experimentSetup.weightsOfValidators(rowIndex),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
@@ -83,7 +83,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
       ColumnDefinition[Ether](
         name = "F-lag",
         headerTooltip = "Finalization lag, i.e. number of generations this validator is behind the best validator in terms of LFB chain length. For best validator f-lag=0",
-        valueClass = classOf[Ether],
+        runtimeClassOfValues = classOf[Ether],
         cellValueFunction = (rowIndex: Int) => model.simulationStatistics.experimentSetup.weightsOfValidators(rowIndex),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
@@ -93,7 +93,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
       ColumnDefinition[Ether](
         name = "Blocks",
         headerTooltip = "Published blocks",
-        valueClass = classOf[Ether],
+        runtimeClassOfValues = classOf[Ether],
         cellValueFunction = (rowIndex: Int) => model.simulationStatistics.experimentSetup.weightsOfValidators(rowIndex),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
@@ -103,7 +103,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
       ColumnDefinition[Ether](
         name = "Ballots",
         headerTooltip = "Published ballots",
-        valueClass = classOf[Ether],
+        runtimeClassOfValues = classOf[Ether],
         cellValueFunction = (rowIndex: Int) => model.simulationStatistics.experimentSetup.weightsOfValidators(rowIndex),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
@@ -113,7 +113,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
       ColumnDefinition[Ether](
         name = "Final",
         headerTooltip = "Relative weight",
-        valueClass = classOf[Ether],
+        runtimeClassOfValues = classOf[Ether],
         cellValueFunction = (rowIndex: Int) => model.simulationStatistics.experimentSetup.weightsOfValidators(rowIndex),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,

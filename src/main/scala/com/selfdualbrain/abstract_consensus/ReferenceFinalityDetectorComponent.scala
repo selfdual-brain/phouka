@@ -17,7 +17,6 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                                    estimator: Estimator
                                  ) extends FinalityDetector {
 
-//    val absoluteFTT: Ether = math.ceil(relativeFTT * totalWeight).toLong
     val quorum: Ether = {
       val q: Double = (absoluteFTT.toDouble / (1 - math.pow(2, - ackLevel)) + totalWeight.toDouble) / 2
       math.ceil(q).toLong

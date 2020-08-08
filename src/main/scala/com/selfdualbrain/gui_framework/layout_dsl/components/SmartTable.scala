@@ -69,13 +69,6 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
 
 object SmartTable {
 
-//  trait TableDataChangeHandler {
-//    def onRowsAdded(from: Int, to: Int)
-//    def onRowsDeleted(from: Int, to: Int)
-//    def onRowsUpdated(from: Int, to: Int)
-//    def onGeneralDataChange()
-//  }
-
   sealed abstract class ColumnsScalingMode
   object ColumnsScalingMode {
     case object OFF extends ColumnsScalingMode
@@ -83,7 +76,7 @@ object SmartTable {
     case object ALL_COLUMNS extends ColumnsScalingMode
   }
 
-  abstract class Model extends EventsBroadcaster[DataEvent] {
+  trait Model extends EventsBroadcaster[DataEvent] {
     val columns: Array[ColumnDefinition[_]]
     def onRowSelected(rowIndex: Int)
     val columnsScalingMode: ColumnsScalingMode
@@ -99,15 +92,15 @@ object SmartTable {
   }
 
   case class ColumnDefinition[T](
-    name: String,
-    headerTooltip: String,
-    valueClass: Class[T],
-    cellValueFunction: Int => T, //row index ---> value displayed in the cell
-    decimalRounding: Option[Int] = None, //decimal rounding (applicable only to Double values, otherwise ignored)
-    textAlignment: TextAlignment,
-    cellBackgroundColorFunction: Option[(Int,T) => Option[Color]], //row index ---> color; None = retain default background color
-    preferredWidth: Int,
-    maxWidth: Int
+                                  name: String,
+                                  headerTooltip: String,
+                                  runtimeClassOfValues: Class[_],
+                                  cellValueFunction: Int => T, //row index ---> value displayed in the cell
+                                  decimalRounding: Option[Int] = None, //decimal rounding (applicable only to Double values, otherwise ignored)
+                                  textAlignment: TextAlignment,
+                                  cellBackgroundColorFunction: Option[(Int,T) => Option[Color]], //row index ---> color; None = retain default background color
+                                  preferredWidth: Int,
+                                  maxWidth: Int
   )
 
   //a glue between our "smart table model" concept and what Swing requires
@@ -128,7 +121,7 @@ object SmartTable {
     override def getColumnName(columnIndex: Int): String = stm.columns(columnIndex).name
 
     override def getColumnClass(columnIndex: Int): Class[_] = {
-      val nominalClass = stm.columns(columnIndex).valueClass
+      val nominalClass = stm.columns(columnIndex).runtimeClassOfValues
       return if (nominalClass == classOf[Double] && stm.columns(columnIndex).decimalRounding.isDefined)
         classOf[String]
       else

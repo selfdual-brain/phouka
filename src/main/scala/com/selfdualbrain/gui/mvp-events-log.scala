@@ -55,8 +55,8 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ColumnDefinition[Int](
         name = "Step id",
         headerTooltip = "Sequential number of simulation step",
-        valueClass = classOf[Int],
-        cellValueFunction = {rowIndex =>
+        runtimeClassOfValues = classOf[Int],
+        cellValueFunction = (rowIndex: Int )=> {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           stepId
         },
@@ -68,8 +68,8 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ColumnDefinition[Long](
         name = "Event id",
         headerTooltip = "DES event bus unique identifier",
-        valueClass = classOf[Long],
-        cellValueFunction = {rowIndex =>
+        runtimeClassOfValues = classOf[Long],
+        cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.id
         },
@@ -81,8 +81,8 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ColumnDefinition[SimTimepoint](
         name = "Time",
         headerTooltip = "Event's timepoint (in simulated time, microseconds precision)",
-        valueClass = classOf[SimTimepoint],
-        cellValueFunction = {rowIndex =>
+        runtimeClassOfValues = classOf[Long],
+        cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.timepoint
         },
@@ -94,8 +94,8 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ColumnDefinition[String](
         name = "HH:MM:SS",
         headerTooltip = "Event's timepoint (converted to days-hours:minutes:seconds, rounded to full seconds)",
-        valueClass = classOf[String],
-        cellValueFunction = {rowIndex =>
+        runtimeClassOfValues = classOf[String],
+        cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.timepoint.asHumanReadable.toStringCutToSeconds
         },
@@ -107,8 +107,8 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ColumnDefinition[ValidatorId](
         name = "Vid",
         headerTooltip = "Id of involved validator",
-        valueClass = classOf[ValidatorId],
-        cellValueFunction = {rowIndex =>
+        runtimeClassOfValues = classOf[ValidatorId],
+        cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.loggingAgent
         },
@@ -120,8 +120,8 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ColumnDefinition[String](
         name = "Type",
         headerTooltip = "Event type",
-        valueClass = classOf[String],
-        cellValueFunction = {rowIndex =>
+        runtimeClassOfValues = classOf[String],
+        cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           val tag = EventTag.of(event)
           EventTag.tag2description(tag)
@@ -140,8 +140,8 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ColumnDefinition(
         name = "Details",
         headerTooltip = "Details of this event (event-type-specific)",
-        valueClass = classOf[String],
-        cellValueFunction = {rowIndex =>
+        runtimeClassOfValues = classOf[String],
+        cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           eventDetails(event)
         },
