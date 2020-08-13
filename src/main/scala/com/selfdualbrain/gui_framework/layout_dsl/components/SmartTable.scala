@@ -43,8 +43,10 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
       val columnDefinition: ColumnDefinition[_] = tableDefinition.columns(columnIndex)
       swingTable.getColumnModel.getColumn(columnIndex).setPreferredWidth(columnDefinition.preferredWidth)
       swingTable.getColumnModel.getColumn(columnIndex).setMaxWidth(columnDefinition.maxWidth)
-      val renderer = new GenericCellRenderer(columnDefinition.textAlignment, columnDefinition.cellBackgroundColorFunction)
-      swingTable.getColumnModel.getColumn(columnIndex).setCellRenderer(renderer)
+      if (columnDefinition.runtimeClassOfValues != classOf[Boolean]) {
+        val renderer = new GenericCellRenderer(columnDefinition.textAlignment, columnDefinition.cellBackgroundColorFunction)
+        swingTable.getColumnModel.getColumn(columnIndex).setCellRenderer(renderer)
+      }
     }
 
     swingTable.setTableHeader(new TableHeaderWithTooltipsSupport(swingTable.getColumnModel, tableDefinition.columns.map(col => col.headerTooltip)))
@@ -125,8 +127,25 @@ object SmartTable {
       return if (nominalClass == classOf[Double] && stm.columns(columnIndex).decimalRounding.isDefined)
         classOf[String]
       else
-        nominalClass
+        convertClassToJavaStandards(nominalClass)
     }
+
+    private val scala2javaClassConversionTable: Map[Class[_], Class[_]] = Map(
+      classOf[Boolean] -> classOf[java.lang.Boolean],
+      classOf[Byte] -> classOf[java.lang.Byte],
+      classOf[Short] -> classOf[java.lang.Short],
+      classOf[Int] -> classOf[java.lang.Integer],
+      classOf[Long] -> classOf[java.lang.Long],
+      classOf[Char] -> classOf[java.lang.Character],
+      classOf[Float] -> classOf[java.lang.Float],
+      classOf[Double] -> classOf[java.lang.Double]
+    )
+
+    private def convertClassToJavaStandards(clazz: Class[_]): Class[_] =
+      scala2javaClassConversionTable.get(clazz) match {
+        case Some(c) => c
+        case None => clazz
+      }
 
     override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
 
@@ -165,6 +184,10 @@ object SmartTable {
   }
 
   //T - type of value in the cell
+  //This renderer allows us to customize:
+  //- text alignment
+  //- cell background color
+  //Caution: we do not use it for boolean columns
   class GenericCellRenderer[T](alignment: TextAlignment, cellBackgroundColorFunction: Option[(Int,T) => Option[Color]]) extends DefaultTableCellRenderer {
     alignment match {
       case TextAlignment.LEFT => this.setHorizontalAlignment(SwingConstants.LEFT)

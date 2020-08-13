@@ -53,7 +53,7 @@ object PresentersSandbox {
 
     //run short simulation
     log.info("starting the simulation")
-    simulationDisplayModel.advanceTheSimulationBy(10000)
+    simulationDisplayModel.advanceTheSimulationBy(20000)
     log.info(s"simulation completed, last step was: ${engine.lastStepExecuted}")
 
     //create desired controller
@@ -81,6 +81,10 @@ object PresentersSandbox {
         p
       case 6 =>
         val p = new EventsLogPresenter
+        p.model = simulationDisplayModel
+        p
+      case 7 =>
+        val p = new ValidatorsStatsPresenter
         p.model = simulationDisplayModel
         p
 

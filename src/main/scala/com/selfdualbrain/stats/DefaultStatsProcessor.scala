@@ -142,6 +142,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
     var acceptedBallotsCounter: Long = 0
     val myBlocksByGenerationCounters = new TreeNodesByGenerationCounter
     var myFinalizedBlocksCounter: Long = 0
+    var myVisiblyFinalizedBlocksCounter: Long = 0
     var myCompletelyFinalizedBlocksCounter: Long = 0
     var myBrickdagDepth: Long = 0
     var myBrickdagSize: Long = 0
@@ -169,6 +170,8 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
 
     override def numberOfMyBlocksThatICanSeeFinalized: Long = myFinalizedBlocksCounter
 
+    override def numberOfMyBlocksThatAreVisiblyFinalized: TimeDelta = myVisiblyFinalizedBlocksCounter
+
     override def numberOfMyBlocksThatAreCompletelyFinalized: Long = myCompletelyFinalizedBlocksCounter
 
     override def numberOfMyBlocksThatICanAlreadySeeAsOrphaned: Long =
@@ -188,7 +191,11 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
 
     override def averageThroughputIAmGenerating: Double = numberOfMyBlocksThatICanSeeFinalized / totalTime.asSeconds
 
-    override def averageFractionOfMyBlocksThatGetOrphaned: Double = numberOfMyBlocksThatICanAlreadySeeAsOrphaned.toDouble / numberOfBlocksIPublished
+    override def averageFractionOfMyBlocksThatGetOrphaned: Double =
+      if (numberOfBlocksIPublished == 0)
+        0.0
+      else
+        numberOfMyBlocksThatICanAlreadySeeAsOrphaned.toDouble / numberOfBlocksIPublished
 
     override def averageBufferingTimeOverBricksThatWereBuffered: Double = sumOfBufferingTimes.toDouble / 1000000 / numberOfBricksThatLeftMsgBuffer
 
@@ -289,6 +296,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
             if (lfbElementInfo.numberOfConfirmations == 1) {
               visiblyFinalizedBlocksCounter += 1
               assert (visiblyFinalizedBlocksCounter == finalizedBlock.generation)
+              vid2stats(finalizedBlock.creator).myVisiblyFinalizedBlocksCounter += 1
               visiblyFinalizedBlocksMovingWindowCounter.beep(finalizedBlock.generation, eventTimepoint.micros)
             }
             //special handling of "the last missing confirmation of finality of given block is just announced" (= now we have finality timepoints for all validators)

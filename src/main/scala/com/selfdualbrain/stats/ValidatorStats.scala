@@ -38,6 +38,9 @@ trait ValidatorStats {
   //simulation(t).jdagBlocks(v).filter(b => b.creator = v and b.seenFinalized(v)).size
   def numberOfMyBlocksThatICanSeeFinalized :Long
 
+  //simulation(t).jdagBlocks(v).filter(b => b.creator == v and b.isVisiblyFinalized)
+  def numberOfMyBlocksThatAreVisiblyFinalized: Long
+
   //simulation(t).jdagBlocks(v).filter(b => b.creator == v and b.isCompletelyFinalized)
   def numberOfMyBlocksThatAreCompletelyFinalized: Long
 
