@@ -1,5 +1,6 @@
 package com.selfdualbrain.simulator_engine
 
+import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures._
 import com.selfdualbrain.hashing.FakeSha256Digester

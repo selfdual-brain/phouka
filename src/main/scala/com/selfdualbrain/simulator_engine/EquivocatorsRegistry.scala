@@ -1,6 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{Ether, ValidatorId}
+import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.blockchain_structure.ValidatorId
 
 /**
   * Discovering of equivocations (and so - equivocators) is encapsulated in merging of panoramas. The outcome of merging

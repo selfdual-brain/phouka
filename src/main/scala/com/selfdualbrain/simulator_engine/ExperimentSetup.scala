@@ -1,6 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{Ether, ValidatorId}
+import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.randomness.IntSequenceGenerator
 
 import scala.util.Random
@@ -20,11 +21,11 @@ class ExperimentSetup(val config: ExperimentConfig) {
   for (i <- weightsArray.indices)
     weightsArray(i) = weightsGenerator.next()
 
-  def weightsOfValidators: ValidatorId => Ether = (vid: ValidatorId) => weightsArray(vid)
+  val weightsOfValidators: ValidatorId => Ether = (vid: ValidatorId) => weightsArray(vid)
 
   val totalWeight: Ether = weightsArray.sum
 
-  def relativeWeightsOfValidators: ValidatorId => Double = (vid: ValidatorId) => weightsArray(vid).toDouble / totalWeight
+  val relativeWeightsOfValidators: ValidatorId => Double = (vid: ValidatorId) => weightsArray(vid).toDouble / totalWeight
 
   val absoluteFtt: Ether = math.floor(totalWeight * config.relativeFtt).toLong
 

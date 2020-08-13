@@ -1,6 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, Ether, NormalBlock, ValidatorId}
+import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, NormalBlock, ValidatorId}
 import com.selfdualbrain.simulator_engine.BGame.IndexedArrayOfAccumulators
 
 import scala.collection.mutable

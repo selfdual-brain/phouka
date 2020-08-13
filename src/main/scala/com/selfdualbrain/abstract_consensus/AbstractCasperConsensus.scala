@@ -1,7 +1,6 @@
 package com.selfdualbrain.abstract_consensus
 
 trait AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
-  type Ether = Long
 
   //Abstraction of features that consensus messages must expose.
   trait ConsensusMessageApi {

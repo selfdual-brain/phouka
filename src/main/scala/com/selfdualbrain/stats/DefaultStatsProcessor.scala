@@ -1,6 +1,7 @@
 package com.selfdualbrain.stats
 
-import com.selfdualbrain.blockchain_structure.{Ballot, Ether, NormalBlock, ValidatorId}
+import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.blockchain_structure.{Ballot, NormalBlock, ValidatorId}
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.simulator_engine.{ExperimentSetup, NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -28,7 +29,6 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
   private val absoluteFTT: Ether = experimentSetup.absoluteFtt
 
   assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
-
 
   //id of last simulation step that we processed
   private var lastStepId: Long = -1
@@ -133,43 +133,52 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
   }
 
   class PerValidatorCounters(vid: ValidatorId) extends ValidatorStats {
-    var myBlocksCounter: Int = 0
-    var myBallotsCounter: Int = 0
-    var receivedBlocksCounter: Int = 0
-    var receivedBallotsCounter: Int = 0
-    var receivedHandledBricks: Int = 0
-    var acceptedBlocksCounter: Int = 0
-    var acceptedBallotsCounter: Int = 0
+    var myBlocksCounter: Long = 0
+    var myBallotsCounter: Long = 0
+    var receivedBlocksCounter: Long = 0
+    var receivedBallotsCounter: Long = 0
+    var receivedHandledBricks: Long = 0
+    var acceptedBlocksCounter: Long = 0
+    var acceptedBallotsCounter: Long = 0
     val myBlocksByGenerationCounters = new TreeNodesByGenerationCounter
-    var myFinalizedBlocksCounter: Int = 0
-    var myBrickdagDepth: Int = 0
-    var myBrickdagSize: Int = 0
+    var myFinalizedBlocksCounter: Long = 0
+    var myCompletelyFinalizedBlocksCounter: Long = 0
+    var myBrickdagDepth: Long = 0
+    var myBrickdagSize: Long = 0
     var sumOfLatenciesOfAllLocallyCreatedBlocks: TimeDelta = 0L
     var sumOfBufferingTimes: TimeDelta = 0L
-    var numberOfBricksThatEnteredMsgBuffer: Int = 0
-    var numberOfBricksThatLeftMsgBuffer: Int = 0
-    var lastFinalizedBlockGeneration: Int = 0
+    var numberOfBricksThatEnteredMsgBuffer: Long = 0
+    var numberOfBricksThatLeftMsgBuffer: Long = 0
+    var lastFinalizedBlockGeneration: Long = 0
+    var wasObservedAsEquivocatorX: Boolean = false
+    var isAfterObservingEquivocationCatastropheX: Boolean = false
+    val observedEquivocators = new mutable.HashSet[ValidatorId]
+    var weightOfObservedEquivocatorsX: Long = 0
 
-    override def numberOfBlocksIPublished: Int = myBlocksCounter
+    override def numberOfBlocksIPublished: Long = myBlocksCounter
 
-    override def numberOfBallotsIPublished: Int = myBallotsCounter
+    override def numberOfBallotsIPublished: Long = myBallotsCounter
 
-    override def numberOfBlocksIReceived: Int = receivedBlocksCounter
+    override def numberOfBlocksIReceived: Long = receivedBlocksCounter
 
-    override def numberOfBallotsIReceived: Int = receivedBallotsCounter
+    override def numberOfBallotsIReceived: Long = receivedBallotsCounter
 
-    override def numberOfBlocksIAccepted: Int = acceptedBlocksCounter
+    override def numberOfBlocksIAccepted: Long = acceptedBlocksCounter
 
-    override def numberOfBallotsIAccepted: Int = acceptedBallotsCounter
+    override def numberOfBallotsIAccepted: Long = acceptedBallotsCounter
 
-    override def numberOfMyBlocksThatICanSeeFinalized: Int = myFinalizedBlocksCounter
+    override def numberOfMyBlocksThatICanSeeFinalized: Long = myFinalizedBlocksCounter
 
-    override def numberOfMyBlocksThatICanAlreadySeeAsOrphaned: Int =
-      myBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration) - myFinalizedBlocksCounter
+    override def numberOfMyBlocksThatAreCompletelyFinalized: Long = myCompletelyFinalizedBlocksCounter
 
-    override def myJdagDepth: Int = myBrickdagDepth
+    override def numberOfMyBlocksThatICanAlreadySeeAsOrphaned: Long =
+      myBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt) - myFinalizedBlocksCounter
 
-    override def myJdagSize: Int = myBrickdagSize
+    override def lengthOfMyLfbChain: Long = lastFinalizedBlockGeneration
+
+    override def myJdagDepth: Long = myBrickdagDepth
+
+    override def myJdagSize: Long = myBrickdagSize
 
     override def averageLatencyIAmObservingForMyBlocks: Double =
       if (numberOfMyBlocksThatICanSeeFinalized == 0)
@@ -181,11 +190,21 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
 
     override def averageFractionOfMyBlocksThatGetOrphaned: Double = numberOfMyBlocksThatICanAlreadySeeAsOrphaned.toDouble / numberOfBlocksIPublished
 
-    override def averageBufferingTimeInMyLocalMsgBuffer: Double = sumOfBufferingTimes.toDouble / 1000000 / numberOfBricksThatLeftMsgBuffer
+    override def averageBufferingTimeOverBricksThatWereBuffered: Double = sumOfBufferingTimes.toDouble / 1000000 / numberOfBricksThatLeftMsgBuffer
 
-    override def numberOfBricksInTheBuffer: Int = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
+    override def averageBufferingTimeOverAllBricksAccepted: Double = sumOfBufferingTimes.toDouble / 1000000 / (acceptedBlocksCounter + acceptedBallotsCounter)
+
+    override def numberOfBricksInTheBuffer: Long = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
 
     override def averageBufferingChanceForIncomingBricks: Double = numberOfBricksThatEnteredMsgBuffer.toDouble / (numberOfBlocksIAccepted + numberOfBallotsIAccepted)
+
+    override def wasObservedAsEquivocator: Boolean = wasObservedAsEquivocatorX
+
+    override def observedNumberOfEquivocators: Int = observedEquivocators.size
+
+    override def weightOfObservedEquivocators = weightOfObservedEquivocatorsX
+
+    override def isAfterObservingEquivocationCatastrophe: Boolean = isAfterObservingEquivocationCatastropheX
   }
 
   /**
@@ -274,7 +293,9 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
             }
             //special handling of "the last missing confirmation of finality of given block is just announced" (= now we have finality timepoints for all validators)
             if (lfbElementInfo.isCompletelyFinalized) {
+              //updating basic counters
               completelyFinalizedBlocksCounter += 1
+              vid2stats(finalizedBlock.creator).myCompletelyFinalizedBlocksCounter += 1
               //if we done the math right, then it is impossible for higher block to reach "completely finalized" state before lower block
               assert (completelyFinalizedBlocksCounter == finalizedBlock.generation)
               //updating cumulative latency
@@ -307,10 +328,14 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
 
           case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
             equivocators += evilValidator
+            vid2stats(evilValidator).wasObservedAsEquivocatorX = true
+            if (! vStats.observedEquivocators.contains(evilValidator)) {
+              vStats.observedEquivocators += evilValidator
+              vStats.weightOfObservedEquivocatorsX += weightsMap(evilValidator)
+            }
 
           case OutputEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
-            //ignore (at this point the simulation must be stopped anyway, because finality theorem no longer holds)
-
+            vStats.isAfterObservingEquivocationCatastropheX = true
         }
 
         visiblyFinalizedBlocksMovingWindowCounter.silence(eventTimepoint.micros)

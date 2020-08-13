@@ -55,7 +55,7 @@ class StatsPrinter(out: AbstractTextOutput, numberOfValidators: Int) {
     out.print(s"accepted bricks: $accepted ($acceptedBlocks blocks, $acceptedBallots ballots)")
     out.print(s"still waiting in the buffer: ${stats.numberOfBricksInTheBuffer}")
     out.print(f"buffering chance [$percentChar]: ${stats.averageBufferingChanceForIncomingBricks * 100}%.2f")
-    out.print(f"average buffering time [seconds]: ${stats.averageBufferingTimeInMyLocalMsgBuffer}%.2f")
+    out.print(f"average buffering time [seconds]: ${stats.averageBufferingTimeOverBricksThatWereBuffered}%.2f")
     out.print(s"my blocks I can see as finalized: ${stats.numberOfMyBlocksThatICanSeeFinalized}")
     out.print(s"my blocks I can see  as orphaned: ${stats.numberOfMyBlocksThatICanAlreadySeeAsOrphaned}")
     out.print(s"jdag size: ${stats.myJdagSize} depth: ${stats.myJdagDepth}")

@@ -1,6 +1,7 @@
 package com.selfdualbrain.stats
 
-import com.selfdualbrain.blockchain_structure.{Ether, ValidatorId}
+import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.simulator_engine.ExperimentSetup
 import com.selfdualbrain.time.SimTimepoint
 
@@ -19,14 +20,16 @@ import com.selfdualbrain.time.SimTimepoint
   * b.isOrphaned = for some block c, b != c and c.isVisiblyFinalized and b.generation == c.generation
   * b.isLocallyOrphaned(v) = for some block c in simulation(t).acceptedBlocks(v), b != c and b.generation == c.generation and c.isSeenFinalizedAt(v)
   * b.wasBuffered(v) - true if brick b was buffered by validator v
-  * b.enterBuffer(v) - timepoint when brick b entered messages buffer at v; defined only if b.wasBuffered(v)
-  * b.exitBuffer(v) - timepoint when brick b left messages buffer at v; defined only if b.wasBuffered(v)
+  * b.enterBuffer(v) - timepoint when brick b entered messages buffer at v; non-zero only if b.wasBuffered(v)
+  * b.exitBuffer(v) - timepoint when brick b left messages buffer at v; non-zero only if b.wasBuffered(v)
   * simulation(t) - state of the simulation at sim-timepoint t
   * simulation(t).blocks - the set of all blocks in simulation(t)
   * simulation(t).ballots - the set of all ballots in simulation(t)
   * simulation(t).bricks - a set-theoretic sum: simulation(t).blocks + simulation(t).ballots
   * simulation(t).receivedBlocks(v) - the set of blocks that were received from network by validator v
   * simulation(t).receivedBallots(v) - the set of ballots that were received from network by validator v
+  * simulation(t).acceptedBlocks(v) := simulation(t).receivedBlocks(v) * simulation(t).jdagBlocks(v) (* denotes sets intersection)
+  * simulation(t).acceptedBallots(v) := simulation(t).receivedBallots(v) * simulation(t).jdagBallots(v) (* denotes sets intersection)
   * simulation(t).jdagBlocks(v) - the set of blocks that are added to local j-dag of v
   * simulation(t).jdagBallots(v) - the set of ballots that are added to local j-dag of v
   * simulation(t).jdagBricks(v) = simulation(t).jdagBlocks(v) + simulation(t).jdagBallots(v)

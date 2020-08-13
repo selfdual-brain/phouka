@@ -1,5 +1,6 @@
 package com.selfdualbrain.blockchain_structure
 
+import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.randomness.IntSequenceGenerator
 import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.SimTimepoint
