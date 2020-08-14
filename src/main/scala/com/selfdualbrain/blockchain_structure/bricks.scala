@@ -5,7 +5,7 @@ import com.selfdualbrain.time.SimTimepoint
 
 //any vertex in the dag
 trait BlockchainVertex {
-  def id: VertexId
+  def id: BlockdagVertexId
   def timepoint: SimTimepoint
   def daglevel: Int
 
@@ -41,7 +41,7 @@ trait Block extends BlockchainVertex {
 }
 
 case class Ballot(
-                   id: VertexId,
+                   id: BlockdagVertexId,
                    positionInSwimlane: Int,
                    timepoint: SimTimepoint,
                    justifications: Iterable[Brick],
@@ -56,7 +56,7 @@ case class Ballot(
 }
 
 case class NormalBlock(
-                        id: VertexId,
+                        id: BlockdagVertexId,
                         positionInSwimlane: Int,
                         timepoint: SimTimepoint,
                         justifications: Iterable[Brick],
@@ -73,7 +73,7 @@ case class NormalBlock(
     s"Block-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,parent=${parent.id},j=[${justifications.map(_.id).mkString(",")}])"
 }
 
-case class Genesis(id: VertexId) extends Block {
+case class Genesis(id: BlockdagVertexId) extends Block {
   override def timepoint: SimTimepoint = SimTimepoint.zero
   override def generation: Int = 0
   override def daglevel: Int = 0

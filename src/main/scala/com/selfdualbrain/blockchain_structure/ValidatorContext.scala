@@ -13,7 +13,7 @@ trait ValidatorContext {
   def weightsOfValidators: ValidatorId => Ether
   def numberOfValidators: Int
   def totalWeight: Ether
-  def generateBrickId(): VertexId
+  def generateBrickId(): BlockdagVertexId
   def genesis: Genesis
   def blocksFraction: Double
   def runForkChoiceFromGenesis: Boolean

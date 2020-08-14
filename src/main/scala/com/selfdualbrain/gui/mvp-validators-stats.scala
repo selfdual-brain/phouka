@@ -8,6 +8,9 @@ import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.ColumnDe
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartTable}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
 
+/**
+  * Shows per-validator statistics of the simulation.
+  */
 class ValidatorsStatsPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, ValidatorsStatsPresenter, ValidatorsStatsView, ValidatorsStatsPresenter.Ev] {
 
   override def afterModelConnected(): Unit = {
@@ -32,6 +35,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
   private val events_Table = new SmartTable(guiLayoutConfig)
   this.setPreferredSize(new Dimension(1000,500))
   this.add(events_Table, BorderLayout.CENTER)
+  this.surroundWithTitledBorder("Per-validator simulation statistics")
 
   override def afterModelConnected(): Unit = {
     events_Table.initDefinition(new TableDef(this.model))
@@ -128,7 +132,7 @@ class ValidatorsStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPan
         cellValueFunction = (rowIndex: Int) => model.perValidatorStats(rowIndex).numberOfMyBlocksThatAreVisiblyFinalized,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 50,
+        preferredWidth = 40,
         maxWidth = 100
       ),
       ColumnDefinition[Double](

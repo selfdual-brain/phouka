@@ -10,6 +10,9 @@ import com.selfdualbrain.simulator_engine.PhoukaEngine
 import com.selfdualbrain.stats.SimulationStats
 import javax.swing.JTextField
 
+/**
+  * Shows overall statistics of the simulation.
+  */
 class SimulationStatsPresenter extends Presenter[SimulationDisplayModel, SimulationStats, PresentersTreeVertex, SimulationStatsView, Nothing] {
 
   override def createDefaultView(): SimulationStatsView = new SimulationStatsView(guiLayoutConfig)

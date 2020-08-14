@@ -42,6 +42,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
   private val events_Table = new SmartTable(guiLayoutConfig)
   this.setPreferredSize(new Dimension(1000,800))
   this.add(events_Table, BorderLayout.CENTER)
+  this.surroundWithTitledBorder("Simulation events (filtered)")
 
   override def afterModelConnected(): Unit = {
     events_Table.initDefinition(new TableDef(this.model))

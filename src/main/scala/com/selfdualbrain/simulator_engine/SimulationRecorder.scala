@@ -2,7 +2,6 @@ package com.selfdualbrain.simulator_engine
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-import com.selfdualbrain.blockchain_structure.Brick
 import com.selfdualbrain.des.Event
 
 class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
@@ -74,8 +73,8 @@ class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
     }
   }
 
-  private def msgBufferSnapshotDescription(pairs: Iterable[(Brick,Brick)]): String = {
-    val tmp = pairs map {case (msg,dep) => s"${msg.id}->${dep.id}"}
+  private def msgBufferSnapshotDescription(snapshot: MsgBufferSnapshot): String = {
+    val tmp = snapshot map {case (msg,depColl) => s"${msg.id}->(${depColl.mkString(",")})"}
     return tmp.mkString(",")
   }
 

@@ -12,6 +12,9 @@ import javax.swing.JCheckBox
 
 import scala.collection.mutable
 
+/**
+  * Editor of events filter (such a filter can be then applied to events log).
+  */
 class FilterEditorPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, FilterEditorPresenter, FilterEditorView, Nothing] {
 
   override def createDefaultView(): FilterEditorView = new FilterEditorView(guiLayoutConfig, this.model)

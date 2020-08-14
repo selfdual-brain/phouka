@@ -20,7 +20,7 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
 //  val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
   val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, experimentSetup.random)
   val desQueue: SimEventsQueue[ValidatorId, NodeEventPayload, OutputEventPayload] = new ClassicDesQueue[ValidatorId, NodeEventPayload, OutputEventPayload]
-  var lastBrickId: VertexId = 0
+  var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
   val recorder: Option[SimulationRecorder[ValidatorId]] = config.simLogDir map {dir =>
     val timeNow = java.time.LocalDateTime.now()
@@ -93,7 +93,7 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
     }
   }
 
-  protected def nextBrickId(): VertexId = {
+  protected def nextBrickId(): BlockdagVertexId = {
     lastBrickId += 1
     return lastBrickId
   }
@@ -121,11 +121,11 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
 
     override def weightsOfValidators: ValidatorId => Ether = experimentSetup.weightsOfValidators
 
-    override def numberOfValidators: VertexId = config.numberOfValidators
+    override def numberOfValidators: BlockdagVertexId = config.numberOfValidators
 
     override def totalWeight: Ether = experimentSetup.totalWeight
 
-    override def generateBrickId(): VertexId = self.nextBrickId()
+    override def generateBrickId(): BlockdagVertexId = self.nextBrickId()
 
     override def genesis: Genesis = self.genesis
 

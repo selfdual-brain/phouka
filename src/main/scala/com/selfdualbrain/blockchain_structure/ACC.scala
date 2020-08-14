@@ -6,10 +6,10 @@ import com.selfdualbrain.abstract_consensus.{PanoramaBuilderComponent, Reference
 //here:
 // - we pick abstract consensus variant to be used in the blockchain model
 // - we fill-in the extension points of abstract consensus implementation (like assigning concrete values to type params)
-object ACC extends ReferenceFinalityDetectorComponent[VertexId,ValidatorId,NormalBlock, Brick] with PanoramaBuilderComponent[VertexId,ValidatorId,NormalBlock, Brick] {
+object ACC extends ReferenceFinalityDetectorComponent[BlockdagVertexId,ValidatorId,NormalBlock, Brick] with PanoramaBuilderComponent[BlockdagVertexId,ValidatorId,NormalBlock, Brick] {
 
   object CmApi extends ConsensusMessageApi {
-    override def id(m: Brick): VertexId = m.id
+    override def id(m: Brick): BlockdagVertexId = m.id
 
     override def creator(m: Brick): ValidatorId = m.creator
 
@@ -17,7 +17,7 @@ object ACC extends ReferenceFinalityDetectorComponent[VertexId,ValidatorId,Norma
 
     override def justifications(m: Brick): Iterable[Brick] = m.justifications
 
-    override def daglevel(m: Brick): VertexId = m.daglevel
+    override def daglevel(m: Brick): BlockdagVertexId = m.daglevel
   }
 
   override val cmApi: ConsensusMessageApi = CmApi

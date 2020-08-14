@@ -124,7 +124,7 @@ class SimulationDisplayModel(val experimentConfig: ExperimentConfig, val engine:
     //we do complete recalculation of this set from scratch every time  the user changes "currently observed validator"
     private val knownBricks: mutable.Set[Brick] = new mutable.HashSet[Brick]()
 
-    private var msgBufferSnapshot: Iterable[(Brick, Brick)] = Iterable.empty
+    private var msgBufferSnapshot: MsgBufferSnapshot = Map.empty
 
     private var lastPartialSummitForCurrentBGame: Option[ACC.Summit] = None
 
@@ -138,7 +138,7 @@ class SimulationDisplayModel(val experimentConfig: ExperimentConfig, val engine:
 
     def isInJdag(brick: Brick): Boolean = knownBricks.contains(brick)
 
-    def currentMsgBufferSnapshot: Iterable[(Brick, Brick)] = msgBufferSnapshot
+    def currentMsgBufferSnapshot: MsgBufferSnapshot = msgBufferSnapshot
 
     //returns a pair: (last finalized block, partial summit for next finalized block
     def currentFinalitySituation: (Block, Option[ACC.Summit]) = (lastFinalizedBlock, lastPartialSummitForCurrentBGame)
@@ -543,12 +543,12 @@ object SimulationDisplayModel {
     }
 
     case class ReachExactSimulatedTimePoint(point: SimTimepoint) extends SimulationEngineStopCondition {
-      override def caseTag: VertexId = 3
+      override def caseTag: BlockdagVertexId = 3
       override def render(): String = point.toString
     }
 
     case class WallClockTimeDelta(hours: Int, minutes: Int, seconds: Int) extends SimulationEngineStopCondition {
-      override def caseTag: VertexId = 4
+      override def caseTag: BlockdagVertexId = 4
       override def render(): String = s"$hours:$minutes:$seconds"
     }
 

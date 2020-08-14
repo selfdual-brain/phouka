@@ -24,7 +24,7 @@ object OutputEventPayload {
   case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends OutputEventPayload(EventTag.CATASTROPHE)
 }
 
-case class MsgBufferTransition(snapshotBefore: Iterable[(Brick, Brick)], snapshotAfter: Iterable[(Brick, Brick)])
+case class MsgBufferTransition(snapshotBefore: MsgBufferSnapshot, snapshotAfter: MsgBufferSnapshot)
 
 object EventTag {
   val BRICK_DELIVERED = 1

@@ -22,8 +22,8 @@ import scala.collection.mutable.ArrayBuffer
   */
 class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
   private var localClock: SimTimepoint = SimTimepoint.zero
-  val messagesBuffer: BinaryRelation[Brick, Brick] = new SymmetricTwoWayIndexer[Brick,Brick]
-  var msgBufSnapshot: Iterable[(Brick, Brick)] = Iterable.empty
+  val messagesBuffer: MsgBuffer[Brick] = new MsgBufferImpl[Brick]
+//  var msgBufSnapshot: Iterable[(Brick, Brick)] = Iterable.empty
   val knownBricks = new mutable.HashSet[Brick](1000, 0.75)
 
 //  val jdagGraph: InferredDag[Brick] = new DagImpl[Brick](_.directJustifications)
@@ -43,8 +43,6 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   val blockVsBallot = new Picker[String](context.random, Map("block" -> context.blocksFraction, "ballot" -> (1 - context.blocksFraction)))
   val brickHashGenerator = new FakeSha256Digester(context.random, 8)
   var currentFinalityDetector: ACC.FinalityDetector = _
-//  var bufferAddCounter: Int = 0
-//  var bufferRemoveCounter: Int = 0
   var absoluteFtt: Ether = _
 
   override def toString: String = s"Validator-$validatorId"
@@ -85,13 +83,11 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
     } else {
       if (sherlockMode) {
         val bufferTransition = doBufferOp {
-          for (j <- missingDependencies)
-            messagesBuffer.addPair(msg,j)
+          messagesBuffer.addMessage(msg, missingDependencies)
         }
         context.addOutputEvent(localClock, OutputEventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferTransition))
       } else {
-        for (j <- missingDependencies)
-          messagesBuffer.addPair(msg,j)
+        messagesBuffer.addMessage(msg, missingDependencies)
       }
     }
   }
@@ -120,29 +116,28 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(nextBrick))
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextBrick))
         addToLocalJdag(nextBrick)
-        val waitingForThisOne = messagesBuffer.findSourcesFor(nextBrick)
+        val waitingForThisOne = messagesBuffer.findMessagesWaitingFor(nextBrick)
         if (sherlockMode && nextBrick != msg) {
           val bufferTransition = doBufferOp {
-            messagesBuffer.removeTarget(nextBrick)
+            messagesBuffer.fulfillDependency(nextBrick)
           }
           context.addOutputEvent(localClock, OutputEventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
         } else {
-          messagesBuffer.removeTarget(nextBrick)
+          messagesBuffer.fulfillDependency(nextBrick)
         }
-        val unblockedMessages = waitingForThisOne.filterNot(b => messagesBuffer.hasSource(b))
+        val unblockedMessages = waitingForThisOne.filterNot(b => messagesBuffer.contains(b))
         queue enqueueAll unblockedMessages
       }
     }
   }
 
-  private val nopTransition = MsgBufferTransition(msgBufSnapshot, msgBufSnapshot)
+  private val nopTransition = MsgBufferTransition(Map.empty, Map.empty)
 
   private def doBufferOp(operation: => Unit): MsgBufferTransition = {
     if (sherlockMode) {
-      val snapshotBefore = msgBufSnapshot
+      val snapshotBefore = messagesBuffer.snapshot
       operation
-      val snapshotAfter = messagesBuffer.toSeq
-      msgBufSnapshot = snapshotAfter
+      val snapshotAfter = messagesBuffer.snapshot
       return MsgBufferTransition(snapshotBefore, snapshotAfter)
     } else {
       operation
