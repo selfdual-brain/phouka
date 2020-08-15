@@ -6,4 +6,5 @@ trait MsgBuffer[E] {
   def contains(msg: E): Boolean
   def fulfillDependency(dependency: E): Unit
   def snapshot: Map[E, Set[E]]
+  def isEmpty: Boolean
 }

@@ -1,18 +1,41 @@
 import com.selfdualbrain.blockchain_structure.Genesis
 import com.selfdualbrain.gui._
 import com.selfdualbrain.gui_framework.SwingSessionManager
-import com.selfdualbrain.simulator_engine.{ExperimentConfig, PhoukaEngine}
+import com.selfdualbrain.randomness.IntSequenceConfig
+import com.selfdualbrain.simulator_engine.{ExperimentConfig, PhoukaEngine, StatsProcessorConfig}
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
+import com.selfdualbrain.time.TimeUnit
 import javax.swing.UIManager
 import org.slf4j.LoggerFactory
+
+import scala.util.Random
 
 object PresentersSandbox {
   private val log = LoggerFactory.getLogger(s"presenter-sandbox")
 
 //  val defaultFont = new Font("Ubuntu", Font.PLAIN, 13)
 
-  val config: ExperimentConfig = ExperimentConfig.default
+//  val config = ExperimentConfig.default
+
+  val config: ExperimentConfig = ExperimentConfig(
+    cyclesLimit = Long.MaxValue,
+    randomSeed = Some(new Random(42).nextLong()),
+    numberOfValidators = 10,
+    numberOfEquivocators = 2,
+    equivocationChanceAsPercentage = Some(2.0),
+    validatorsWeights = IntSequenceConfig.Fixed(1),
+    simLogDir = None,
+    validatorsToBeLogged = Seq.empty,
+    finalizerAckLevel = 3,
+    relativeFtt = 0.30,
+    brickProposeDelays = IntSequenceConfig.PoissonProcess(lambda = 5, unit = TimeUnit.MINUTES),
+    blocksFractionAsPercentage = 10,
+    networkDelays = IntSequenceConfig.PseudoGaussian(min = 30000, max = 60000),
+    runForkChoiceFromGenesis = true,
+    statsProcessor = Some(StatsProcessorConfig(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15))
+  )
+
   val engine: PhoukaEngine = new PhoukaEngine(config)
   val genesis: Genesis = engine.genesis
 
@@ -53,8 +76,18 @@ object PresentersSandbox {
 
     //run short simulation
     log.info("starting the simulation")
-    simulationDisplayModel.advanceTheSimulationBy(10000)
-    log.info(s"simulation completed, last step was: ${engine.lastStepExecuted}")
+    val t1 = measureExecutionTime {
+      simulationDisplayModel.advanceTheSimulationBy(12345)
+    }
+    log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepExecuted}")
+
+    //select last step
+    log.info("selecting last step (this involves updating the rendered state of validator 0)")
+
+    val t2 = measureExecutionTime {
+      simulationDisplayModel.displayStep(simulationDisplayModel.engine.lastStepExecuted.toInt)
+    }
+    log.info(s"selection of last step completed ($t2 millis)")
 
     //create desired controller
     val sessionManager = new SwingSessionManager
@@ -87,6 +120,10 @@ object PresentersSandbox {
         val p = new ValidatorsStatsPresenter
         p.model = simulationDisplayModel
         p
+      case 8 =>
+        val p = new MessageBufferPresenter
+        p.model = simulationDisplayModel
+        p
 
     }
     log.info("controller instance created")
@@ -101,6 +138,13 @@ object PresentersSandbox {
     val statsPrinter = new StatsPrinter(TextOutput.overConsole(4), config.numberOfValidators)
     println("========================== STATISTICS ==========================")
     statsPrinter.print(engine.stats)
+  }
+
+  def measureExecutionTime(block: => Unit): Long = {
+    val start = System.currentTimeMillis()
+    block
+    val stop = System.currentTimeMillis()
+    return stop - start
   }
 
 }

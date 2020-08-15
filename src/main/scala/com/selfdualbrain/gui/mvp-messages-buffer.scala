@@ -11,29 +11,34 @@ import com.selfdualbrain.simulator_engine.MsgBufferSnapshot
 
 class MessageBufferPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, MessageBufferPresenter, MessageBufferView, Nothing] {
 
-  override def afterModelConnected(): Unit = ???
+  override def afterModelConnected(): Unit = {
+    //do nothing
+  }
 
-  override def afterViewConnected(): Unit = ???
+  override def afterViewConnected(): Unit = {
+    //do nothing
+  }
 
-  override def createDefaultView(): Nothing = ???
+  override def createDefaultView(): MessageBufferView = new MessageBufferView(guiLayoutConfig)
 
-  override def createDefaultModel(): SimulationDisplayModel = ???
+  override def createDefaultModel(): SimulationDisplayModel = SimulationDisplayModel.createDefault()
 }
 
 class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, MessageBufferPresenter] {
   private val events_Table = new SmartTable(guiLayoutConfig)
-  this.setPreferredSize(new Dimension(1000,500))
+  this.setPreferredSize(new Dimension(500,400))
   this.add(events_Table, BorderLayout.CENTER)
-  this.surroundWithTitledBorder("Per-validator simulation statistics")
+  this.surroundWithTitledBorder("Messages buffer")
 
   var rawBufferSnapshot: MsgBufferSnapshot = Map.empty
   var sortedSeqOfWaitingBricks: Seq[Brick] = Seq.empty
 
   override def afterModelConnected(): Unit = {
+    refreshDataSnapshot()
     events_Table.initDefinition(new TableDef)
   }
 
-  private def refreshSnapshot(): Unit = {
+  private def refreshDataSnapshot(): Unit = {
     rawBufferSnapshot = model.stateOfObservedValidator.currentMsgBufferSnapshot
     sortedSeqOfWaitingBricks = rawBufferSnapshot.keys.toSeq.sortBy(brick => brick.id)
   }
@@ -54,7 +59,7 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 60
       ),
       ColumnDefinition[ValidatorId](
-        name = "Creator",
+        name = "CR",
         headerTooltip = "If of the validator that created the waiting brick",
         runtimeClassOfValues = classOf[ValidatorId],
         cellValueFunction = (rowIndex: Int) => sortedSeqOfWaitingBricks(rowIndex).creator,
@@ -64,7 +69,7 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 50
       ),
       ColumnDefinition[Int](
-        name = "Level",
+        name = "DL",
         headerTooltip = "Daglevel of the waiting brick",
         runtimeClassOfValues = classOf[Int],
         cellValueFunction = (rowIndex: Int) => sortedSeqOfWaitingBricks(rowIndex).daglevel,
@@ -84,7 +89,7 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         },
         textAlignment = TextAlignment.LEFT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 80,
+        preferredWidth = 120,
         maxWidth = 500
       )
     )
@@ -96,6 +101,18 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     override val columnsScalingMode: SmartTable.ColumnsScalingMode = SmartTable.ColumnsScalingMode.OFF
 
     override def calculateNumberOfRows: Int = sortedSeqOfWaitingBricks.size
+
+    //handling data change events emitted by simulation display model
+    model.subscribe(this) {
+      case SimulationDisplayModel.Ev.StepSelectionChanged(step) =>
+        refreshDataSnapshot()
+        trigger(SmartTable.DataEvent.GeneralDataChange)
+      case SimulationDisplayModel.Ev.ValidatorSelectionChanged(vid) =>
+        refreshDataSnapshot()
+        trigger(SmartTable.DataEvent.GeneralDataChange)
+      case other =>
+      //ignore
+    }
   }
 
 }

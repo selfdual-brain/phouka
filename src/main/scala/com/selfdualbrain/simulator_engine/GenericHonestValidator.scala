@@ -117,11 +117,10 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextBrick))
         addToLocalJdag(nextBrick)
         val waitingForThisOne = messagesBuffer.findMessagesWaitingFor(nextBrick)
-        if (sherlockMode && nextBrick != msg) {
-          val bufferTransition = doBufferOp {
-            messagesBuffer.fulfillDependency(nextBrick)
-          }
-          context.addOutputEvent(localClock, OutputEventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
+        if (sherlockMode) {
+          val bufferTransition = doBufferOp {messagesBuffer.fulfillDependency(nextBrick)}
+          if (nextBrick != msg)
+            context.addOutputEvent(localClock, OutputEventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
         } else {
           messagesBuffer.fulfillDependency(nextBrick)
         }
