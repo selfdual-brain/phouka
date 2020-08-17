@@ -20,7 +20,7 @@ import scala.collection.mutable.ArrayBuffer
   * @param context encapsulates features to be provided by hosting simulation engine
   * @param sherlockMode flag that enables emitting semantic events around msg buffer operations
   */
-class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, MessagePassingEventPayload, SemanticEventPayload] {
+class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator {
   private var localClock: SimTimepoint = SimTimepoint.zero
   val messagesBuffer: MsgBuffer[Brick] = new MsgBufferImpl[Brick]
   val knownBricks = new mutable.HashSet[Brick](1000, 0.75)
@@ -159,7 +159,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
 
   def createNewBrick(shouldBeBlock: Boolean): Brick = {
     registerProcessingTime(5L)
-    val creator: ValidatorId = context.validatorId
+    val creator: ValidatorId = validatorId
     mySwimlaneLastMessageSequenceNumber += 1
 
     val forkChoiceWinner: Block =
@@ -209,7 +209,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   }
 
   def scheduleNextWakeup(): Unit = {
-    context.addPrivateEvent(localClock + context.brickProposeDelaysGenerator.next() * 1000, MessagePassingEventPayload.WakeUpForCreatingNewBrick)
+    context.scheduleNextBrickPropose(localClock + context.brickProposeDelaysGenerator.next() * 1000)
   }
 
   //########################## J-DAG ##########################################

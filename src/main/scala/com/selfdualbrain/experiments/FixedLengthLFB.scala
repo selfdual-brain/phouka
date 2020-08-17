@@ -5,7 +5,7 @@ import java.io.File
 
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.gui_framework.SwingSessionManager
-import com.selfdualbrain.simulator_engine.{MessagePassingEventPayload, SemanticEventPayload, ExperimentConfig, PhoukaEngine}
+import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.SimTimepoint
@@ -13,7 +13,7 @@ import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.renderer.xy.{DeviationRenderer, XYItemRenderer, XYLineAndShapeRenderer}
 import org.jfree.chart.{ChartPanel, JFreeChart}
-import org.jfree.data.xy.{DefaultIntervalXYDataset, DefaultXYDataset, XYDataset, YIntervalSeries, YIntervalSeriesCollection}
+import org.jfree.data.xy.{DefaultXYDataset, XYDataset, YIntervalSeries, YIntervalSeriesCollection}
 
 /**
   * We run the simulation until the specified number of finalized blocks is achieved by validator 0.
@@ -22,6 +22,8 @@ object FixedLengthLFB {
 
   var lfbChainDesiredLength: Int = 0
   var config: ExperimentConfig = _
+  var expSetup: ExperimentSetup = _
+  var validatorsFactory: ValidatorsFactory = _
   var engine: PhoukaEngine = _
   val sessionManager = new SwingSessionManager
 
@@ -36,7 +38,9 @@ object FixedLengthLFB {
     if (! configFile.exists())
       throw new RuntimeException(s"file not found: ${args(0)}, absolute path was $absolutePath")
     config = ExperimentConfig.loadFrom(configFile)
-    engine = new PhoukaEngine(config)
+    expSetup = new ExperimentSetup(config)
+    validatorsFactory = new HonestValidatorsFactory(expSetup)
+    engine = new PhoukaEngine(expSetup, validatorsFactory)
 
     println("===================== STARTING SIMULATION ====================")
     simulationLoop()

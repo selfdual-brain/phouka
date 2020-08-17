@@ -12,32 +12,43 @@ import org.slf4j.LoggerFactory
 
 import scala.util.Random
 
-class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorId] {
+/**
+  * Implementation of SimulationEngine that runs the base model of a simple blockchain.
+  * In this model agents = validators.
+  * Agents (=validators) communicate via message passing.
+  * For an agent to be compatible with this engine, it must implement trait Validator.
+  *
+  * Caution: simulation recording and basic statistics are currently sealed into the engine.
+  * On the other hand, validators are pluggable (see - ValidatorsFactory).
+  *
+  * @param validatorsFactory validators factory to be used by this engine (for creating agents i.e. validators)
+  */
+class PhoukaEngine(experimentSetup: ExperimentSetup, validatorsFactory: ValidatorsFactory) extends SimulationEngine[ValidatorId] {
   self =>
   private val log = LoggerFactory.getLogger("** sim-engine")
-  val experimentSetup = new ExperimentSetup(config)
+  private val config: ExperimentConfig = experimentSetup.config
   val genesis: Genesis = Genesis(0)
 //  val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
   val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, experimentSetup.random)
   val desQueue: SimEventsQueue[ValidatorId, MessagePassingEventPayload, SemanticEventPayload] = new ClassicDesQueue[ValidatorId, MessagePassingEventPayload, SemanticEventPayload]
   var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
-  val recorder: Option[SimulationRecorder[ValidatorId]] = config.simLogDir map {dir =>
+
+  val recorder: Option[SimulationRecorder[ValidatorId]] = config.simLogDir map { dir =>
     val timeNow = java.time.LocalDateTime.now()
     val timestampAsString = timeNow.toString.replace(':', '-').replace('.','-')
     val filename = s"sim-log-$timestampAsString.txt"
     val file = new File(dir, filename)
-    new SimulationRecorder[ValidatorId](file, eagerFlush = true)
+    new TextFileSimulationRecorder[ValidatorId](file, eagerFlush = true)
   }
   val validatorsToBeLogged: Set[ValidatorId] = config.validatorsToBeLogged.toSet
   val statsProcessor: Option[IncrementalStatsProcessor with SimulationStats] = config.statsProcessor map { cfg => new DefaultStatsProcessor(experimentSetup) }
 
   //initialize validators
-  private val validators: Array[Validator[ValidatorId, MessagePassingEventPayload, SemanticEventPayload]] =
-    new Array[Validator[ValidatorId, MessagePassingEventPayload, SemanticEventPayload]](config.numberOfValidators)
+  private val validators: Array[Validator] = new Array[Validator](config.numberOfValidators)
   for (i <- validators.indices) {
     val context = new ValidatorContextImpl(i)
-    val newValidator = new GenericHonestValidator(i, context, sherlockMode = true)
+    val newValidator = validatorsFactory.create(i, context)
     newValidator.startup(desQueue.currentTime)
     validators(i) = newValidator
   }
@@ -118,8 +129,6 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
   private class ValidatorContextImpl(vid: ValidatorId) extends ValidatorContext {
     private val brickProposeDelaysGen = IntSequenceGenerator.fromConfig(config.brickProposeDelays, random)
 
-    override def validatorId: ValidatorId = vid
-
     override def weightsOfValidators: ValidatorId => Ether = experimentSetup.weightsOfValidators
 
     override def numberOfValidators: BlockdagVertexId = config.numberOfValidators
@@ -143,18 +152,22 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
     override def ackLevel: ValidatorId = config.finalizerAckLevel
 
     override def broadcast(localTime: SimTimepoint, brick: Brick): Unit = {
-      assert(brick.creator == validatorId)
-      self.broadcast(validatorId, localTime, brick)
+      assert(brick.creator == vid)
+      self.broadcast(vid, localTime, brick)
     }
 
     override def brickProposeDelaysGenerator: IntSequenceGenerator = brickProposeDelaysGen
 
+    override def scheduleNextBrickPropose(wakeUpTimepoint: SimTimepoint): Unit = {
+      desQueue.addMessagePassingEvent(wakeUpTimepoint, source = vid, destination = vid, MessagePassingEventPayload.WakeUpForCreatingNewBrick)
+    }
+
     override def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: MessagePassingEventPayload): Unit = {
-      desQueue.addMessagePassingEvent(wakeUpTimepoint, vid, vid, payload)
+      desQueue.addMessagePassingEvent(timepoint = wakeUpTimepoint, source = vid, destination = vid, payload)
     }
 
     override def addOutputEvent(timepoint: SimTimepoint, payload: SemanticEventPayload): Unit = {
-      desQueue.addOutputEvent(timepoint, vid, payload)
+      desQueue.addOutputEvent(timepoint, source = vid, payload)
     }
   }
 

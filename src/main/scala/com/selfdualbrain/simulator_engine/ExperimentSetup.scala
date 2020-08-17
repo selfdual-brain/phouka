@@ -7,7 +7,8 @@ import com.selfdualbrain.randomness.IntSequenceGenerator
 import scala.util.Random
 
 /**
-  * Experiment config + all the random choices that simulation engine had to make before running the simulation.
+  * Experiment config + all the choices that simulation engine has to make before running the simulation.
+  * In other words it is like "config materialized".
   */
 class ExperimentSetup(val config: ExperimentConfig) {
 
