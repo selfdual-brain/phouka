@@ -122,7 +122,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                                            message: ConsensusMessage): Option[ConsensusMessage] = {
 
       val relevantSubPanorama: Map[ValidatorId, ConsensusMessage] =
-        message2panorama(message).honestSwimlanesTips filter {case (v,msg) => candidatesConsidered.contains(v) && cmApi.daglevel(msg) >= cmApi.daglevel(context.entries(v))}
+        message2panorama(message).honestSwimlanesTips filter {case (v,msg) => candidatesConsidered.contains(v) && cmApi.daglevel(msg) >= cmApi.daglevel(context(v))}
 
       if (sumOfWeights(relevantSubPanorama.keys) >= quorum)
         return Some(message)

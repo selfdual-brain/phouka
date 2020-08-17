@@ -1,8 +1,8 @@
-package com.selfdualbrain.blockchain_structure
+package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.blockchain_structure.{BlockdagVertexId, Brick, Genesis, ValidatorId}
 import com.selfdualbrain.randomness.IntSequenceGenerator
-import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload}
 import com.selfdualbrain.time.SimTimepoint
 
 import scala.util.Random
@@ -22,6 +22,6 @@ trait ValidatorContext {
   def ackLevel: Int
   def brickProposeDelaysGenerator: IntSequenceGenerator
   def broadcast(localTime: SimTimepoint, brick: Brick): Unit
-  def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: NodeEventPayload)
-  def addOutputEvent(timepoint: SimTimepoint, payload: OutputEventPayload)
+  def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: MessagePassingEventPayload)
+  def addOutputEvent(timepoint: SimTimepoint, payload: SemanticEventPayload)
 }

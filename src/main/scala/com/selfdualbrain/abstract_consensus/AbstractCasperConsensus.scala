@@ -38,9 +38,10 @@ trait AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
   /**
     * Represents a j-dag trimmer.
     */
-  case class Trimmer(entries: Map[ValidatorId,ConsensusMessage]) {
+  case class Trimmer(entries: Map[ValidatorId,ConsensusMessage]) extends (ValidatorId => ConsensusMessage) {
     def validators: Iterable[ValidatorId] = entries.keys
     def validatorsSet: Set[ValidatorId] = validators.toSet
+    def apply(vid: ValidatorId): ConsensusMessage = entries(vid)
   }
 
   case class Summit(consensusValue: Con, relativeFtt: Double, level: Int, committees: Array[Trimmer], isFinalized: Boolean)

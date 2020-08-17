@@ -3,7 +3,7 @@ package com.selfdualbrain.stats
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{Ballot, NormalBlock, ValidatorId}
 import com.selfdualbrain.des.Event
-import com.selfdualbrain.simulator_engine.{ExperimentSetup, NodeEventPayload, OutputEventPayload}
+import com.selfdualbrain.simulator_engine.{ExperimentSetup, MessagePassingEventPayload, SemanticEventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -229,8 +229,8 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
       case Event.External(id, timepoint, destination, payload) => //ignored
       case Event.MessagePassing(id, timepoint, source, destination, payload) =>
         payload match {
-          case NodeEventPayload.WakeUpForCreatingNewBrick => //ignored
-          case NodeEventPayload.BrickDelivered(brick) =>
+          case MessagePassingEventPayload.WakeUpForCreatingNewBrick => //ignored
+          case MessagePassingEventPayload.BrickDelivered(brick) =>
             if (brick.isInstanceOf[NormalBlock])
               vid2stats(destination).receivedBlocksCounter += 1
             else
@@ -241,7 +241,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
         val vStats = vid2stats(validatorAnnouncingEvent)
 
         eventPayload match {
-          case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) =>
+          case SemanticEventPayload.BrickProposed(forkChoiceWinner, brick) =>
             brick match {
               case block: NormalBlock =>
                 publishedBlocksCounter += 1
@@ -255,7 +255,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
             vStats.myBrickdagSize += 1
             vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
 
-          case OutputEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
+          case SemanticEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
             if (brick.isInstanceOf[NormalBlock])
               vStats.acceptedBlocksCounter += 1
             else
@@ -265,11 +265,11 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
             vStats.myBrickdagSize += 1
             vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
 
-          case OutputEventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) =>
+          case SemanticEventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) =>
             vStats.numberOfBricksThatEnteredMsgBuffer += 1
             vStats.receivedHandledBricks += 1
 
-          case OutputEventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) =>
+          case SemanticEventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) =>
             vStats.numberOfBricksThatLeftMsgBuffer += 1
             if (brick.isInstanceOf[NormalBlock])
               vStats.acceptedBlocksCounter += 1
@@ -279,10 +279,10 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
             vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
             vStats.sumOfBufferingTimes += eventTimepoint.micros - brick.timepoint.micros
 
-          case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
+          case SemanticEventPayload.PreFinality(bGameAnchor, partialSummit) =>
             //do nothing
 
-          case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+          case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
             //because of how finality works, we may miss at most one finalityMap cell
             if (finalityMap.length < finalizedBlock.generation + 1)
               finalityMap += new LfbElementInfo(finalizedBlock.generation)
@@ -334,7 +334,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
             //within a single validator perspective, subsequent finality events are for blocks with generations 1,2,3,4,5 ...... (monotonic, no gaps, starting with 1)
             vStats.lastFinalizedBlockGeneration = finalizedBlock.generation
 
-          case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
+          case SemanticEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
             equivocators += evilValidator
             vid2stats(evilValidator).wasObservedAsEquivocatorX = true
             if (! vStats.observedEquivocators.contains(evilValidator)) {
@@ -342,7 +342,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
               vStats.weightOfObservedEquivocatorsX += weightsMap(evilValidator)
             }
 
-          case OutputEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
+          case SemanticEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
             vStats.isAfterObservingEquivocationCatastropheX = true
         }
 

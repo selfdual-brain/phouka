@@ -19,32 +19,32 @@ class SimulationRecorder[A](file: File, eagerFlush: Boolean) {
 
       case Event.MessagePassing(id, timepoint, source, destination, payload) =>
         payload match {
-          case NodeEventPayload.WakeUpForCreatingNewBrick =>
+          case MessagePassingEventPayload.WakeUpForCreatingNewBrick =>
             s"(validator $destination) propose wake-up"
-          case NodeEventPayload.BrickDelivered(block) =>
+          case MessagePassingEventPayload.BrickDelivered(block) =>
             s"(validator $destination) received $block"
         }
 
       case Event.Semantic(id, timepoint, source, payload) =>
         payload match {
-          case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) =>
+          case SemanticEventPayload.BrickProposed(forkChoiceWinner, brick) =>
             s"(validator $source) published $brick"
-          case OutputEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
+          case SemanticEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
             s"(validator $source) directly added incoming $brick to local blockdag"
-          case OutputEventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
+          case SemanticEventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
             val dependencies = missingDependencies.map(d => d.id).mkString(",")
             val bufSnapshot = msgBufferSnapshotDescription(bufTransition.snapshotAfter)
             s"(validator $source) added brick to msg buffer, brick=$brick missing dependencies = $dependencies, buffer state after=[$bufSnapshot]"
-          case OutputEventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
+          case SemanticEventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
             val bufSnapshot = msgBufferSnapshotDescription(bufTransition.snapshotAfter)
             s"(validator $source) accepted brick from msg buffer, brick=$brick, buffer state after=[$bufSnapshot]"
-          case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) =>
+          case SemanticEventPayload.PreFinality(bGameAnchor, partialSummit) =>
             s"(validator $source) pre-finality - level ${partialSummit.level}"
-          case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+          case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
             s"(validator $source) finalized $finalizedBlock - generation=${finalizedBlock.generation}"
-          case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
+          case SemanticEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
             s"(validator $source) detected equivocation by $evilValidator - conflicting bricks are ${brick1.id} and ${brick2.id}"
-          case OutputEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
+          case SemanticEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
             s"(validator $source) detected equivocation catastrophe - evil validators are ${validators.mkString(",")} absolute ftt exceeded by $absoluteFttExceededBy"
         }
     }

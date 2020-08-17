@@ -20,11 +20,14 @@ import scala.collection.mutable.ArrayBuffer
   * @param context encapsulates features to be provided by hosting simulation engine
   * @param sherlockMode flag that enables emitting semantic events around msg buffer operations
   */
-class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, NodeEventPayload, OutputEventPayload] {
+class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator[ValidatorId, MessagePassingEventPayload, SemanticEventPayload] {
   private var localClock: SimTimepoint = SimTimepoint.zero
   val messagesBuffer: MsgBuffer[Brick] = new MsgBufferImpl[Brick]
-//  var msgBufSnapshot: Iterable[(Brick, Brick)] = Iterable.empty
   val knownBricks = new mutable.HashSet[Brick](1000, 0.75)
+
+//Caution: explicit "local jdag" thing is currently commented-out because we managed to implement stuff without it.
+//That said, the local jdag is "conceptually" still there and it feels like this feature may be needed again soon.
+//This is the reason why the code is not just deleted.
 
 //  val jdagGraph: InferredDag[Brick] = new DagImpl[Brick](_.directJustifications)
 //  val mainTree: InferredTree[Block] = new InferredTreeImpl[Block](context.genesis, getParent = {
@@ -33,7 +36,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
 //  })
 
   var mySwimlaneLastMessageSequenceNumber: Int = -1
-  val mySwimlane = new ArrayBuffer[Brick](1000)
+  val mySwimlane = new ArrayBuffer[Brick](10000)
   var myLastMessagePublished: Option[Brick] = None
   val block2bgame = new mutable.HashMap[Block, BGame]
   var lastFinalizedBlock: Block = context.genesis
@@ -78,14 +81,14 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
     registerProcessingTime(1L)
 
     if (missingDependencies.isEmpty) {
-      context.addOutputEvent(localClock, OutputEventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
+      context.addOutputEvent(localClock, SemanticEventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
       runBufferPruningCascadeFor(msg)
     } else {
       if (sherlockMode) {
         val bufferTransition = doBufferOp {
           messagesBuffer.addMessage(msg, missingDependencies)
         }
-        context.addOutputEvent(localClock, OutputEventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferTransition))
+        context.addOutputEvent(localClock, SemanticEventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferTransition))
       } else {
         messagesBuffer.addMessage(msg, missingDependencies)
       }
@@ -120,7 +123,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
         if (sherlockMode) {
           val bufferTransition = doBufferOp {messagesBuffer.fulfillDependency(nextBrick)}
           if (nextBrick != msg)
-            context.addOutputEvent(localClock, OutputEventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
+            context.addOutputEvent(localClock, SemanticEventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
         } else {
           messagesBuffer.fulfillDependency(nextBrick)
         }
@@ -206,7 +209,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   }
 
   def scheduleNextWakeup(): Unit = {
-    context.addPrivateEvent(localClock + context.brickProposeDelaysGenerator.next() * 1000, NodeEventPayload.WakeUpForCreatingNewBrick)
+    context.addPrivateEvent(localClock + context.brickProposeDelaysGenerator.next() * 1000, MessagePassingEventPayload.WakeUpForCreatingNewBrick)
   }
 
   //########################## J-DAG ##########################################
@@ -220,12 +223,12 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
     if (newLastEq > oldLastEq) {
       for (vid <- equivocatorsRegistry.getNewEquivocators(oldLastEq)) {
         val (m1,m2) = globalPanorama.evidences(vid)
-        context.addOutputEvent(localTime, OutputEventPayload.EquivocationDetected(vid, m1, m2))
+        context.addOutputEvent(localTime, SemanticEventPayload.EquivocationDetected(vid, m1, m2))
         if (equivocatorsRegistry.areWeAtEquivocationCatastropheSituation) {
           val equivocators = equivocatorsRegistry.allKnownEquivocators
           val absoluteFttOverrun: Ether = equivocatorsRegistry.totalWeightOfEquivocators - absoluteFtt
           val relativeFttOverrun: Double = equivocatorsRegistry.totalWeightOfEquivocators.toDouble / context.totalWeight - context.relativeFTT
-          context.addOutputEvent(localTime, OutputEventPayload.EquivocationCatastrophe(equivocators, absoluteFttOverrun, relativeFttOverrun))
+          context.addOutputEvent(localTime, SemanticEventPayload.EquivocationCatastrophe(equivocators, absoluteFttOverrun, relativeFttOverrun))
         }
       }
     }
@@ -249,9 +252,9 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
     currentFinalityDetector.onLocalJDagUpdated(globalPanorama) match {
       case Some(summit) =>
         if (sherlockMode && ! summit.isFinalized)
-          context.addOutputEvent(localTime, OutputEventPayload.PreFinality(lastFinalizedBlock, summit))
+          context.addOutputEvent(localTime, SemanticEventPayload.PreFinality(lastFinalizedBlock, summit))
         if (summit.isFinalized) {
-          context.addOutputEvent(localTime, OutputEventPayload.BlockFinalized(lastFinalizedBlock, summit.consensusValue, summit))
+          context.addOutputEvent(localTime, SemanticEventPayload.BlockFinalized(lastFinalizedBlock, summit.consensusValue, summit))
           lastFinalizedBlock = summit.consensusValue
           currentFinalityDetector = createFinalityDetector(lastFinalizedBlock)
           advanceLfbChainAsManyStepsAsPossible()
@@ -277,6 +280,18 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
 
   //########################## FORK CHOICE #######################################
 
+  /**
+    * Straightforward implementation of fork choice, directly using the mathematical definition.
+    * We just recursively apply voting calculation available at b-games level.
+    *
+    * Caution: this implementation cannot be easily extended to do fork-choice validation of incoming messages.
+    * So in real implementation of the blockchain, way more sophisticated approach to fork-choice is required.
+    * But here in the simulator we simply ignore fork-choice validation, hence we can stick to this trivial
+    * implementation of fork choice. Our fork-choice is really only used at the moment of new brick creation.
+    *
+    * @param startingBlock block to start from
+    * @return the winner of the fork-choice algorithm
+    */
   @tailrec
   private def forkChoice(startingBlock: Block): Block =
     block2bgame(startingBlock).winnerConsensusValue match {
@@ -284,12 +299,14 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
       case None => startingBlock
   }
 
+  /**
+    * Finds my next brick up the swimlane (if present).
+    * @param brick brick to start from
+    * @return the closest brick upwards along my swimlane
+    */
   private def nextInSwimlane(brick: Brick): Option[Brick] = {
     val pos = brick.positionInSwimlane
-    return if (mySwimlane.size < pos + 2)
-      None
-    else
-      Some(mySwimlane(pos + 1))
+    return mySwimlane.lift(pos + 1)
   }
 
   //########################## LOCAL TIME #######################################

@@ -19,7 +19,7 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
   val genesis: Genesis = Genesis(0)
 //  val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
   val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, experimentSetup.random)
-  val desQueue: SimEventsQueue[ValidatorId, NodeEventPayload, OutputEventPayload] = new ClassicDesQueue[ValidatorId, NodeEventPayload, OutputEventPayload]
+  val desQueue: SimEventsQueue[ValidatorId, MessagePassingEventPayload, SemanticEventPayload] = new ClassicDesQueue[ValidatorId, MessagePassingEventPayload, SemanticEventPayload]
   var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
   val recorder: Option[SimulationRecorder[ValidatorId]] = config.simLogDir map {dir =>
@@ -33,7 +33,8 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
   val statsProcessor: Option[IncrementalStatsProcessor with SimulationStats] = config.statsProcessor map { cfg => new DefaultStatsProcessor(experimentSetup) }
 
   //initialize validators
-  private val validators = new Array[Validator[ValidatorId, NodeEventPayload, OutputEventPayload]](config.numberOfValidators)
+  private val validators: Array[Validator[ValidatorId, MessagePassingEventPayload, SemanticEventPayload]] =
+    new Array[Validator[ValidatorId, MessagePassingEventPayload, SemanticEventPayload]](config.numberOfValidators)
   for (i <- validators.indices) {
     val context = new ValidatorContextImpl(i)
     val newValidator = new GenericHonestValidator(i, context, sherlockMode = true)
@@ -59,7 +60,7 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
       case Event.External(id, timepoint, destination, payload) =>
         throw new RuntimeException("feature not supported (yet)")
       case Event.MessagePassing(id, timepoint, source, destination, payload) =>
-        handleMessagePassing(id, timepoint, source, destination, payload.asInstanceOf[NodeEventPayload])
+        handleMessagePassing(id, timepoint, source, destination, payload.asInstanceOf[MessagePassingEventPayload])
       case Event.Semantic(id, timepoint, source, payload) =>
         //ignore
     }
@@ -86,10 +87,10 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
 
   //################################# PRIVATE ##################################
 
-  protected def handleMessagePassing(id: Long, timepoint: SimTimepoint, source: ValidatorId, destination: ValidatorId, payload: NodeEventPayload): Unit = {
+  protected def handleMessagePassing(id: Long, timepoint: SimTimepoint, source: ValidatorId, destination: ValidatorId, payload: MessagePassingEventPayload): Unit = {
     payload match {
-      case NodeEventPayload.BrickDelivered(block) => validators(destination).onNewBrickArrived(desQueue.currentTime, block)
-      case NodeEventPayload.WakeUpForCreatingNewBrick => validators(destination).onScheduledBrickCreation(desQueue.currentTime)
+      case MessagePassingEventPayload.BrickDelivered(block) => validators(destination).onNewBrickArrived(desQueue.currentTime, block)
+      case MessagePassingEventPayload.WakeUpForCreatingNewBrick => validators(destination).onScheduledBrickCreation(desQueue.currentTime)
     }
   }
 
@@ -104,13 +105,13 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
       case x: NormalBlock => x.parent
       case x: Ballot => x.targetBlock
     }
-    desQueue.addOutputEvent(validatorTime, sender, OutputEventPayload.BrickProposed(forkChoiceWinner, brick))
+    desQueue.addOutputEvent(validatorTime, sender, SemanticEventPayload.BrickProposed(forkChoiceWinner, brick))
 
     for (i <- 0 until config.numberOfValidators if i != sender) {
       val qf: Long = experimentSetup.random.between(-500, 500).toLong //quantum fluctuation
       val effectiveDelay: Long = math.max(1, networkDelayGenerator.next() * 1000 + qf) // we enforce minimum delay = 1 microsecond
       val targetTimepoint: SimTimepoint = validatorTime + effectiveDelay
-      desQueue.addMessagePassingEvent(targetTimepoint, sender, i, NodeEventPayload.BrickDelivered(brick))
+      desQueue.addMessagePassingEvent(targetTimepoint, sender, i, MessagePassingEventPayload.BrickDelivered(brick))
     }
   }
 
@@ -148,11 +149,11 @@ class PhoukaEngine(config: ExperimentConfig) extends SimulationEngine[ValidatorI
 
     override def brickProposeDelaysGenerator: IntSequenceGenerator = brickProposeDelaysGen
 
-    override def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: NodeEventPayload): Unit = {
+    override def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: MessagePassingEventPayload): Unit = {
       desQueue.addMessagePassingEvent(wakeUpTimepoint, vid, vid, payload)
     }
 
-    override def addOutputEvent(timepoint: SimTimepoint, payload: OutputEventPayload): Unit = {
+    override def addOutputEvent(timepoint: SimTimepoint, payload: SemanticEventPayload): Unit = {
       desQueue.addOutputEvent(timepoint, vid, payload)
     }
   }

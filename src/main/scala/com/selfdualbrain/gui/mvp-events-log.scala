@@ -9,7 +9,7 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.ColumnDefinition
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartTable}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
-import com.selfdualbrain.simulator_engine.{EventTag, NodeEventPayload, OutputEventPayload}
+import com.selfdualbrain.simulator_engine.{EventTag, MessagePassingEventPayload, SemanticEventPayload}
 import com.selfdualbrain.time.SimTimepoint
 
 /**
@@ -165,19 +165,19 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       case Event.External(id, timepoint, destination, payload) => EMPTY
       case Event.MessagePassing(id, timepoint, source, destination, payload) =>
         payload match {
-          case NodeEventPayload.WakeUpForCreatingNewBrick => EMPTY
-          case NodeEventPayload.BrickDelivered(block) => s"$block"
+          case MessagePassingEventPayload.WakeUpForCreatingNewBrick => EMPTY
+          case MessagePassingEventPayload.BrickDelivered(block) => s"$block"
         }
       case Event.Semantic(id, timepoint, source, payload) =>
         payload match {
-          case OutputEventPayload.BrickProposed(forkChoiceWinner, brick) => s"$brick"
-          case OutputEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) => s"$brick"
-          case OutputEventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) => s"$brick (missing dependency: $dependency)"
-          case OutputEventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) => s"$brick"
-          case OutputEventPayload.PreFinality(bGameAnchor, partialSummit) => s"level ${partialSummit.level}"
-          case OutputEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
-          case OutputEventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"
-          case OutputEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) => s"absolute ftt exceeded by $absoluteFttExceededBy"
+          case SemanticEventPayload.BrickProposed(forkChoiceWinner, brick) => s"$brick"
+          case SemanticEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) => s"$brick"
+          case SemanticEventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) => s"$brick (missing dependency: $dependency)"
+          case SemanticEventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) => s"$brick"
+          case SemanticEventPayload.PreFinality(bGameAnchor, partialSummit) => s"level ${partialSummit.level}"
+          case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
+          case SemanticEventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"
+          case SemanticEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) => s"absolute ftt exceeded by $absoluteFttExceededBy"
         }
     }
 

@@ -5,7 +5,7 @@ import java.io.File
 
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.gui_framework.SwingSessionManager
-import com.selfdualbrain.simulator_engine.{NodeEventPayload, OutputEventPayload, ExperimentConfig, PhoukaEngine}
+import com.selfdualbrain.simulator_engine.{MessagePassingEventPayload, SemanticEventPayload, ExperimentConfig, PhoukaEngine}
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.SimTimepoint
@@ -53,14 +53,14 @@ object FixedLengthLFB {
         case Event.External(id, timepoint, destination, payload) =>
           //ignore
         case Event.MessagePassing(id, timepoint, source, destination, payload) =>
-          if (payload == NodeEventPayload.WakeUpForCreatingNewBrick) {
+          if (payload == MessagePassingEventPayload.WakeUpForCreatingNewBrick) {
             bricksCounter += 1
             if (bricksCounter % 10 == 0)
               println(s"$bricksCounter bricks created")
           }
         case Event.Semantic(id, timepoint, source, payload) =>
           payload match {
-            case OutputEventPayload.BlockFinalized(bGameAnchor, block, summit) =>
+            case SemanticEventPayload.BlockFinalized(bGameAnchor, block, summit) =>
               if (source == 0) {
                 println(s"validator 0 extended LFB chain to generation ${summit.consensusValue.generation}")
                 if (summit.consensusValue.generation == lfbChainDesiredLength)

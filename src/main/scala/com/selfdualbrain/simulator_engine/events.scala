@@ -6,22 +6,22 @@ import com.selfdualbrain.des.Event
 
 sealed abstract class EventPayload(val filteringTag: Int)
 
-sealed abstract class NodeEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
-object NodeEventPayload {
-  case class BrickDelivered(brick: Brick) extends NodeEventPayload(EventTag.BRICK_DELIVERED)
-  case object WakeUpForCreatingNewBrick extends NodeEventPayload(EventTag.WAKE_UP)
+sealed abstract class MessagePassingEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
+object MessagePassingEventPayload {
+  case class BrickDelivered(brick: Brick) extends MessagePassingEventPayload(EventTag.BRICK_DELIVERED)
+  case object WakeUpForCreatingNewBrick extends MessagePassingEventPayload(EventTag.WAKE_UP)
 }
 
-sealed abstract class OutputEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
-object OutputEventPayload {
-  case class BrickProposed(forkChoiceWinner: Block, brickJustCreated: Brick) extends OutputEventPayload(EventTag.BRICK_PROPOSED)
-  case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends OutputEventPayload(EventTag.DIRECT_ACCEPT)
-  case class AddedIncomingBrickToMsgBuffer(bufferedBrick: Brick, missingDependencies: Iterable[Brick], bufTransition: MsgBufferTransition)  extends OutputEventPayload(EventTag.ADDED_ENTRY_TO_BUF)
-  case class AcceptedIncomingBrickAfterBuffering(bufferedBrick: Brick, bufTransition: MsgBufferTransition) extends OutputEventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
-  case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends OutputEventPayload(EventTag.PRE_FINALITY)
-  case class BlockFinalized(bGameAnchor: Block, finalizedBlock: NormalBlock, summit: ACC.Summit) extends OutputEventPayload(EventTag.FINALITY)
-  case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends OutputEventPayload(EventTag.EQUIVOCATION)
-  case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends OutputEventPayload(EventTag.CATASTROPHE)
+sealed abstract class SemanticEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
+object SemanticEventPayload {
+  case class BrickProposed(forkChoiceWinner: Block, brickJustCreated: Brick) extends SemanticEventPayload(EventTag.BRICK_PROPOSED)
+  case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends SemanticEventPayload(EventTag.DIRECT_ACCEPT)
+  case class AddedIncomingBrickToMsgBuffer(bufferedBrick: Brick, missingDependencies: Iterable[Brick], bufTransition: MsgBufferTransition)  extends SemanticEventPayload(EventTag.ADDED_ENTRY_TO_BUF)
+  case class AcceptedIncomingBrickAfterBuffering(bufferedBrick: Brick, bufTransition: MsgBufferTransition) extends SemanticEventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
+  case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends SemanticEventPayload(EventTag.PRE_FINALITY)
+  case class BlockFinalized(bGameAnchor: Block, finalizedBlock: NormalBlock, summit: ACC.Summit) extends SemanticEventPayload(EventTag.FINALITY)
+  case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends SemanticEventPayload(EventTag.EQUIVOCATION)
+  case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends SemanticEventPayload(EventTag.CATASTROPHE)
 }
 
 case class MsgBufferTransition(snapshotBefore: MsgBufferSnapshot, snapshotAfter: MsgBufferSnapshot)
@@ -54,8 +54,8 @@ object EventTag {
   def of(event: Event[ValidatorId]): Int = {
     val p: EventPayload = event match {
       case Event.External(id, timepoint, destination, payload) => throw new RuntimeException("not supported")
-      case Event.MessagePassing(id, timepoint, source, destination, payload) => payload.asInstanceOf[NodeEventPayload]
-      case Event.Semantic(id, timepoint, source, payload) => payload.asInstanceOf[OutputEventPayload]
+      case Event.MessagePassing(id, timepoint, source, destination, payload) => payload.asInstanceOf[MessagePassingEventPayload]
+      case Event.Semantic(id, timepoint, source, payload) => payload.asInstanceOf[SemanticEventPayload]
     }
     return p.filteringTag
   }
