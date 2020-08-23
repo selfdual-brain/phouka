@@ -209,7 +209,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
 
     override def observedNumberOfEquivocators: Int = observedEquivocators.size
 
-    override def weightOfObservedEquivocators = weightOfObservedEquivocatorsX
+    override def weightOfObservedEquivocators: Ether = weightOfObservedEquivocatorsX
 
     override def isAfterObservingEquivocationCatastrophe: Boolean = isAfterObservingEquivocationCatastropheX
   }

@@ -11,12 +11,12 @@ import scala.collection.mutable
   * We do here incremental calculation of fork-choice on the level of a single b-game.
   *
   * Remark 1: This makes fork-choice pretty fast, while keeping the implementation super-simplistic.
-  * Would not be that good idea in real implementation of a blockchain, where fork-choice validation
-  * is also needed, so the fork-choice must take arbitrary panorama as input.
-  * In the simulator, we just ignore fork-choice validation, and so we can optimize for the single case
+  * Our approach would not be that good idea in real implementation of a blockchain, where fork-choice validation
+  * is also needed (in such case the fork-choice must take arbitrary panorama as input).
+  * In the simulator, we just ignore fork-choice validation at all and so we can optimize for the case
   * of fork choice that takes into account complete jdag.
   *
-  * Remark 2: We also cache the mapping of bricks to consensus values, which mostly speeds up
+  * Remark 2: We also cache the mapping of bricks to consensus values, which speeds up
   * finality detection. This could be avoided completely - falling back to just jdag traversing,
   * possibly with some optimizations via skip-lists. Again - here in this simulator we aim for
   * simplicity, so we just do pretty straightforward memoization (which is quite memory-consuming in fact).

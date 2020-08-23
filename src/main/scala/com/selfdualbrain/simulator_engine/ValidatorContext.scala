@@ -57,17 +57,43 @@ trait ValidatorContext {
     */
   def relativeFTT: Double
 
+  /**
+    * Absolute fault tolerance threshold to be used by the finalizer.
+    */
   def absoluteFTT: Ether
 
+  /**
+    * Acknowledgement level to be used by the finalizer.
+    */
   def ackLevel: Int
 
+  /**
+    * Generator of propose delays which follows the settings declared in experiment config.
+    * Validators may use these delays, but this is not mandatory.
+    */
   def brickProposeDelaysGenerator: IntSequenceGenerator
 
+  /**
+    * Sends given brick to all validators (excluding the sender).
+    * The engine will simulate network delays (accordingly to network delays model configured in the on-going experiment).
+    *
+    * @param localTime local time at the moment of sending
+    * @param brick brick to be delivered to everyone
+    */
   def broadcast(localTime: SimTimepoint, brick: Brick): Unit
 
+  /**
+    * Schedules a wake-up event for itself.
+    */
   def scheduleNextBrickPropose(wakeUpTimepoint: SimTimepoint)
 
+  /**
+    * General way of sending private events (= events an agent schedules for own future)
+    */
   def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: MessagePassingEventPayload)
 
+  /**
+    * General way of announcing semantic events.
+    */
   def addOutputEvent(timepoint: SimTimepoint, payload: SemanticEventPayload)
 }

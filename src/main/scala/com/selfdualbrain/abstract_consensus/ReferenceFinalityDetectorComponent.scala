@@ -37,7 +37,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
           else {
             @tailrec
             def detectSummit(committeesStack: List[Trimmer], levelEstablished: Int): Summit =
-              findCommittee(committeesStack.head, committeesStack.head.validatorsSet) match {
+              findCommittee(context = committeesStack.head, candidatesConsidered = committeesStack.head.validatorsSet) match {
                 case None => Summit(winnerConsensusValue, relativeFTT, levelEstablished, committeesStack.reverse.toArray, isFinalized = false)
                 case Some(trimmer) =>
                   if (levelEstablished + 1 == ackLevel)
@@ -90,9 +90,16 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
         findCommittee(context, candidatesAfterPruning)
     }
 
-    private def swimlaneIterator(message: ConsensusMessage): Iterator[ConsensusMessage] =
+    /**
+      * Iterator of messages in the swimlane.
+      * Starts from given messages and goes down (= towards older messages).
+      *
+      * @param startingMessage
+      * @return
+      */
+    private def swimlaneIterator(startingMessage: ConsensusMessage): Iterator[ConsensusMessage] =
       new Iterator[ConsensusMessage] {
-        var nextElement: Option[ConsensusMessage] = Some(message)
+        var nextElement: Option[ConsensusMessage] = Some(startingMessage)
 
         override def hasNext: Boolean = nextElement.isDefined
 
