@@ -1,12 +1,8 @@
 package com.selfdualbrain.simulator_engine
 
-import java.io.File
-
-import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
-import com.selfdualbrain.randomness.IntSequenceGenerator
-import com.selfdualbrain.stats.{DefaultStatsProcessor, IncrementalStatsProcessor, SimulationStats}
+import com.selfdualbrain.network.NetworkModel
 import com.selfdualbrain.time.SimTimepoint
 import org.slf4j.LoggerFactory
 
@@ -23,29 +19,26 @@ import scala.util.Random
   *
   * @param validatorsFactory validators factory to be used by this engine (for creating agents i.e. validators)
   */
-class PhoukaEngine(experimentSetup: ExperimentSetup, validatorsFactory: ValidatorsFactory) extends SimulationEngine[ValidatorId] {
-  self =>
+class PhoukaEngine(
+                    random: Random,
+                    numberOfValidators: Int,
+                    networkModel: NetworkModel[ValidatorId,Brick],
+                    validatorsFactory: ValidatorsFactory) extends SimulationEngine[ValidatorId] {
+
+  engine =>
+
   private val log = LoggerFactory.getLogger("** sim-engine")
-  private val config: ExperimentConfig = experimentSetup.config
   val genesis: Genesis = Genesis(0)
 //  val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
-  val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, experimentSetup.random)
+//  val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, experimentSetup.random)
   val desQueue: SimEventsQueue[ValidatorId, MessagePassingEventPayload, SemanticEventPayload] = new ClassicDesQueue[ValidatorId, MessagePassingEventPayload, SemanticEventPayload]
   var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
 
-  val recorder: Option[SimulationRecorder[ValidatorId]] = config.simLogDir map { dir =>
-    val timeNow = java.time.LocalDateTime.now()
-    val timestampAsString = timeNow.toString.replace(':', '-').replace('.','-')
-    val filename = s"sim-log-$timestampAsString.txt"
-    val file = new File(dir, filename)
-    new TextFileSimulationRecorder[ValidatorId](file, eagerFlush = true)
-  }
-  val validatorsToBeLogged: Set[ValidatorId] = config.validatorsToBeLogged.toSet
-  val statsProcessor: Option[IncrementalStatsProcessor with SimulationStats] = config.statsProcessor map { cfg => new DefaultStatsProcessor(experimentSetup) }
+
 
   //initialize validators
-  private val validators: Array[Validator] = new Array[Validator](config.numberOfValidators)
+  private val validators: Array[Validator] = new Array[Validator](numberOfValidators)
   for (i <- validators.indices) {
     val context = new ValidatorContextImpl(i)
     val newValidator = validatorsFactory.create(i, context)
@@ -57,11 +50,11 @@ class PhoukaEngine(experimentSetup: ExperimentSetup, validatorsFactory: Validato
 
   //################################# PUBLIC ##################################
 
-  override def hasNext: Boolean = desQueue.hasNext && stepId < config.cyclesLimit
+  override def hasNext: Boolean = desQueue.hasNext
 
   override def next(): (Long,Event[ValidatorId]) = {
-    if (stepId >= config.cyclesLimit)
-      throw new RuntimeException(s"cycles limit exceeded: ${config.cyclesLimit}")
+//    if (stepId >= config.cyclesLimit)
+//      throw new RuntimeException(s"cycles limit exceeded: ${config.cyclesLimit}")
 
     stepId += 1 //first step executed will have number 0
     val event: Event[ValidatorId] = desQueue.next()
@@ -76,25 +69,12 @@ class PhoukaEngine(experimentSetup: ExperimentSetup, validatorsFactory: Validato
         //ignore
     }
 
-    if (recorder.isDefined)
-      if (validatorsToBeLogged.isEmpty || validatorsToBeLogged.contains(event.loggingAgent))
-        recorder.get.record(stepId, event)
-
-    if (statsProcessor.isDefined)
-      statsProcessor.get.updateWithEvent(stepId, event)
-
     return (stepId, event)
   }
 
   override def lastStepExecuted: Long = stepId
 
   override def currentTime: SimTimepoint = desQueue.currentTime
-
-  def stats: SimulationStats = statsProcessor match {
-    case Some(p) => p
-    case None =>
-      throw new RuntimeException("stats processing was not enabled for this instance of the engine")
-  }
 
   //################################# PRIVATE ##################################
 
@@ -118,45 +98,27 @@ class PhoukaEngine(experimentSetup: ExperimentSetup, validatorsFactory: Validato
     }
     desQueue.addOutputEvent(validatorTime, sender, SemanticEventPayload.BrickProposed(forkChoiceWinner, brick))
 
-    for (i <- 0 until config.numberOfValidators if i != sender) {
-      val qf: Long = experimentSetup.random.between(-500, 500).toLong //quantum fluctuation
-      val effectiveDelay: Long = math.max(1, networkDelayGenerator.next() * 1000 + qf) // we enforce minimum delay = 1 microsecond
+    for (i <- 0 until numberOfValidators if i != sender) {
+      val effectiveDelay: Long = math.max(1, networkModel.calculateMsgDelay(brick, sender, i, validatorTime)) // we enforce minimum delay = 1 microsecond
       val targetTimepoint: SimTimepoint = validatorTime + effectiveDelay
       desQueue.addMessagePassingEvent(targetTimepoint, sender, i, MessagePassingEventPayload.BrickDelivered(brick))
     }
   }
 
   private class ValidatorContextImpl(vid: ValidatorId) extends ValidatorContext {
-    private val brickProposeDelaysGen = IntSequenceGenerator.fromConfig(config.brickProposeDelays, random)
 
-    override def weightsOfValidators: ValidatorId => Ether = experimentSetup.weightsOfValidators
+    override def numberOfValidators: BlockdagVertexId = engine.numberOfValidators
 
-    override def numberOfValidators: BlockdagVertexId = config.numberOfValidators
+    override def generateBrickId(): BlockdagVertexId = engine.nextBrickId()
 
-    override def totalWeight: Ether = experimentSetup.totalWeight
+    override def genesis: Genesis = engine.genesis
 
-    override def generateBrickId(): BlockdagVertexId = self.nextBrickId()
-
-    override def genesis: Genesis = self.genesis
-
-    override def random: Random = experimentSetup.random
-
-    override def blocksFraction: Double = config.blocksFractionAsPercentage / 100
-
-    override def runForkChoiceFromGenesis: Boolean = config.runForkChoiceFromGenesis
-
-    override def relativeFTT: Double = config.relativeFtt
-
-    override def absoluteFTT: Ether = experimentSetup.absoluteFtt
-
-    override def ackLevel: ValidatorId = config.finalizerAckLevel
+    override def random: Random = engine.random
 
     override def broadcast(localTime: SimTimepoint, brick: Brick): Unit = {
       assert(brick.creator == vid)
-      self.broadcast(vid, localTime, brick)
+      engine.broadcast(vid, localTime, brick)
     }
-
-    override def brickProposeDelaysGenerator: IntSequenceGenerator = brickProposeDelaysGen
 
     override def scheduleNextBrickPropose(wakeUpTimepoint: SimTimepoint): Unit = {
       desQueue.addMessagePassingEvent(wakeUpTimepoint, source = vid, destination = vid, MessagePassingEventPayload.WakeUpForCreatingNewBrick)

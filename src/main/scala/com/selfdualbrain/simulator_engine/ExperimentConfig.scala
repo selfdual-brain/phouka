@@ -37,7 +37,7 @@ case class ExperimentConfig(
                          equivocationChanceAsPercentage: Option[Double],
                          validatorsWeights: IntSequenceConfig,
                          simLogDir: Option[File],
-                         validatorsToBeLogged: Seq[ValidatorId],
+                         validatorsToBeLogged: Option[Seq[ValidatorId]],
                          finalizerAckLevel: Int,
                          relativeFtt: Double,
                          brickProposeDelays: IntSequenceConfig, //in milliseconds
@@ -66,7 +66,7 @@ object ExperimentConfig {
       equivocationChanceAsPercentage = config.asOptional.primitiveValue("equivocation-chance", DOUBLE),
       validatorsWeights = config.typeTaggedComposite("validators-weights", IntSequenceConfig.fromConfig),
       simLogDir = config.asOptional.encodedValue("sim-log-dir", path => new File(path)),
-      validatorsToBeLogged = config.collectionOfPrimValues[ValidatorId]("log-validators", INT),
+      validatorsToBeLogged = config.asOptional.collectionOfPrimValues[ValidatorId]("log-validators", INT),
       finalizerAckLevel = config.primitiveValue("finalizer-ack-level", INT),
       relativeFtt = config.primitiveValue("finalizer-relative-ftt", DOUBLE),
       brickProposeDelays = config.typeTaggedComposite("brick-propose-delays", IntSequenceConfig.fromConfig),
@@ -86,7 +86,7 @@ object ExperimentConfig {
     equivocationChanceAsPercentage = Some(2.0),
     validatorsWeights = IntSequenceConfig.Fixed(1),
     simLogDir = None,
-    validatorsToBeLogged = Seq.empty,
+    validatorsToBeLogged = None,
     finalizerAckLevel = 3,
     relativeFtt = 0.30,
     brickProposeDelays = IntSequenceConfig.PoissonProcess(lambda = 2, unit = TimeUnit.MINUTES), //on average a validator proposes 2 blocks per minute

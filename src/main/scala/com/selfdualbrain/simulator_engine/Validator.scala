@@ -34,5 +34,17 @@ trait Validator {
     */
   def onScheduledBrickCreation(time: SimTimepoint): Unit
 
+  /**
+    * A validator must keep own clock.
+    * This clock is needed so that time of execution of local operations can be simulated.
+    */
   def localTime: SimTimepoint
+
+  /**
+    * A validator must be able to clone itself.
+    * Data structures of the resulting copy must be completely detached from the original.
+    * This is needed for "split-brain" equivocators implementation.
+    */
+  def clone(): Validator
+
 }

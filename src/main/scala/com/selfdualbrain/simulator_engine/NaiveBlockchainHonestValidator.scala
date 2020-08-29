@@ -4,7 +4,7 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures._
 import com.selfdualbrain.hashing.FakeSha256Digester
-import com.selfdualbrain.randomness.Picker
+import com.selfdualbrain.randomness.{IntSequenceGenerator, Picker}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.annotation.tailrec
@@ -13,28 +13,40 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
-  * Implementation of a "honest" validator, i.e. a validator which never produces equivocations.
-  * Technically, a validator is an "agent" withing enclosing simulation engine.
+  * Implementation of a naive blockchain validator, honest variant.
+  *
+  * "Naive" corresponds to the bricks propose schedule, which is just "produce bricks at random points in time", with:
+  * - declared ad hoc probabilistic distribution of delays between subsequent "propose wake-ups"
+  * - declared average fraction of blocks along the published sequence of bricks
+  *
+  * "Honest" corresponds to this validator never producing equivocations.
+  *
+  * Caution: Technically, a validator is an "agent" within enclosing simulation engine.
   *
   * @param validatorId integer id of a validator; simulation engine allocates these ids from 0,...,n-1 interval
   * @param context encapsulates features to be provided by hosting simulation engine
-  * @param sherlockMode flag that enables emitting semantic events around msg buffer operations
+  * @param msgBufferSherlockMode flag that enables emitting semantic events around msg buffer operations
   */
-class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext, sherlockMode: Boolean) extends Validator {
+class NaiveBlockchainHonestValidator(
+                              validatorId: ValidatorId,
+                              context: ValidatorContext,
+                              weightsOfValidators: ValidatorId => Ether,
+                              totalWeight: Ether,
+                              blocksFraction: Double,
+                              runForkChoiceFromGenesis: Boolean,
+                              relativeFTT: Double,
+                              absoluteFTT: Ether,
+                              ackLevel: Int,
+                              brickProposeDelaysGenerator: IntSequenceGenerator,
+                              blockPayloadGenerator: IntSequenceGenerator,
+                              msgValidationCostModel: IntSequenceGenerator,
+                              msgCreationCostModel: IntSequenceGenerator,
+                              msgBufferSherlockMode: Boolean,
+                            ) extends Validator {
+
   private var localClock: SimTimepoint = SimTimepoint.zero
   val messagesBuffer: MsgBuffer[Brick] = new MsgBufferImpl[Brick]
   val knownBricks = new mutable.HashSet[Brick](1000, 0.75)
-
-//Caution: explicit "local jdag" thing is currently commented-out because we managed to implement stuff without it.
-//That said, the local jdag is "conceptually" still there and it feels like this feature may be needed again soon.
-//This is the reason why the code is not just deleted.
-
-//  val jdagGraph: InferredDag[Brick] = new DagImpl[Brick](_.directJustifications)
-//  val mainTree: InferredTree[Block] = new InferredTreeImpl[Block](context.genesis, getParent = {
-//    case b: NormalBlock => Some(b.parent)
-//    case g: Genesis => None
-//  })
-
   var mySwimlaneLastMessageSequenceNumber: Int = -1
   val mySwimlane = new ArrayBuffer[Brick](10000)
   var myLastMessagePublished: Option[Brick] = None
@@ -42,22 +54,42 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   var lastFinalizedBlock: Block = context.genesis
   var globalPanorama: ACC.Panorama = ACC.Panorama.empty
   val panoramasBuilder = new ACC.PanoramaBuilder
-  val equivocatorsRegistry = new EquivocatorsRegistry(context.numberOfValidators, context.weightsOfValidators, context.absoluteFTT)
-  val blockVsBallot = new Picker[String](context.random, Map("block" -> context.blocksFraction, "ballot" -> (1 - context.blocksFraction)))
+  val equivocatorsRegistry = new EquivocatorsRegistry(context.numberOfValidators, weightsOfValidators, absoluteFTT)
+  val blockVsBallot = new Picker[String](context.random, Map("block" -> blocksFraction, "ballot" -> (1 - blocksFraction)))
   val brickHashGenerator = new FakeSha256Digester(context.random, 8)
   var currentFinalityDetector: ACC.FinalityDetector = _
   var absoluteFtt: Ether = _
 
   override def toString: String = s"Validator-$validatorId"
 
+  override def clone(): Validator = {
+    val copy = new NaiveBlockchainHonestValidator(
+      validatorId,
+      context,
+      weightsOfValidators: ValidatorId => Ether,
+      totalWeight: Ether,
+      blocksFraction: Double,
+      runForkChoiceFromGenesis: Boolean,
+      relativeFTT: Double,
+      absoluteFTT: Ether,
+      ackLevel: Int,
+      brickProposeDelaysGenerator: IntSequenceGenerator,
+      blockPayloadGenerator: IntSequenceGenerator,
+      msgValidationCostModel: IntSequenceGenerator,
+      msgCreationCostModel: IntSequenceGenerator,
+      msgBufferSherlockMode: Boolean,
+
+    )
+  }
+
   def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
     val bgame: BGame = block2bgame(bGameAnchor)
     return new ACC.ReferenceFinalityDetector(
-      relativeFTT = context.relativeFTT,
-      context.absoluteFTT,
-      ackLevel = context.ackLevel,
-      weightsOfValidators = context.weightsOfValidators,
-      totalWeight = context.totalWeight,
+      relativeFTT,
+      absoluteFTT,
+      ackLevel,
+      weightsOfValidators,
+      totalWeight,
       nextInSwimlane,
       vote = brick => bgame.decodeVote(brick),
       message2panorama = panoramasBuilder.panoramaOf,
@@ -68,7 +100,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
 
   override def startup(time: SimTimepoint): Unit = {
     localClock = SimTimepoint.max(time, localClock)
-    val newBGame = new BGame(context.genesis, context.weightsOfValidators, equivocatorsRegistry)
+    val newBGame = new BGame(context.genesis, weightsOfValidators, equivocatorsRegistry)
     block2bgame += context.genesis -> newBGame
     currentFinalityDetector = createFinalityDetector(context.genesis)
     absoluteFtt = currentFinalityDetector.getAbsoluteFtt
@@ -78,13 +110,15 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   def onNewBrickArrived(time: SimTimepoint, msg: Brick): Unit = {
     localClock = SimTimepoint.max(time, localClock)
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! knownBricks.contains(j))
-    registerProcessingTime(1L)
+
+    //simulation of incoming message processing processing time
+    registerProcessingTime(msgValidationCostModel.next())
 
     if (missingDependencies.isEmpty) {
       context.addOutputEvent(localClock, SemanticEventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
       runBufferPruningCascadeFor(msg)
     } else {
-      if (sherlockMode) {
+      if (msgBufferSherlockMode) {
         val bufferTransition = doBufferOp {
           messagesBuffer.addMessage(msg, missingDependencies)
         }
@@ -97,7 +131,6 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
 
   override def onScheduledBrickCreation(time: SimTimepoint): Unit = {
     localClock = SimTimepoint.max(time, localClock)
-    registerProcessingTime(context.random.nextLong(1000) + 1) //todo: turn these delays into yet another simulation parameter (with random int sequence generator)
     blockVsBallot.select() match {
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)
@@ -120,7 +153,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
         globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextBrick))
         addToLocalJdag(nextBrick)
         val waitingForThisOne = messagesBuffer.findMessagesWaitingFor(nextBrick)
-        if (sherlockMode) {
+        if (msgBufferSherlockMode) {
           val bufferTransition = doBufferOp {messagesBuffer.fulfillDependency(nextBrick)}
           if (nextBrick != msg)
             context.addOutputEvent(localClock, SemanticEventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
@@ -136,7 +169,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   private val nopTransition = MsgBufferTransition(Map.empty, Map.empty)
 
   private def doBufferOp(operation: => Unit): MsgBufferTransition = {
-    if (sherlockMode) {
+    if (msgBufferSherlockMode) {
       val snapshotBefore = messagesBuffer.snapshot
       operation
       val snapshotAfter = messagesBuffer.snapshot
@@ -158,12 +191,14 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   }
 
   def createNewBrick(shouldBeBlock: Boolean): Brick = {
-    registerProcessingTime(5L)
+    //simulation of "create new message" processing time
+    registerProcessingTime(msgCreationCostModel.next())
+
     val creator: ValidatorId = validatorId
     mySwimlaneLastMessageSequenceNumber += 1
 
     val forkChoiceWinner: Block =
-      if (context.runForkChoiceFromGenesis)
+      if (runForkChoiceFromGenesis)
         forkChoice(context.genesis)
       else
         forkChoice(lastFinalizedBlock)
@@ -191,6 +226,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
           creator,
           prevInSwimlane = myLastMessagePublished,
           parent = forkChoiceWinner,
+          payloadSize = blockPayloadGenerator.next(),
           hash = brickHashGenerator.generateHash()
         )
       } else
@@ -209,13 +245,17 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
   }
 
   def scheduleNextWakeup(): Unit = {
-    context.scheduleNextBrickPropose(localClock + context.brickProposeDelaysGenerator.next() * 1000)
+    context.scheduleNextBrickPropose(localClock + brickProposeDelaysGenerator.next() * 1000)
   }
 
   //########################## J-DAG ##########################################
 
   def addToLocalJdag(brick: Brick): Unit = {
+    //adding one microsecond of simulated processing time here so that during buffer pruning cascade subsequent
+    //add-to-jdag events have different timepoints
+    //which makes the whole simulation looking more realistic
     registerProcessingTime(1L)
+
     knownBricks += brick
     val oldLastEq = equivocatorsRegistry.lastSeqNumber
     equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(globalPanorama.equivocators)
@@ -227,7 +267,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
         if (equivocatorsRegistry.areWeAtEquivocationCatastropheSituation) {
           val equivocators = equivocatorsRegistry.allKnownEquivocators
           val absoluteFttOverrun: Ether = equivocatorsRegistry.totalWeightOfEquivocators - absoluteFtt
-          val relativeFttOverrun: Double = equivocatorsRegistry.totalWeightOfEquivocators.toDouble / context.totalWeight - context.relativeFTT
+          val relativeFttOverrun: Double = equivocatorsRegistry.totalWeightOfEquivocators.toDouble / totalWeight - relativeFTT
           context.addOutputEvent(localTime, SemanticEventPayload.EquivocationCatastrophe(equivocators, absoluteFttOverrun, relativeFttOverrun))
         }
       }
@@ -235,8 +275,7 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
 
     brick match {
       case x: NormalBlock =>
-//        mainTree insert x
-        val newBGame = new BGame(x, context.weightsOfValidators, equivocatorsRegistry)
+        val newBGame = new BGame(x, weightsOfValidators, equivocatorsRegistry)
         block2bgame += x -> newBGame
         applyNewVoteToBGamesChain(brick, x)
       case x: Ballot =>
@@ -248,10 +287,14 @@ class GenericHonestValidator(validatorId: ValidatorId, context: ValidatorContext
 
   @tailrec
   private def advanceLfbChainAsManyStepsAsPossible(): Unit = {
+    //adding one microsecond of simulated processing time here so that when LFB chain is advancing
+    //several blocks at a time, subsequent finality events have different timepoints
+    //which makes the whole simulation looking more realistic
     registerProcessingTime(1L)
+
     currentFinalityDetector.onLocalJDagUpdated(globalPanorama) match {
       case Some(summit) =>
-        if (sherlockMode && ! summit.isFinalized)
+        if (msgBufferSherlockMode && ! summit.isFinalized)
           context.addOutputEvent(localTime, SemanticEventPayload.PreFinality(lastFinalizedBlock, summit))
         if (summit.isFinalized) {
           context.addOutputEvent(localTime, SemanticEventPayload.BlockFinalized(lastFinalizedBlock, summit.consensusValue, summit))

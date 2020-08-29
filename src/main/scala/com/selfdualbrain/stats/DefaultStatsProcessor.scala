@@ -2,7 +2,7 @@ package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{Ballot, NormalBlock, ValidatorId}
-import com.selfdualbrain.des.Event
+import com.selfdualbrain.des.{Event, SimulationObserver}
 import com.selfdualbrain.simulator_engine.{ExperimentSetup, MessagePassingEventPayload, SemanticEventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
@@ -19,7 +19,7 @@ import scala.collection.mutable.ArrayBuffer
   * MovingWindowBeepsCounter - helps counting finality events in a way that a moving-average of blocks-per-second performance metric can be calculated periodically
   * CircularSummingBuffer - helps in implementing MovingWindowBeepsCounter
   */
-class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends IncrementalStatsProcessor with SimulationStats {
+class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends SimulationObserver[ValidatorId] with SimulationStats {
 
   private val latencyMovingWindow: Int = experimentSetup.config.statsProcessor.get.latencyMovingWindow
   private val throughputMovingWindow: TimeDelta = TimeDelta.seconds(experimentSetup.config.statsProcessor.get.throughputMovingWindow)
@@ -219,7 +219,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Increm
     * Caution: the complexity of updating stats is O(1) with respect to stepId and O(n) with respect to number of validators.
     * Several optimizations are applied to ensure that all calculations are incremental.
     */
-  def updateWithEvent(stepId: Long, event: Event[ValidatorId]): Unit = {
+  def onSimulationEvent(stepId: Long, event: Event[ValidatorId]): Unit = {
     assert (stepId == lastStepId + 1, s"stepId=$stepId, lastStepId=$lastStepId")
     lastStepId = stepId
     lastStepTimepoint = event.timepoint

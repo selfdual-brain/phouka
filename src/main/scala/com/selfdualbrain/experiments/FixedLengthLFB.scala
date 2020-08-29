@@ -19,7 +19,6 @@ import org.jfree.data.xy.{DefaultXYDataset, XYDataset, YIntervalSeries, YInterva
   * We run the simulation until the specified number of finalized blocks is achieved by validator 0.
   */
 object FixedLengthLFB {
-
   var lfbChainDesiredLength: Int = 0
   var config: ExperimentConfig = _
   var expSetup: ExperimentSetup = _

@@ -121,7 +121,7 @@ class SimulationDisplayModel(val experimentConfig: ExperimentConfig, val engine:
 
     //set of bricks that are to be visually displayed in the "jdag graph" window
     //this set is incrementally updated every time the user changes "selected event";
-    //we do complete recalculation of this set from scratch every time  the user changes "currently observed validator"
+    //we perform a complete recalculation of this set from scratch every time the user re-selects "currently observed validator"
     private val knownBricks: mutable.Set[Brick] = new mutable.HashSet[Brick]()
 
     private var msgBufferSnapshot: MsgBufferSnapshot = Map.empty

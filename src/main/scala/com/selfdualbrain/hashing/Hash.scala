@@ -16,6 +16,15 @@ case class Hash(bytes: Array[Byte]) extends Ordered[Hash] {
     sb.toString
   }
 
+  private def convertBytesToHexDashed(bytes: Seq[Byte]): String = {
+    val sb = new StringBuilder
+    for (b <- bytes) {
+      sb.append(String.format("%02x", Byte.box(b)))
+      sb.append('-')
+    }
+    sb.toString
+  }
+
   override def compare(that: Hash): Int = {
     assert(bytes.length == that.bytes.length) //comparing hashes of different lengths considered illegal
     for (i <- 0 until math.min(bytes.length, that.bytes.length)) {

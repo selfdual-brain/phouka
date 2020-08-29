@@ -38,6 +38,7 @@ trait Brick extends BlockchainVertex {
 trait Block extends BlockchainVertex {
   def generation: Int
   def slashedInThisBlock: Iterable[ValidatorId]
+  def payloadSize: Int
 }
 
 case class Ballot(
@@ -64,6 +65,7 @@ case class NormalBlock(
                         creator: ValidatorId,
                         prevInSwimlane: Option[Brick],
                         parent: Block,
+                        payloadSize: Int,
                         hash: Hash
  ) extends Block with Brick {
 
@@ -78,5 +80,6 @@ case class Genesis(id: BlockdagVertexId) extends Block {
   override def generation: Int = 0
   override def daglevel: Int = 0
   override def slashedInThisBlock: Iterable[ValidatorId] = Iterable.empty
+  override def payloadSize: Int = 0
   override def toString: String = "Genesis"
 }

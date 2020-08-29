@@ -14,7 +14,7 @@ class ExperimentSetup(val config: ExperimentConfig) {
 
   val actualRandomSeed: Long = config.randomSeed.getOrElse(new Random().nextLong())
 
-  private[simulator_engine] val random: Random = new Random(actualRandomSeed)
+  val random: Random = new Random(actualRandomSeed)
 
   val weightsGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.validatorsWeights, random)
 

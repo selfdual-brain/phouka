@@ -2,7 +2,7 @@ package com.selfdualbrain.simulator_engine
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-import com.selfdualbrain.des.Event
+import com.selfdualbrain.des.{Event, SimulationObserver}
 
 /**
   * Default, simplistic simulation recorder that just writes events to a text file.
@@ -11,12 +11,22 @@ import com.selfdualbrain.des.Event
   * @param eagerFlush should the flush be done after every event ? (which decreases performance).
   * @tparam A type of agent ids
   */
-class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean) extends SimulationRecorder[A] {
+class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeLogged: Option[Iterable[A]]) extends SimulationObserver[A] {
   private val BUFFER_SIZE: Int = 8192 * 16 //16 times more than the default size hardcoded in JDK - this is important because usually we are going to write events with quite crazy speed
   private val fileWriter = new FileWriter(file)
   private val bufferedWriter = new BufferedWriter(fileWriter, BUFFER_SIZE)
+  private val agentsSet: Option[Set[A]] = agentsToBeLogged.map(coll => coll.toSet)
 
-  def record(step: Long, event: Event[A]): Unit = {
+  override def onSimulationEvent(step: Long, event: Event[A]): Unit =
+    agentsSet match {
+      case None =>
+        recordEvent(step, event)
+      case Some(set) =>
+        if (set.contains(event.loggingAgent))
+          recordEvent(step, event)
+    }
+
+  private def recordEvent(step: Long, event: Event[A]): Unit = {
     val prefix: String = s"$step:${event.timepoint.toString} [eid ${event.id}]: "
 
     val description = event match {

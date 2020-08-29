@@ -6,5 +6,5 @@ import com.selfdualbrain.blockchain_structure.ValidatorId
   * Only honest validators are produced.
   */
 class HonestValidatorsFactory(setup: ExperimentSetup) extends ValidatorsFactory {
-  override def create(id: ValidatorId, context: ValidatorContext): Validator = new GenericHonestValidator(id, context, sherlockMode = true)
+  override def create(id: ValidatorId, context: ValidatorContext): Validator = new NaiveBlockchainHonestValidator(id, context, msgBufferSherlockMode = true)
 }
