@@ -6,7 +6,7 @@ import com.selfdualbrain.time.SimTimepoint
 import scala.util.Random
 
 /**
-  * Defines features that the simulation engine exposes to agents (= validators) it runs.
+  * Defines features that the simulation engine exposes to agents (= blockchain nodes) it runs.
   */
 trait ValidatorContext {
 
@@ -17,6 +17,9 @@ trait ValidatorContext {
 
   /**
     * Number of validators.
+    *
+    * Caution: this is number of validators (= consensus protocol layer), not to be mistaken with current number of blockchain nodes
+    * (which the engine knows, but this information is not disclosed - blockchain node is not supposed to have access to this information).
     */
   def numberOfValidators: Int
 

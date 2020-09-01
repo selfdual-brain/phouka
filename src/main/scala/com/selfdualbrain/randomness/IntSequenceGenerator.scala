@@ -4,8 +4,8 @@ import com.selfdualbrain.time.TimeUnit
 
 import scala.util.Random
 
-trait IntSequenceGenerator {
-  def next(): Int
+trait IntSequenceGenerator extends Iterator[Int] {
+  override def hasNext: Boolean = true
 }
 
 object IntSequenceGenerator {
@@ -19,8 +19,8 @@ object IntSequenceGenerator {
       case IntSequenceConfig.Uniform(min, max) => new UniformGen(random, min, max)
       case IntSequenceConfig.Gaussian(mean, standardDeviation) => new GaussianGen(random, mean, standardDeviation)
       case IntSequenceConfig.PseudoGaussian(min, max) => new PseudoGaussianGen(random, min, max)
-      case IntSequenceConfig.PoissonProcess(lambda, unit) => new PoissonProcessGen(random, lambda, unit)
-      case IntSequenceConfig.Erlang(k, lambda, unit) => new ErlangGen(random, k, lambda, unit)
+      case IntSequenceConfig.PoissonProcess(lambda, lambdaUnit, outputUnit) => new PoissonProcessGen(random, lambda, lambdaUnit, outputUnit)
+      case IntSequenceConfig.Erlang(k, lambda, lambdaUnit, outputUnit) => new ErlangGen(random, k, lambda, lambdaUnit, outputUnit)
     }
 
   }
@@ -48,8 +48,8 @@ object IntSequenceGenerator {
   }
 
   class UniformGen(random: Random, min: Int, max: Int) extends IntSequenceGenerator {
-    val length: Int = max - min + 1
-    override def next(): Int = random.nextInt(length) + min
+    private val spread: Int = max - min + 1
+    override def next(): Int = random.nextInt(spread) + min
   }
 
   class PseudoGaussianGen(random: Random, min: Int, max: Int) extends IntSequenceGenerator {
@@ -72,13 +72,13 @@ object IntSequenceGenerator {
     override def next(): Int = math.max(0, (random.nextGaussian() * standardDeviation + mean).toInt)
   }
 
-  class PoissonProcessGen(random: Random, lambda: Double, unit: TimeUnit) extends IntSequenceGenerator {
-    val millisecondScaleLambda: Double = lambda * 1000 / (unit.oneUnitAsTimeDelta)  //scaling to events-per-one-millisecond
-    override def next(): Int = (- math.log(random.nextDouble()) / millisecondScaleLambda).toInt
+  class PoissonProcessGen(random: Random, lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends IntSequenceGenerator {
+    val scaledLambda: Double = lambda * (outputUnit.oneUnitAsTimeDelta / lambdaUnit.oneUnitAsTimeDelta)
+    override def next(): Int = (- math.log(random.nextDouble()) / scaledLambda).toInt
   }
 
-  class ErlangGen(random: Random, k: Int, lambda: Double, unit: TimeUnit) extends IntSequenceGenerator {
-    private val poisson = new PoissonProcessGen(random, lambda, unit)
+  class ErlangGen(random: Random, k: Int, lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends IntSequenceGenerator {
+    private val poisson = new PoissonProcessGen(random, lambda, lambdaUnit, outputUnit)
     override def next(): Int = (1 to k).map(i => poisson.next()).sum
   }
 

@@ -1,6 +1,6 @@
 package com.selfdualbrain.des
 
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
 
@@ -8,16 +8,29 @@ import scala.collection.mutable
  * Classic implementation of SimEventsQueue based on a priority queue.
  * This leads to a sequential, single-threaded simulation.
  */
-class ClassicDesQueue[A,AP,OP] extends SimEventsQueue[A,AP,OP] {
+class ClassicDesQueue[A,AP,OP,EP](extStreams: IndexedSeq[Iterator[ExtEventIngredients[A,EP]]], extEventsHorizonMargin: TimeDelta) extends SimEventsQueue[A,AP,OP,EP] {
   private var lastEventId: Long = 0L
   private var clock: SimTimepoint = SimTimepoint.zero
   private val queue = new mutable.PriorityQueue[Event[A]]()(Ordering[Event[A]].reverse)
+  private val numberOfExtStreams: Int = extStreams.size
+  private val extStreamEofFlags: Array[Boolean] = Array.fill(numberOfExtStreams)(false)
+  private val extStreamsClocks: Array[SimTimepoint] = new Array[SimTimepoint](numberOfExtStreams)
+  private var highestTimepointOfMessagePassingEvent: SimTimepoint = SimTimepoint.zero
+  private var currentExtEventsHorizon: SimTimepoint = SimTimepoint.zero
 
-  override def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: AP): Event[A] =
+  override def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: EP): Event[A] =
     this addEvent {id => Event.External(id, timepoint, destination, payload)}
 
-  override def addMessagePassingEvent(timepoint: SimTimepoint, source: A, destination: A, payload: AP): Event[A] =
-    this addEvent {id => Event.MessagePassing(id, timepoint, source, destination, payload)}
+  override def addMessagePassingEvent(timepoint: SimTimepoint, source: A, destination: A, payload: AP): Event[A] = {
+    val newEvent = this addEvent {id => Event.MessagePassing(id, timepoint, source, destination, payload)}
+    if (timepoint > highestTimepointOfMessagePassingEvent)
+      highestTimepointOfMessagePassingEvent = timepoint
+    if (highestTimepointOfMessagePassingEvent >= currentExtEventsHorizon) {
+      currentExtEventsHorizon += extEventsHorizonMargin
+      ensureExtEventsAreGeneratedUpToCurrentHorizon()
+    }
+    return newEvent
+  }
 
   override def addOutputEvent(timepoint: SimTimepoint, source: A, payload: OP): Event[A] =
     this addEvent {id => Event.Semantic(id, timepoint, source, payload)}
@@ -45,4 +58,20 @@ class ClassicDesQueue[A,AP,OP] extends SimEventsQueue[A,AP,OP] {
     queue.enqueue(newEvent)
     return newEvent
   }
+
+  private def ensureExtEventsAreGeneratedUpToCurrentHorizon(): Unit = {
+    for (i <- 0 until numberOfExtStreams if ! extStreamEofFlags(i)) {
+      while (extStreamsClocks(i) <= currentExtEventsHorizon && (! extStreamEofFlags(i))) {
+        val stream = extStreams(i)
+        if (stream.hasNext) {
+          val x = stream.next()
+          addExternalEvent(x.timepoint, x.destination, x.payload)
+          extStreamsClocks(i) = x.timepoint
+        } else {
+          extStreamEofFlags(i) = true
+        }
+      }
+    }
+  }
+
 }

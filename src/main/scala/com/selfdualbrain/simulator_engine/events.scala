@@ -3,6 +3,7 @@ package com.selfdualbrain.simulator_engine
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.Event
+import com.selfdualbrain.time.TimeDelta
 
 sealed abstract class EventPayload(val filteringTag: Int)
 
@@ -24,6 +25,13 @@ object SemanticEventPayload {
   case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends SemanticEventPayload(EventTag.CATASTROPHE)
 }
 
+sealed abstract class ExternalEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
+object ExternalEventPayload {
+  case class Bifurcation(numberOfClones: Int) extends ExternalEventPayload(EventTag.BIFURCATION)
+  case object NodeCrash extends ExternalEventPayload(EventTag.NODE_CRASH)
+  case class NetworkOutage(period: TimeDelta) extends ExternalEventPayload(EventTag.NETWORK_OUTAGE)
+}
+
 case class MsgBufferTransition(snapshotBefore: MsgBufferSnapshot, snapshotAfter: MsgBufferSnapshot)
 
 object EventTag {
@@ -37,6 +45,9 @@ object EventTag {
   val FINALITY = 8
   val EQUIVOCATION = 9
   val CATASTROPHE = 10
+  val BIFURCATION = 11
+  val NODE_CRASH = 12
+  val NETWORK_OUTAGE = 13
 
   val collection = Map(
     BRICK_DELIVERED -> "brick delivery",

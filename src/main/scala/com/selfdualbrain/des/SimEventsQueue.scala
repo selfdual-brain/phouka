@@ -9,12 +9,12 @@ import com.selfdualbrain.time.SimTimepoint
   * @tparam AP agent messages payload type
   * @tparam OP output messages payload type
   */
-trait SimEventsQueue[A,AP,OP] extends Iterator[Event[A]] {
+trait SimEventsQueue[A,AP,OP,EP] extends Iterator[Event[A]] {
 
   /**
     * Adds an event to the timeline.
     */
-  def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: AP): Event[A]
+  def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: EP): Event[A]
 
   /**
     * Adds an event to the timeline.
@@ -37,6 +37,8 @@ trait SimEventsQueue[A,AP,OP] extends Iterator[Event[A]] {
   def currentTime: SimTimepoint
 
 }
+
+case class ExtEventIngredients[A,EP](timepoint: SimTimepoint, destination: A, payload: EP)
 
 /**
   * Base class of (business-logic-independent) event envelopes to be used with SimEventsQueue.

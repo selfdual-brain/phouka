@@ -28,6 +28,7 @@ import scala.collection.mutable.ArrayBuffer
   * @param msgBufferSherlockMode flag that enables emitting semantic events around msg buffer operations
   */
 class NaiveBlockchainHonestValidator(
+                              blockchainNode: BlockchainNode,
                               validatorId: ValidatorId,
                               context: ValidatorContext,
                               weightsOfValidators: ValidatorId => Ether,
@@ -64,6 +65,7 @@ class NaiveBlockchainHonestValidator(
 
   override def clone(): Validator = {
     val copy = new NaiveBlockchainHonestValidator(
+      blockchainNode,
       validatorId,
       context,
       weightsOfValidators: ValidatorId => Ether,

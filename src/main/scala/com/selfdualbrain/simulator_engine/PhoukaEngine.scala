@@ -1,47 +1,59 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
+import com.selfdualbrain.des.{ClassicDesQueue, Event, ExtEventIngredients, SimEventsQueue, SimulationEngine}
 import com.selfdualbrain.network.NetworkModel
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import org.slf4j.LoggerFactory
 
+import scala.collection.immutable.ArraySeq
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 /**
   * Implementation of SimulationEngine that runs the base model of a simple blockchain.
-  * In this model agents = validators.
-  * Agents (=validators) communicate via message passing.
+  * In this model agents = validators. Agents (=validators) communicate via message passing.
   * For an agent to be compatible with this engine, it must implement trait Validator.
   *
-  * Caution: simulation recording and basic statistics are currently sealed into the engine.
-  * On the other hand, validators are pluggable (see - ValidatorsFactory).
+  * We support here a basic model of equivocators and node crashes.
+  *
+  * Equivocators are achieved via spawning a cloned node (with the same validator-id as original node).
+  * We call this "a bifurcation event". Both nodes continue to operate as honest validators, but together
+  * they for an equivocator. The bifurcation trick can be iterated (i.e. clones can also bifurcate).
+  *
+  * We also support a basic model of "dead nodes". A node can just suddenly "crash" and be dead forever.
+  *
+  * Both bifurcations and crashes are controlled via external events streams.
   *
   * @param validatorsFactory validators factory to be used by this engine (for creating agents i.e. validators)
   */
 class PhoukaEngine(
                     random: Random,
                     numberOfValidators: Int,
-                    networkModel: NetworkModel[ValidatorId,Brick],
-                    validatorsFactory: ValidatorsFactory) extends SimulationEngine[ValidatorId] {
+                    bifurcationEventsStream: Iterator[ExtEventIngredients[BlockchainNode, ExternalEventPayload]],
+                    crashEventsStream: Iterator[ExtEventIngredients[BlockchainNode, ExternalEventPayload]],
+                    networkModel: NetworkModel[BlockchainNode,Brick],
+                    validatorsFactory: ValidatorsFactory) extends SimulationEngine[BlockchainNode] {
 
   engine =>
 
   private val log = LoggerFactory.getLogger("** sim-engine")
   val genesis: Genesis = Genesis(0)
-//  val globalJDag: InferredDag[Brick] = new DagImpl[Brick](b => b.directJustifications)
-//  val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, experimentSetup.random)
-  val desQueue: SimEventsQueue[ValidatorId, MessagePassingEventPayload, SemanticEventPayload] = new ClassicDesQueue[ValidatorId, MessagePassingEventPayload, SemanticEventPayload]
+  val desQueue: SimEventsQueue[BlockchainNode, MessagePassingEventPayload, SemanticEventPayload, ExternalEventPayload] =
+    new ClassicDesQueue[BlockchainNode, MessagePassingEventPayload, SemanticEventPayload, ExternalEventPayload](
+      extStreams = ArraySeq(bifurcationEventsStream, crashEventsStream),
+      extEventsHorizonMargin = TimeDelta.minutes(1)
+    )
   var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
+  private var currentNumberOfNodes: Int = numberOfValidators
 
-
-
-  //initialize validators
-  private val validators: Array[Validator] = new Array[Validator](numberOfValidators)
+  //initialize nodes
+  //in the beginning we just create nodes which are 1-1 to validators
+  private val validators: ArrayBuffer[Validator] = new ArrayBuffer[Validator](numberOfValidators)
   for (i <- validators.indices) {
-    val context = new ValidatorContextImpl(i)
-    val newValidator = validatorsFactory.create(i, context)
+    val context = new ValidatorContextImpl(BlockchainNode(i))
+    val newValidator = validatorsFactory.create(BlockchainNode(i), i, context)
     newValidator.startup(desQueue.currentTime)
     validators(i) = newValidator
   }
@@ -52,12 +64,9 @@ class PhoukaEngine(
 
   override def hasNext: Boolean = desQueue.hasNext
 
-  override def next(): (Long,Event[ValidatorId]) = {
-//    if (stepId >= config.cyclesLimit)
-//      throw new RuntimeException(s"cycles limit exceeded: ${config.cyclesLimit}")
-
+  override def next(): (Long,Event[BlockchainNode]) = {
     stepId += 1 //first step executed will have number 0
-    val event: Event[ValidatorId] = desQueue.next()
+    val event: Event[BlockchainNode] = desQueue.next()
     if (log.isDebugEnabled() && stepId % 1000 == 0)
       log.debug(s"step $stepId")
     event match {
@@ -78,10 +87,10 @@ class PhoukaEngine(
 
   //################################# PRIVATE ##################################
 
-  protected def handleMessagePassing(id: Long, timepoint: SimTimepoint, source: ValidatorId, destination: ValidatorId, payload: MessagePassingEventPayload): Unit = {
+  protected def handleMessagePassing(id: Long, timepoint: SimTimepoint, source: BlockchainNode, destination: BlockchainNode, payload: MessagePassingEventPayload): Unit = {
     payload match {
-      case MessagePassingEventPayload.BrickDelivered(block) => validators(destination).onNewBrickArrived(desQueue.currentTime, block)
-      case MessagePassingEventPayload.WakeUpForCreatingNewBrick => validators(destination).onScheduledBrickCreation(desQueue.currentTime)
+      case MessagePassingEventPayload.BrickDelivered(block) => validators(destination.address).onNewBrickArrived(desQueue.currentTime, block)
+      case MessagePassingEventPayload.WakeUpForCreatingNewBrick => validators(destination.address).onScheduledBrickCreation(desQueue.currentTime)
     }
   }
 
@@ -90,22 +99,22 @@ class PhoukaEngine(
     return lastBrickId
   }
 
-  protected  def broadcast(sender: ValidatorId, validatorTime: SimTimepoint, brick: Brick): Unit = {
-    assert(validatorTime >= desQueue.currentTime)
+  protected  def broadcast(sender: BlockchainNode, senderLocalTime: SimTimepoint, brick: Brick): Unit = {
+    assert(senderLocalTime >= desQueue.currentTime)
     val forkChoiceWinner: Block = brick match {
       case x: NormalBlock => x.parent
       case x: Ballot => x.targetBlock
     }
-    desQueue.addOutputEvent(validatorTime, sender, SemanticEventPayload.BrickProposed(forkChoiceWinner, brick))
+    desQueue.addOutputEvent(senderLocalTime, sender, SemanticEventPayload.BrickProposed(forkChoiceWinner, brick))
 
-    for (i <- 0 until numberOfValidators if i != sender) {
-      val effectiveDelay: Long = math.max(1, networkModel.calculateMsgDelay(brick, sender, i, validatorTime)) // we enforce minimum delay = 1 microsecond
-      val targetTimepoint: SimTimepoint = validatorTime + effectiveDelay
-      desQueue.addMessagePassingEvent(targetTimepoint, sender, i, MessagePassingEventPayload.BrickDelivered(brick))
+    for (i <- 0 until currentNumberOfNodes if i != sender.address) {
+      val effectiveDelay: Long = math.max(1, networkModel.calculateMsgDelay(brick, sender, BlockchainNode(i), senderLocalTime)) // we enforce minimum delay = 1 microsecond
+      val targetTimepoint: SimTimepoint = senderLocalTime + effectiveDelay
+      desQueue.addMessagePassingEvent(targetTimepoint, sender, BlockchainNode(i), MessagePassingEventPayload.BrickDelivered(brick))
     }
   }
 
-  private class ValidatorContextImpl(vid: ValidatorId) extends ValidatorContext {
+  private class ValidatorContextImpl(nodeId: BlockchainNode) extends ValidatorContext {
 
     override def numberOfValidators: BlockdagVertexId = engine.numberOfValidators
 
@@ -116,20 +125,19 @@ class PhoukaEngine(
     override def random: Random = engine.random
 
     override def broadcast(localTime: SimTimepoint, brick: Brick): Unit = {
-      assert(brick.creator == vid)
-      engine.broadcast(vid, localTime, brick)
+      engine.broadcast(nodeId, localTime, brick)
     }
 
     override def scheduleNextBrickPropose(wakeUpTimepoint: SimTimepoint): Unit = {
-      desQueue.addMessagePassingEvent(wakeUpTimepoint, source = vid, destination = vid, MessagePassingEventPayload.WakeUpForCreatingNewBrick)
+      desQueue.addMessagePassingEvent(wakeUpTimepoint, source = nodeId, destination = nodeId, MessagePassingEventPayload.WakeUpForCreatingNewBrick)
     }
 
     override def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: MessagePassingEventPayload): Unit = {
-      desQueue.addMessagePassingEvent(timepoint = wakeUpTimepoint, source = vid, destination = vid, payload)
+      desQueue.addMessagePassingEvent(timepoint = wakeUpTimepoint, source = nodeId, destination = nodeId, payload)
     }
 
     override def addOutputEvent(timepoint: SimTimepoint, payload: SemanticEventPayload): Unit = {
-      desQueue.addOutputEvent(timepoint, source = vid, payload)
+      desQueue.addOutputEvent(timepoint, source = nodeId, payload)
     }
   }
 
