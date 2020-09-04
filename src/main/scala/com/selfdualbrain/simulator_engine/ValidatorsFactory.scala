@@ -15,6 +15,6 @@ trait ValidatorsFactory {
     * @param context agent context
     * @return new instance of an agent (= validator)
     */
-  def create(node: BlockchainNode, id: ValidatorId, context: ValidatorContext): Validator
+  def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator
 
 }

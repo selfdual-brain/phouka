@@ -32,19 +32,21 @@ import scala.util.Random
 case class ExperimentConfig(
                          cyclesLimit: Long,
                          randomSeed: Option[Long],
+                         networkModel: NetworkModelConfig,
                          numberOfValidators: Int,
-                         numberOfEquivocators: Int,
-                         equivocationChanceAsPercentage: Option[Double],
                          validatorsWeights: IntSequenceConfig,
-                         simLogDir: Option[File],
                          validatorsToBeLogged: Option[Seq[ValidatorId]],
                          finalizerAckLevel: Int,
                          relativeFtt: Double,
+                         bricksPropose: ProposeBehaviourConfig,
+                         disruptionModel: DisruptionModelConfig,
+                         runForkChoiceFromGenesis: Boolean,
+                         statsProcessor: Option[StatsProcessorConfig]
+
                          brickProposeDelays: IntSequenceConfig, //in milliseconds
                          blocksFractionAsPercentage: Double,
                          networkDelays: IntSequenceConfig, //in milliseconds
-                         runForkChoiceFromGenesis: Boolean,
-                         statsProcessor: Option[StatsProcessorConfig]
+
   )
 
 case class StatsProcessorConfig(
@@ -62,10 +64,9 @@ object ExperimentConfig {
       cyclesLimit = config.primitiveValue("cycles-limit", LONG),
       randomSeed = config.asOptional.primitiveValue("random-seed", LONG),
       numberOfValidators = config.primitiveValue("number-of-validators", INT),
-      numberOfEquivocators = config.primitiveValue("number-of-equivocators", INT),
-      equivocationChanceAsPercentage = config.asOptional.primitiveValue("equivocation-chance", DOUBLE),
+
       validatorsWeights = config.typeTaggedComposite("validators-weights", IntSequenceConfig.fromConfig),
-      simLogDir = config.asOptional.encodedValue("sim-log-dir", path => new File(path)),
+
       validatorsToBeLogged = config.asOptional.collectionOfPrimValues[ValidatorId]("log-validators", INT),
       finalizerAckLevel = config.primitiveValue("finalizer-ack-level", INT),
       relativeFtt = config.primitiveValue("finalizer-relative-ftt", DOUBLE),

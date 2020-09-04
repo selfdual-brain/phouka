@@ -12,6 +12,7 @@ class AsteroidImpactJustBelowFtt(
                                   weightsMap: ValidatorId => Ether,
                                   numberOfValidators: Int,
                                   disasterTimepoint: SimTimepoint) extends DisruptionModel {
+  override def hasNext: Boolean = ???
 
-
+  override def next(): Disruption = ???
 }

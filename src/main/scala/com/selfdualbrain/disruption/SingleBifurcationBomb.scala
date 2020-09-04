@@ -9,4 +9,8 @@ class SingleBifurcationBomb(
                              numberOfClones: Int
                            ) extends DisruptionModel {
 
+  override def hasNext: Boolean = ???
+
+  override def next(): Disruption = ???
+
 }

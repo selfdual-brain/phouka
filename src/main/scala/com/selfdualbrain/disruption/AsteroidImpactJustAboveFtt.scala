@@ -13,5 +13,7 @@ class AsteroidImpactJustAboveFtt(
                                   numberOfValidators: Int,
                                   disasterTimepoint: SimTimepoint) extends DisruptionModel {
 
+  override def hasNext: Boolean = ???
 
+  override def next(): Disruption = ???
 }

@@ -412,7 +412,7 @@ object SimulationDisplayModel {
   def createDefault(): SimulationDisplayModel = {
     val config = ExperimentConfig.default
     val expSetup = new ExperimentSetup(config)
-    val validatorsFactory = new HonestValidatorsFactory(expSetup)
+    val validatorsFactory = new NaiveValidatorsFactory(expSetup)
     val engine = new PhoukaEngine(expSetup, validatorsFactory)
     val genesis = engine.genesis
     new SimulationDisplayModel(config, engine, genesis)

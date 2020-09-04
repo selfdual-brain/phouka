@@ -4,7 +4,9 @@ import java.awt.{BasicStroke, Color, Dimension}
 import java.io.File
 
 import com.selfdualbrain.des.Event
+import com.selfdualbrain.disruption
 import com.selfdualbrain.gui_framework.SwingSessionManager
+import com.selfdualbrain.randomness.LongSequenceGenerator
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
@@ -14,6 +16,8 @@ import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.renderer.xy.{DeviationRenderer, XYItemRenderer, XYLineAndShapeRenderer}
 import org.jfree.chart.{ChartPanel, JFreeChart}
 import org.jfree.data.xy.{DefaultXYDataset, XYDataset, YIntervalSeries, YIntervalSeriesCollection}
+
+import scala.math.random
 
 /**
   * We run the simulation until the specified number of finalized blocks is achieved by validator 0.
@@ -38,8 +42,11 @@ object FixedLengthLFB {
       throw new RuntimeException(s"file not found: ${args(0)}, absolute path was $absolutePath")
     config = ExperimentConfig.loadFrom(configFile)
     expSetup = new ExperimentSetup(config)
-    validatorsFactory = new HonestValidatorsFactory(expSetup)
-    engine = new PhoukaEngine(expSetup, validatorsFactory)
+    validatorsFactory = new NaiveValidatorsFactory(expSetup)
+    val networkDelays = LongSequenceGenerator
+    val disruptionModel = new disruption.VanillaBlockchain
+    val networkModel =
+    engine = new PhoukaEngine(random, config.numberOfValidators, validatorsFactory, disruptionModel, )
 
     println("===================== STARTING SIMULATION ====================")
     simulationLoop()

@@ -2,7 +2,7 @@ import com.selfdualbrain.blockchain_structure.Genesis
 import com.selfdualbrain.gui._
 import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.randomness.IntSequenceConfig
-import com.selfdualbrain.simulator_engine.{ExperimentConfig, ExperimentSetup, HonestValidatorsFactory, PhoukaEngine, StatsProcessorConfig}
+import com.selfdualbrain.simulator_engine.{ExperimentConfig, ExperimentSetup, NaiveValidatorsFactory, PhoukaEngine, StatsProcessorConfig}
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.TimeUnit
@@ -37,7 +37,7 @@ object PresentersSandbox {
   )
 
   val expSetup = new ExperimentSetup(config)
-  val validatorsFactory = new HonestValidatorsFactory(expSetup)
+  val validatorsFactory = new NaiveValidatorsFactory(expSetup)
   val engine = new PhoukaEngine(expSetup, validatorsFactory)
   val genesis: Genesis = engine.genesis
 

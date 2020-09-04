@@ -1,7 +1,8 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.des.{ClassicDesQueue, Event, ExtEventIngredients, SimEventsQueue, SimulationEngine}
+import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
+import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.NetworkModel
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import org.slf4j.LoggerFactory
@@ -30,10 +31,10 @@ import scala.util.Random
 class PhoukaEngine(
                     random: Random,
                     numberOfValidators: Int,
-                    bifurcationEventsStream: Iterator[ExtEventIngredients[BlockchainNode, ExternalEventPayload]],
-                    crashEventsStream: Iterator[ExtEventIngredients[BlockchainNode, ExternalEventPayload]],
+                    validatorsFactory: ValidatorsFactory,
+                    disruptionModel: DisruptionModel,
                     networkModel: NetworkModel[BlockchainNode,Brick],
-                    validatorsFactory: ValidatorsFactory) extends SimulationEngine[BlockchainNode] {
+                ) extends SimulationEngine[BlockchainNode] {
 
   engine =>
 
@@ -41,7 +42,7 @@ class PhoukaEngine(
   val genesis: Genesis = Genesis(0)
   val desQueue: SimEventsQueue[BlockchainNode, MessagePassingEventPayload, SemanticEventPayload, ExternalEventPayload] =
     new ClassicDesQueue[BlockchainNode, MessagePassingEventPayload, SemanticEventPayload, ExternalEventPayload](
-      extStreams = ArraySeq(bifurcationEventsStream, crashEventsStream),
+      extStreams = ArraySeq(disruptionModel),
       extEventsHorizonMargin = TimeDelta.minutes(1)
     )
   var lastBrickId: BlockdagVertexId = 0
