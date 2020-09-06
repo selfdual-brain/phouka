@@ -19,14 +19,14 @@ import scala.util.Random
   */
 abstract class SimulationSetup {
   def actualRandomSeed: Long
-  def random: Random
+  def randomGenerator: Random
   def numberOfValidators: Int
   def weightOf(vid: ValidatorId): Ether
   def totalWeight: Ether
   def relativeWeightOf(vid: ValidatorId): Double
   def relativeFtt: Double
   def absoluteFtt: Ether
-  def runForkChoiceFromGenesis: Boolean
+  def isForkChoiceRunFromGenesis: Boolean
   def networkModel: NetworkModel[ValidatorId, Brick]
   def disruptionModel: DisruptionModel
   def engine: SimulationEngine[BlockchainNode]

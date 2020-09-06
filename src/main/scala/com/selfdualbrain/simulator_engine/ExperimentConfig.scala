@@ -5,55 +5,82 @@ import java.io.File
 import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.config_files_support.ConfigurationReader.PrimitiveType._
 import com.selfdualbrain.config_files_support.{ConfigurationReader, Hocon}
-import com.selfdualbrain.randomness.IntSequenceConfig
-import com.selfdualbrain.time.TimeUnit
+import com.selfdualbrain.randomness.{IntSequenceConfig, LongSequenceConfig}
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
 
 import scala.util.Random
 
 /**
   * Simulation experiment layout as defined by the end-user.
-  *
-  * @param cyclesLimit
-  * @param randomSeed
-  * @param numberOfValidators
-  * @param numberOfEquivocators
-  * @param equivocationChanceAsPercentage
-  * @param validatorsWeights
-  * @param simLogDir
-  * @param validatorsToBeLogged
-  * @param finalizerAckLevel
-  * @param relativeFtt
-  * @param brickProposeDelays
-  * @param blocksFractionAsPercentage
-  * @param networkDelays
-  * @param runForkChoiceFromGenesis
-  * @param statsProcessor
   */
 case class ExperimentConfig(
-                         cyclesLimit: Long,
                          randomSeed: Option[Long],
-                         networkModel: NetworkModelConfig,
+                         networkModel: NetworkConfig,
                          numberOfValidators: Int,
                          validatorsWeights: IntSequenceConfig,
-                         validatorsToBeLogged: Option[Seq[ValidatorId]],
-                         finalizerAckLevel: Int,
-                         relativeFtt: Double,
-                         bricksPropose: ProposeBehaviourConfig,
+                         finalizer: FinalizerConfig,
+                         forkChoiceStrategy: ForkChoiceStrategy,
+                         bricksProposeStrategy: ProposeStrategyConfig,
                          disruptionModel: DisruptionModelConfig,
-                         runForkChoiceFromGenesis: Boolean,
-                         statsProcessor: Option[StatsProcessorConfig]
+                         observers: Seq[ObserverConfig],
+                         blockPayloadModel: IntSequenceConfig,
+                         brickValidationCostModel: LongSequenceConfig,
+                         brickCreationCostModel: LongSequenceConfig,
+)
 
-                         brickProposeDelays: IntSequenceConfig, //in milliseconds
-                         blocksFractionAsPercentage: Double,
-                         networkDelays: IntSequenceConfig, //in milliseconds
+sealed abstract class NetworkConfig
+object NetworkConfig {
+  case class HomogenousNetworkWithRandomDelays(delaysGenerator: LongSequenceConfig) extends NetworkConfig
+  case class SymmetricLatencyBandwidthGraphNetwork(latencyAverageGen: LongSequenceConfig, latencyMinMaxSpread: LongSequenceConfig, bandwidthGen: LongSequenceConfig) extends NetworkConfig
+}
 
-  )
+sealed abstract class FinalizerConfig
+object FinalizerConfig {
+  case class SummitsTheoryV2(askLevel: Int, relativeFTT: Double) extends FinalizerConfig
+}
 
-case class StatsProcessorConfig(
-                         latencyMovingWindow: Int, //number of lfb-chain elements
-                         throughputMovingWindow: Int, //in seconds
-                         throughputCheckpointsDelta: Int //in seconds
-  )
+sealed abstract class ForkChoiceStrategy
+object ForkChoiceStrategy {
+  case object IteratedBGameStartingAtGenesis extends ForkChoiceStrategy
+  case object IteratedBGameStartingAtLastFinalized extends ForkChoiceStrategy
+}
+
+sealed abstract class ProposeStrategyConfig
+object ProposeStrategyConfig {
+  case class NaiveCasper(brickProposeDelays: LongSequenceConfig, blocksFractionAsPercentage: Double) extends ProposeStrategyConfig
+  case class RoundRobin(roundLength: TimeDelta) extends ProposeStrategyConfig
+  case class Highway(initialRoundExponent: Int, omegaDelay: Long, accelerationPeriod: Int, slowdownPeriod: Int) extends ProposeStrategyConfig
+}
+
+sealed abstract class DisruptionModelConfig
+object DisruptionModelConfig {
+  case object VanillaBlockchain extends DisruptionModelConfig
+  case class AsteroidImpactJustAboveFtt(disasterTimepoint: SimTimepoint) extends DisruptionModelConfig
+  case class AsteroidImpactJustBelowFtt(disasterTimepoint: SimTimepoint) extends DisruptionModelConfig
+  case class EquivocatorsJustAboveFtt(disasterTimepoint: SimTimepoint) extends DisruptionModelConfig
+  case class EquivocatorsJustBelowFtt(disasterTimepoint: SimTimepoint) extends DisruptionModelConfig
+  case class ExplicitDisruptionsSchedule(events: Seq[DisruptionEventDesc]) extends DisruptionModelConfig
+  case class FixedFrequencies() extends DisruptionModelConfig
+  case class SingleBifurcationBomb() extends DisruptionModelConfig
+}
+
+sealed abstract class DisruptionEventDesc
+object DisruptionEventDesc {
+  case class Bifurcation(targetNode: Int, timepoint: SimTimepoint, numberOfClones: Int) extends DisruptionEventDesc
+  case class NodeCrash(targetNode: Int, timepoint: SimTimepoint) extends DisruptionEventDesc
+  case class NetworkOutage(targetNode: Int, timepoint: SimTimepoint, outagePeriod: TimeDelta) extends DisruptionEventDesc
+}
+
+sealed abstract class ObserverConfig
+object ObserverConfig {
+  case class DefaultStatsProcessor(
+                                   latencyMovingWindow: Int, //number of lfb-chain elements
+                                   throughputMovingWindow: Int, //in seconds
+                                   throughputCheckpointsDelta: Int //in seconds
+                                 ) extends ObserverConfig
+  case class FileBasedRecorder(targetDir: File, validatorsToBeLogged: Seq[ValidatorId]) extends ObserverConfig
+
+}
 
 object ExperimentConfig {
 
@@ -61,7 +88,6 @@ object ExperimentConfig {
     val config = Hocon.fromFile(file)
 
     return ExperimentConfig(
-      cyclesLimit = config.primitiveValue("cycles-limit", LONG),
       randomSeed = config.asOptional.primitiveValue("random-seed", LONG),
       numberOfValidators = config.primitiveValue("number-of-validators", INT),
 

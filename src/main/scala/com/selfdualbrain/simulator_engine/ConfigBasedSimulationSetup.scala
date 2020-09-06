@@ -14,8 +14,8 @@ import scala.util.Random
   */
 class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends SimulationSetup {
   val actualRandomSeed: Long = config.randomSeed.getOrElse(new Random().nextLong())
-  val random: Random = new Random(actualRandomSeed)
-  val weightsGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.validatorsWeights, random)
+  val randomGenerator: Random = new Random(actualRandomSeed)
+  val weightsGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.validatorsWeights, randomGenerator)
   private val weightsArray: Array[Ether] = new Array[Ether](config.numberOfValidators)
   for (i <- weightsArray.indices)
     weightsArray(i) = weightsGenerator.next()

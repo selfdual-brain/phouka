@@ -5,7 +5,7 @@ import com.selfdualbrain.simulator_engine.{ConfigBasedSimulationSetup, Experimen
 /**
   * Base class for experiments based on ExperimentConfig.
   */
-abstract class ExperimentWithSingleEngineSetupBasedOnConfig extends Experiment {
+abstract class ExperimentWithSingleEngineSetupBasedOnConfig[T] extends Experiment[T] {
 
   protected var simulationSetup: SimulationSetup = _
 

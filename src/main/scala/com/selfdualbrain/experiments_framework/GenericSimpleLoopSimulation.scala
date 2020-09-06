@@ -13,23 +13,23 @@ import com.selfdualbrain.stats.SimulationStats
   *
   * Extension points are available before, during and after the main events processing loop.
   */
-abstract class GenericSimpleLoopSimulation extends ExperimentLoadingConfigFromFile {
+abstract class GenericSimpleLoopSimulation[T <: {def configFile: File}] extends ExperimentLoadingConfigFromFile[T] {
 
-  override def script(): Unit = {
-    loadConfig()
-    customizeEngineSetup()
+  override def script(args: T): Unit = {
+    loadConfig(args.configFile)
+    customizeSetup()
     runSimulationLoop()
-    afterTheLoop()
+    afterLoopIsFinished()
   }
 
-  def customizeEngineSetup(): Unit = {}
+  def customizeSetup(): Unit = {}
 
   def runSimulationLoop(): Unit = {
     //todo
 
   }
 
-  def afterTheLoop(): Unit = {}
+  def afterLoopIsFinished(): Unit = {}
 
   def printStats(stats: SimulationStats): Unit = {
     //todo
@@ -50,5 +50,6 @@ abstract class GenericSimpleLoopSimulation extends ExperimentLoadingConfigFromFi
   def enableRecording(targetDir: File, validatorsToBeLogged: Iterable[ValidatorId]): Unit = {
     //todo
   }
+
 
 }
