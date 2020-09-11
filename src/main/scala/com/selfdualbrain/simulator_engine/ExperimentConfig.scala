@@ -3,9 +3,10 @@ package com.selfdualbrain.simulator_engine
 import java.io.File
 
 import com.selfdualbrain.blockchain_structure.ValidatorId
-import com.selfdualbrain.config_files_support.ConfigurationReader.PrimitiveType._
-import com.selfdualbrain.config_files_support.{ConfigurationReader, Hocon}
+import com.selfdualbrain.config_files_support.ConfigParsingSupport
+import com.selfdualbrain.disruption.FttApproxMode
 import com.selfdualbrain.randomness.{IntSequenceConfig, LongSequenceConfig}
+import com.selfdualbrain.simulator_engine.ObserverConfig.{DefaultStatsProcessor, FileBasedRecorder}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
 
 import scala.util.Random
@@ -14,29 +15,44 @@ import scala.util.Random
   * Simulation experiment layout as defined by the end-user.
   */
 case class ExperimentConfig(
-                         randomSeed: Option[Long],
-                         networkModel: NetworkConfig,
-                         numberOfValidators: Int,
-                         validatorsWeights: IntSequenceConfig,
-                         finalizer: FinalizerConfig,
-                         forkChoiceStrategy: ForkChoiceStrategy,
-                         bricksProposeStrategy: ProposeStrategyConfig,
-                         disruptionModel: DisruptionModelConfig,
-                         observers: Seq[ObserverConfig],
-                         blockPayloadModel: IntSequenceConfig,
-                         brickValidationCostModel: LongSequenceConfig,
-                         brickCreationCostModel: LongSequenceConfig,
+                             randomSeed: Option[Long],
+                             networkModel: NetworkConfig,
+                             nodesComputingPowerModel: LongSequenceConfig, //values are interpreted as node nominal performance in [gas/second] units; for convenience we define a unit of performance 1 sprocket = 1 million gas/second
+                             numberOfValidators: Int,
+                             validatorsWeights: IntSequenceConfig,
+                             finalizer: FinalizerConfig,
+                             forkChoiceStrategy: ForkChoiceStrategy,
+                             bricksProposeStrategy: ProposeStrategyConfig,
+                             disruptionModel: DisruptionModelConfig,
+                             transactionsStreamModel: TransactionsStreamConfig,
+                             blocksBuildingStrategy: BlocksBuildingStrategyModel,
+                             brickCreationCostModel: LongSequenceConfig,
+                             brickValidationCostModel: LongSequenceConfig,
+                             observers: Seq[ObserverConfig]
 )
 
 sealed abstract class NetworkConfig
-object NetworkConfig {
+object NetworkConfig extends ConfigParsingSupport {
   case class HomogenousNetworkWithRandomDelays(delaysGenerator: LongSequenceConfig) extends NetworkConfig
   case class SymmetricLatencyBandwidthGraphNetwork(latencyAverageGen: LongSequenceConfig, latencyMinMaxSpread: LongSequenceConfig, bandwidthGen: LongSequenceConfig) extends NetworkConfig
 }
 
+sealed abstract class TransactionsStreamConfig
+object TransactionsStreamConfig {
+  case class IndependentSizeAndExecutionCost(sizeDistribution: IntSequenceConfig, costDistribution: LongSequenceConfig) extends TransactionsStreamConfig
+  case class Constant(size: Int, gas: Long) extends TransactionsStreamConfig
+}
+
+sealed abstract class BlocksBuildingStrategyModel
+object BlocksBuildingStrategyModel {
+  case class FixedNumberOfTransactions(n: Int) extends BlocksBuildingStrategyModel
+  case class CostAndSizeLimit(costLimit: Long, sizeLimit: Int) extends BlocksBuildingStrategyModel
+  case class CreatorProcessingTimeLimit(processingTime: TimeDelta) extends BlocksBuildingStrategyModel
+}
+
 sealed abstract class FinalizerConfig
 object FinalizerConfig {
-  case class SummitsTheoryV2(askLevel: Int, relativeFTT: Double) extends FinalizerConfig
+  case class SummitsTheoryV2(ackLevel: Int, relativeFTT: Double) extends FinalizerConfig
 }
 
 sealed abstract class ForkChoiceStrategy
@@ -55,10 +71,8 @@ object ProposeStrategyConfig {
 sealed abstract class DisruptionModelConfig
 object DisruptionModelConfig {
   case object VanillaBlockchain extends DisruptionModelConfig
-  case class AsteroidImpactJustAboveFtt(disasterTimepoint: SimTimepoint) extends DisruptionModelConfig
-  case class AsteroidImpactJustBelowFtt(disasterTimepoint: SimTimepoint) extends DisruptionModelConfig
-  case class EquivocatorsJustAboveFtt(disasterTimepoint: SimTimepoint) extends DisruptionModelConfig
-  case class EquivocatorsJustBelowFtt(disasterTimepoint: SimTimepoint) extends DisruptionModelConfig
+  case class AsteroidImpact(disasterTimepoint: SimTimepoint, fttApproxMode: FttApproxMode) extends DisruptionModelConfig
+  case class BifurcationsRainfall(disasterTimepoint: SimTimepoint, fttApproxMode: FttApproxMode) extends DisruptionModelConfig
   case class ExplicitDisruptionsSchedule(events: Seq[DisruptionEventDesc]) extends DisruptionModelConfig
   case class FixedFrequencies() extends DisruptionModelConfig
   case class SingleBifurcationBomb() extends DisruptionModelConfig
@@ -84,53 +98,34 @@ object ObserverConfig {
 
 object ExperimentConfig {
 
-  def loadFrom(file: File): ExperimentConfig = {
-    val config = Hocon.fromFile(file)
-
-    return ExperimentConfig(
-      randomSeed = config.asOptional.primitiveValue("random-seed", LONG),
-      numberOfValidators = config.primitiveValue("number-of-validators", INT),
-
-      validatorsWeights = config.typeTaggedComposite("validators-weights", IntSequenceConfig.fromConfig),
-
-      validatorsToBeLogged = config.asOptional.collectionOfPrimValues[ValidatorId]("log-validators", INT),
-      finalizerAckLevel = config.primitiveValue("finalizer-ack-level", INT),
-      relativeFtt = config.primitiveValue("finalizer-relative-ftt", DOUBLE),
-      brickProposeDelays = config.typeTaggedComposite("brick-propose-delays", IntSequenceConfig.fromConfig),
-      blocksFractionAsPercentage = config.primitiveValue("blocks-fraction", DOUBLE),
-      networkDelays = config.typeTaggedComposite("network-delays", IntSequenceConfig.fromConfig),
-      runForkChoiceFromGenesis = config.primitiveValue("run-fork-choice-from-genesis", BOOLEAN),
-      statsProcessor = config.asOptional.composite("stats-processor", StatsProcessorConfig.loadFrom)
-    )
-
-  }
-
   val default: ExperimentConfig = ExperimentConfig(
-    cyclesLimit = Long.MaxValue,
     randomSeed = Some(new Random(42).nextLong()),
-    numberOfValidators = 20,
-    numberOfEquivocators = 2,
-    equivocationChanceAsPercentage = Some(2.0),
+    networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequenceConfig.PseudoGaussian(100000, 20000000)),
+    nodesComputingPowerModel = LongSequenceConfig.Pareto(minValue = 10000, 1000000),
+    numberOfValidators = 10,
     validatorsWeights = IntSequenceConfig.Fixed(1),
-    simLogDir = None,
-    validatorsToBeLogged = None,
-    finalizerAckLevel = 3,
-    relativeFtt = 0.30,
-    brickProposeDelays = IntSequenceConfig.PoissonProcess(lambda = 2, unit = TimeUnit.MINUTES), //on average a validator proposes 2 blocks per minute
-    blocksFractionAsPercentage = 10, //blocks fraction as if in perfect round-robin (in every round there is one leader producing a block and others produce one ballot each)
-    networkDelays = IntSequenceConfig.PseudoGaussian(min = 500, max = 10000), //network delays in bricks delivery are between 0.5 sec up to 10 seconds
-    runForkChoiceFromGenesis = true,
-    statsProcessor = Some(StatsProcessorConfig(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15))
+    finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
+    forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
+    bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
+      brickProposeDelays = LongSequenceConfig.PoissonProcess(lambda = 2, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS), //on average a validator proposes 2 blocks per minute
+      blocksFractionAsPercentage = 10 //blocks fraction as if in perfect round-robin (in every round there is one leader producing a block and others produce one ballot each)
+    ),
+    disruptionModel = DisruptionModelConfig.VanillaBlockchain,
+    transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
+      sizeDistribution = IntSequenceConfig.Pareto(100, 2500),//in bytes
+      costDistribution = LongSequenceConfig.Pareto(1, 1000)   //in gas
+    ),
+    blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
+    brickCreationCostModel = LongSequenceConfig.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
+    brickValidationCostModel = LongSequenceConfig.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
+    observers = Seq(
+      DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
+      FileBasedRecorder(targetDir = new File("."), validatorsToBeLogged = Seq(0))
+    )
   )
 
 }
 
-object StatsProcessorConfig {
-  def loadFrom(config: ConfigurationReader): StatsProcessorConfig = StatsProcessorConfig(
-    latencyMovingWindow = config.primitiveValue("latency-moving-window", INT),
-    throughputMovingWindow = config.primitiveValue("throughput-moving-window", INT),
-    throughputCheckpointsDelta = config.primitiveValue(key = "throughput-checkpoints-delta", INT)
-  )
-}
+
 
 

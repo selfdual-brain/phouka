@@ -1,5 +1,9 @@
 package com.selfdualbrain.disruption
 
+import com.selfdualbrain.simulator_engine.DisruptionModelConfig
+
+import scala.util.Random
+
 /**
   * DisruptionModel encapsulates the idea of pluggable "blockchain operation disruptions", i.e. all phenomena that
   * model "bad things" happening to blockchain network, i.e. things that interfere with consensus.
@@ -24,5 +28,7 @@ package com.selfdualbrain.disruption
   */
 trait DisruptionModel extends Iterator[Disruption] {
 }
+
+
 
 

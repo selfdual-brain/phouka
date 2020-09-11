@@ -76,7 +76,6 @@ class FixedFrequencies(
       case 3 =>
         val outageLength = outageLengthGenerator.get.next()
         ExtEventIngredients(timepoint, BlockchainNode(selectedNode), ExternalEventPayload.NetworkOutage(outageLength))
-
     }
 
   }

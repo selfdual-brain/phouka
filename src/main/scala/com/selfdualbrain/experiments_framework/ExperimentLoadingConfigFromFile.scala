@@ -10,8 +10,8 @@ import com.selfdualbrain.simulator_engine.ExperimentConfig
 abstract class ExperimentLoadingConfigFromFile[T] extends ExperimentWithSingleEngineSetupBasedOnConfig[T] {
 
   def loadConfig(configFile: File): Unit = {
-    val config = ExperimentConfig.loadFrom(configFile)
-    this.initSimulationSetup(config)
+//    val config = ExperimentConfig.loadFrom(configFile)
+//    this.initSimulationSetup(config)
   }
 
 }

@@ -21,6 +21,7 @@ object IntSequenceGenerator {
       case IntSequenceConfig.PseudoGaussian(min, max) => new PseudoGaussianGen(random, min, max)
       case IntSequenceConfig.PoissonProcess(lambda, lambdaUnit, outputUnit) => new PoissonProcessGen(random, lambda, lambdaUnit, outputUnit)
       case IntSequenceConfig.Erlang(k, lambda, lambdaUnit, outputUnit) => new ErlangGen(random, k, lambda, lambdaUnit, outputUnit)
+      case IntSequenceConfig.Pareto(minValue, mean) => new ParetoGen(random, minValue, mean)
     }
 
   }
@@ -80,6 +81,12 @@ object IntSequenceGenerator {
   class ErlangGen(random: Random, k: Int, lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends IntSequenceGenerator {
     private val poisson = new PoissonProcessGen(random, lambda, lambdaUnit, outputUnit)
     override def next(): Int = (1 to k).map(i => poisson.next()).sum
+  }
+
+  class ParetoGen(random: Random, minValue: Double, mean: Double) extends IntSequenceGenerator {
+    private val alpha: Double = mean / (mean - minValue)
+    private val reciprocalOfAlpha: Double = 1 / alpha
+    override def next(): Int = (minValue / math.pow(random.nextDouble(), reciprocalOfAlpha)).toInt
   }
 
 }

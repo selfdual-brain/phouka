@@ -73,11 +73,15 @@ import scala.collection.mutable.ArrayBuffer
   * @param engine
   * @param genesis
   */
-class SimulationDisplayModel(val experimentConfig: ExperimentConfig, val engine: SimulationEngine[ValidatorId], genesis: Genesis) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
+class SimulationDisplayModel(
+                              val experimentConfig: ExperimentConfig,
+                              val engine: SimulationEngine[BlockchainNode],
+                              stats: SimulationStats,
+                              genesis: Genesis) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
 
   //only-growing collection of (all) events
   //index in this collection coincides with step-id
-  private val allEvents = new ArrayBuffer[Event[ValidatorId]]
+  private val allEvents = new ArrayBuffer[Event[BlockchainNode]]
 
   //This array is used as a map: validator-id ----> array-buffer.
   //(where the key is validator id - and it corresponds to array index).
@@ -276,7 +280,7 @@ class SimulationDisplayModel(val experimentConfig: ExperimentConfig, val engine:
 
   //--------------------- SIMULATION STATS -------------------------
 
-  def simulationStatistics: SimulationStats = engine.asInstanceOf[PhoukaEngine].stats
+  def simulationStatistics: SimulationStats = stats
 
   def perValidatorStats(vid: ValidatorId): ValidatorStats = simulationStatistics.perValidatorStats(vid)
 
@@ -411,11 +415,10 @@ object SimulationDisplayModel {
 
   def createDefault(): SimulationDisplayModel = {
     val config = ExperimentConfig.default
-    val expSetup = new ExperimentSetup(config)
-    val validatorsFactory = new NaiveValidatorsFactory(expSetup)
-    val engine = new PhoukaEngine(expSetup, validatorsFactory)
+    val setup = new ConfigBasedSimulationSetup(config)
+    val engine: PhoukaEngine = setup.engine.asInstanceOf[PhoukaEngine]
     val genesis = engine.genesis
-    new SimulationDisplayModel(config, engine, genesis)
+    new SimulationDisplayModel(config, engine, setup.guiCompatibleStats.get, genesis)
   }
 
   sealed abstract class Ev

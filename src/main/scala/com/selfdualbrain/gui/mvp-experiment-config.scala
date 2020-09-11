@@ -59,17 +59,17 @@ class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsL
   setPreferredSize(new Dimension(500, 330))
 
   override def afterModelConnected(): Unit = {
-    randomSeed_TextField <-- model.randomSeed
-    numberOfValidators_TextField <-- model.numberOfValidators
-    numberOfEquivocators_TextField <-- model.numberOfEquivocators
-    equivocationChance_TextField <-- model.equivocationChanceAsPercentage
-    validatorsWeights_TextField.setText(IntSequenceConfig.description(model.validatorsWeights))
-    finalizerAckLevel_TextField <-- model.finalizerAckLevel
-    relativeFtt_TextField <-- model.relativeFtt
-    brickProposeDelays_TextField <-- IntSequenceConfig.description(model.brickProposeDelays)
-    blocksFraction_TextField <-- model.blocksFractionAsPercentage
-    networkDelays_TextField <-- IntSequenceConfig.description(model.networkDelays)
-    runForkChoiceFromGenesis_JCheckBox <-- model.runForkChoiceFromGenesis
+//    randomSeed_TextField <-- model.randomSeed
+//    numberOfValidators_TextField <-- model.numberOfValidators
+//    numberOfEquivocators_TextField <-- model.numberOfEquivocators
+//    equivocationChance_TextField <-- model.equivocationChanceAsPercentage
+//    validatorsWeights_TextField.setText(IntSequenceConfig.description(model.validatorsWeights))
+//    finalizerAckLevel_TextField <-- model.finalizerAckLevel
+//    relativeFtt_TextField <-- model.relativeFtt
+//    brickProposeDelays_TextField <-- IntSequenceConfig.description(model.brickProposeDelays)
+//    blocksFraction_TextField <-- model.blocksFractionAsPercentage
+//    networkDelays_TextField <-- IntSequenceConfig.description(model.networkDelays)
+//    runForkChoiceFromGenesis_JCheckBox <-- model.runForkChoiceFromGenesis
   }
 
 }

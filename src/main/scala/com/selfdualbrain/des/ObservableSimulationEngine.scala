@@ -11,6 +11,8 @@ trait ObservableSimulationEngine[A] extends SimulationEngine[A] {
 
   def addObserver(observer: SimulationObserver[A]): Unit
 
+  def observers: Iterable[SimulationObserver[A]]
+
 }
 
 /**

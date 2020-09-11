@@ -21,6 +21,7 @@ object LongSequenceGenerator {
       case LongSequenceConfig.PseudoGaussian(min, max) => new PseudoGaussianGen(random, min, max)
       case LongSequenceConfig.PoissonProcess(lambda, lambdaUnit, outputUnit) => new PoissonProcessGen(random, lambda, lambdaUnit, outputUnit)
       case LongSequenceConfig.Erlang(k, lambda, lambdaUnit, outputUnit) => new ErlangGen(random, k, lambda, lambdaUnit, outputUnit)
+      case LongSequenceConfig.Pareto(minValue, mean) => new ParetoGen(random, minValue, mean)
     }
 
   }
@@ -80,6 +81,12 @@ object LongSequenceGenerator {
   class ErlangGen(random: Random, k: Int, lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends LongSequenceGenerator {
     private val poisson = new PoissonProcessGen(random, lambda, lambdaUnit, outputUnit)
     override def next(): Long = (1 to k).map(i => poisson.next()).sum
+  }
+
+  class ParetoGen(random: Random, minValue: Double, mean: Double) extends LongSequenceGenerator {
+    private val alpha: Double = mean / (mean - minValue)
+    private val reciprocalOfAlpha: Double = 1 / alpha
+    override def next(): Long = (minValue / math.pow(random.nextDouble(), reciprocalOfAlpha)).toLong
   }
 
 }

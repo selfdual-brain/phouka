@@ -1,16 +1,14 @@
 package com.selfdualbrain.disruption
 
-import com.selfdualbrain.blockchain_structure.ValidatorId
+import com.selfdualbrain.blockchain_structure.BlockchainNode
+import com.selfdualbrain.simulator_engine.ExternalEventPayload
 import com.selfdualbrain.time.SimTimepoint
 
 class SingleBifurcationBomb(
-                             targetValidatorId: ValidatorId,
+                             targetNode: BlockchainNode,
                              disasterTimepoint: SimTimepoint,
                              numberOfClones: Int
-                           ) extends DisruptionModel {
+                           ) extends SingleDisruptionModel(disasterTimepoint, targetNode) {
 
-  override def hasNext: Boolean = ???
-
-  override def next(): Disruption = ???
-
+  override def createPayload(): ExternalEventPayload = ExternalEventPayload.Bifurcation(numberOfClones)
 }

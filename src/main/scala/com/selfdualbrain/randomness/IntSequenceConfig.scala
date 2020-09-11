@@ -14,62 +14,54 @@ object IntSequenceConfig {
   case class Uniform(min: Int, max: Int) extends IntSequenceConfig
   case class PseudoGaussian(min: Int, max: Int) extends IntSequenceConfig
   case class Gaussian(mean: Double, standardDeviation: Double) extends IntSequenceConfig
-  case class PoissonProcess(lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends IntSequenceConfig //lambda = expected number of events per time unit, output from generator is sequence of delays
+  //lambda = expected number of events per time unit, output from generator is sequence of delays
+  case class PoissonProcess(lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends IntSequenceConfig
   case class Erlang(k: Int, lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends IntSequenceConfig
+  case class Pareto(minValue: Double, mean: Double) extends IntSequenceConfig
 
-  def fromConfig(keyword: String, config: ConfigurationReader): IntSequenceConfig = {
-    try {
-      keyword match {
-        case "fixed" => IntSequenceConfig.Fixed(
-          value = config.primitiveValue("value", INT))
-        case "linear" => IntSequenceConfig.Linear(
-          start = config.primitiveValue(key = "start", DOUBLE),
-          growth = config.primitiveValue(key = "growth", DOUBLE)
-        )
-        case "exponential" => IntSequenceConfig.Exponential(
-          start = config.primitiveValue(key = "start", DOUBLE),
-          growth = config.primitiveValue(key = "growth", DOUBLE)
-        )
-        case "rnd-uniform" => IntSequenceConfig.Uniform(
-          min = config.primitiveValue("min", INT),
-          max = config.primitiveValue("max", INT)
-        )
-        case "rnd-gaussian" => IntSequenceConfig.Gaussian(
-          mean = config.primitiveValue("mean", DOUBLE),
-          standardDeviation = config.primitiveValue("standard-deviation", DOUBLE)
-        )
-        case "rnd-pseudo-gaussian" => IntSequenceConfig.PseudoGaussian(
-          min = config.primitiveValue("min", INT),
-          max = config.primitiveValue("max", INT)
-        )
-        case "rnd-poisson" => IntSequenceConfig.PoissonProcess(
-          lambda = config.primitiveValue("lambda", DOUBLE),
-          lambdaUnit = config.encodedValue(key = "lambda-unit", decoder = TimeUnit.parse),
-          outputUnit = config.encodedValue(key = "output-unit", decoder = TimeUnit.parse)
-        )
-        case "rnd-erlang" => IntSequenceConfig.Erlang(
-          k = config.primitiveValue("k", INT),
-          lambda = config.primitiveValue("lambda", INT),
-          lambdaUnit = config.encodedValue(key = "unit", decoder = TimeUnit.parse),
-          outputUnit = config.encodedValue(key = "output-unit", decoder = TimeUnit.parse)
-        )
-        case other =>
-          throw new RuntimeException(s"unsupported value: $other")
-      }
-    } catch {
-      case ex: Exception => throw new RuntimeException("parsing failed", ex)
-    }
-  }
+//  def fromConfig(keyword: String, config: ConfigurationReader): IntSequenceConfig = {
+//    try {
+//      keyword match {
+//        case "fixed" => IntSequenceConfig.Fixed(
+//          value = config.primitiveValue("value", INT))
+//        case "linear" => IntSequenceConfig.Linear(
+//          start = config.primitiveValue(key = "start", DOUBLE),
+//          growth = config.primitiveValue(key = "growth", DOUBLE)
+//        )
+//        case "exponential" => IntSequenceConfig.Exponential(
+//          start = config.primitiveValue(key = "start", DOUBLE),
+//          growth = config.primitiveValue(key = "growth", DOUBLE)
+//        )
+//        case "rnd-uniform" => IntSequenceConfig.Uniform(
+//          min = config.primitiveValue("min", INT),
+//          max = config.primitiveValue("max", INT)
+//        )
+//        case "rnd-gaussian" => IntSequenceConfig.Gaussian(
+//          mean = config.primitiveValue("mean", DOUBLE),
+//          standardDeviation = config.primitiveValue("standard-deviation", DOUBLE)
+//        )
+//        case "rnd-pseudo-gaussian" => IntSequenceConfig.PseudoGaussian(
+//          min = config.primitiveValue("min", INT),
+//          max = config.primitiveValue("max", INT)
+//        )
+//        case "rnd-poisson" => IntSequenceConfig.PoissonProcess(
+//          lambda = config.primitiveValue("lambda", DOUBLE),
+//          lambdaUnit = config.encodedValue(key = "lambda-unit", decoder = TimeUnit.parse),
+//          outputUnit = config.encodedValue(key = "output-unit", decoder = TimeUnit.parse)
+//        )
+//        case "rnd-erlang" => IntSequenceConfig.Erlang(
+//          k = config.primitiveValue("k", INT),
+//          lambda = config.primitiveValue("lambda", INT),
+//          lambdaUnit = config.encodedValue(key = "unit", decoder = TimeUnit.parse),
+//          outputUnit = config.encodedValue(key = "output-unit", decoder = TimeUnit.parse)
+//        )
+//        case other =>
+//          throw new RuntimeException(s"unsupported value: $other")
+//      }
+//    } catch {
+//      case ex: Exception => throw new RuntimeException("parsing failed", ex)
+//    }
+//  }
 
-  def description(cfg: IntSequenceConfig): String = cfg match {
-    case Fixed(value) => s"fixed (value=$value)"
-    case Linear(start, growth) => s"linear (start=$start growth=$growth)"
-    case Exponential(start, growth) => s"exponential (start=$start growth=$growth)"
-    case Uniform(min, max) => s"uniform (min=$min max=$max)"
-    case PseudoGaussian(min, max) => s"pseudo-gaussian (min=$min max=$max)"
-    case Gaussian(mean, standardDeviation) => s"gaussian (mean=$mean standard-deviation=$standardDeviation)"
-    case PoissonProcess(lambda, lambdaUnit, outputUnit) => s"poisson-process (lambda=$lambda lambda-unit=$lambdaUnit outputUnit=$outputUnit)"
-    case Erlang(k, lambda, lambdaUnit, outputUnit) => s"erlang (k=$k lambda-unit=$lambdaUnit outputUnit=$outputUnit)"
-  }
 }
 

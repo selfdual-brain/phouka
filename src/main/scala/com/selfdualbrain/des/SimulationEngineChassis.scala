@@ -8,11 +8,13 @@ import com.selfdualbrain.time.SimTimepoint
   * @tparam A type of agent identifiers
   */
 class SimulationEngineChassis[A](engine: SimulationEngine[A]) extends ObservableSimulationEngine[A] {
-  private var observers: Seq[SimulationObserver[A]] = Seq.empty
+  private var observersX: Seq[SimulationObserver[A]] = Seq.empty
 
   override def addObserver(observer: SimulationObserver[A]): Unit = {
-    observers = observers.appended(observer)
+    observersX = observersX.appended(observer)
   }
+
+  override def observers: Iterable[SimulationObserver[A]] = observersX
 
   override def lastStepExecuted: Long = engine.lastStepExecuted
 
