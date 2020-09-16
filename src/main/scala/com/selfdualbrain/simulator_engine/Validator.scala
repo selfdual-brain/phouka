@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.Brick
+import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick}
 import com.selfdualbrain.time.SimTimepoint
 
 /**
@@ -43,8 +43,11 @@ trait Validator {
   /**
     * A validator must be able to clone itself.
     * Data structures of the resulting copy must be completely detached from the original.
-    * This is needed for "split-brain" equivocators implementation.
+    *
+    * Implementation remark: We use validators cloning as simplistic approach to the simulation of "equivocators".
+    * Two (or more) blockchain nodes that share the same validator-id but otherwise operate independently,
+    * effectively are seen as an equivocator.
     */
-  def clone(): Validator
+  def clone(blockchainNode: BlockchainNode, context: ValidatorContext): Validator
 
 }

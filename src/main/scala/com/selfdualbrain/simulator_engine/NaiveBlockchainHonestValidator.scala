@@ -3,14 +3,68 @@ package com.selfdualbrain.simulator_engine
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures._
-import com.selfdualbrain.hashing.FakeSha256Digester
-import com.selfdualbrain.randomness.{IntSequenceGenerator, Picker}
+import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
+import com.selfdualbrain.randomness.{IntSequenceConfig, IntSequenceGenerator, LongSequenceConfig, Picker}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
+
+object NaiveBlockchainHonestValidator {
+  case class Config(
+                     validatorId: ValidatorId,
+                     random: Random,
+                     weightsOfValidators: ValidatorId => Ether,
+                     totalWeight: Ether,
+                     blocksFraction: Double,
+                     runForkChoiceFromGenesis: Boolean,
+                     relativeFTT: Double,
+                     absoluteFTT: Ether,
+                     ackLevel: Int,
+                     brickProposeDelaysGenerator: LongSequenceConfig,
+                     blockPayloadGenerator: IntSequenceConfig,
+                     msgValidationCostModel: LongSequenceConfig,
+                     msgCreationCostModel: LongSequenceConfig,
+                     msgBufferSherlockMode: Boolean
+                   )
+
+  case class StateSnapshot(
+                     localClock: SimTimepoint,
+                     messagesBuffer: MsgBuffer[Brick],
+                     knownBricks: mutable.Set[Brick],
+                     mySwimlaneLastMessageSequenceNumber: Int,
+                     mySwimlane: ArrayBuffer[Brick],
+                     myLastMessagePublished: Option[Brick],
+                     block2bgame: mutable.Map[Block, BGame],
+                     lastFinalizedBlock: Block,
+                     globalPanorama: ACC.Panorama,
+                     panoramasBuilder: ACC.PanoramaBuilder,
+                     equivocatorsRegistry: EquivocatorsRegistry,
+                     blockVsBallot: Picker[String],
+                     brickHashGenerator: CryptographicDigester
+                  ) extends Cloneable {
+
+    override def clone(): StateSnapshot = StateSnapshot(
+      localClock = this.localClock,
+      messagesBuffer = this.messagesBuffer.clone().asInstanceOf[MsgBuffer[Brick]],
+      knownBricks = this.knownBricks.clone(),
+      mySwimlaneLastMessageSequenceNumber = this.mySwimlaneLastMessageSequenceNumber,
+      mySwimlane = this.mySwimlane.clone(),
+      myLastMessagePublished = this.myLastMessagePublished,
+      block2bgame = this.block2bgame.clone(),
+      lastFinalizedBlock = this.lastFinalizedBlock,
+      globalPanorama = this.globalPanorama,
+      panoramasBuilder = new ACC.PanoramaBuilder,
+      equivocatorsRegistry = this.equivocatorsRegistry.clone(),
+      blockVsBallot = this.blockVsBallot,
+      brickHashGenerator = this.brickHashGenerator
+    )
+  }
+
+}
 
 /**
   * Implementation of a naive blockchain validator, honest variant.
@@ -27,85 +81,73 @@ import scala.collection.mutable.ArrayBuffer
   * @param context encapsulates features to be provided by hosting simulation engine
   * @param msgBufferSherlockMode flag that enables emitting semantic events around msg buffer operations
   */
-class NaiveBlockchainHonestValidator(
+class NaiveBlockchainHonestValidator private (
                               blockchainNode: BlockchainNode,
-                              validatorId: ValidatorId,
                               context: ValidatorContext,
-                              weightsOfValidators: ValidatorId => Ether,
-                              totalWeight: Ether,
-                              blocksFraction: Double,
-                              runForkChoiceFromGenesis: Boolean,
-                              relativeFTT: Double,
-                              absoluteFTT: Ether,
-                              ackLevel: Int,
-                              brickProposeDelaysGenerator: IntSequenceGenerator,
-                              blockPayloadGenerator: IntSequenceGenerator,
-                              msgValidationCostModel: IntSequenceGenerator,
-                              msgCreationCostModel: IntSequenceGenerator,
-                              msgBufferSherlockMode: Boolean,
+                              config: NaiveBlockchainHonestValidator.Config,
+                              state: NaiveBlockchainHonestValidator.StateSnapshot
                             ) extends Validator {
 
-  private var localClock: SimTimepoint = SimTimepoint.zero
-  val messagesBuffer: MsgBuffer[Brick] = new MsgBufferImpl[Brick]
-  val knownBricks = new mutable.HashSet[Brick](1000, 0.75)
-  var mySwimlaneLastMessageSequenceNumber: Int = -1
-  val mySwimlane = new ArrayBuffer[Brick](10000)
-  var myLastMessagePublished: Option[Brick] = None
-  val block2bgame = new mutable.HashMap[Block, BGame]
-  var lastFinalizedBlock: Block = context.genesis
-  var globalPanorama: ACC.Panorama = ACC.Panorama.empty
-  val panoramasBuilder = new ACC.PanoramaBuilder
-  val equivocatorsRegistry = new EquivocatorsRegistry(context.numberOfValidators, weightsOfValidators, absoluteFTT)
-  val blockVsBallot = new Picker[String](context.random, Map("block" -> blocksFraction, "ballot" -> (1 - blocksFraction)))
-  val brickHashGenerator = new FakeSha256Digester(context.random, 8)
-  var currentFinalityDetector: ACC.FinalityDetector = _
-  var absoluteFtt: Ether = _
+  def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: NaiveBlockchainHonestValidator.Config) = {
+    this(blockchainNode, context, config, NaiveBlockchainHonestValidator.StateSnapshot(
+      localClock = SimTimepoint.zero,
+      messagesBuffer = new MsgBufferImpl[Brick],
+      knownBricks = new mutable.HashSet[Brick](1000, 0.75),
+      mySwimlaneLastMessageSequenceNumber = -1,
+      mySwimlane = new ArrayBuffer[Brick](10000),
+      myLastMessagePublished = None,
+      block2bgame = new mutable.HashMap[Block, BGame],
+      lastFinalizedBlock = context.genesis,
+      globalPanorama = ACC.Panorama.empty,
+      panoramasBuilder = new ACC.PanoramaBuilder,
+      equivocatorsRegistry = new EquivocatorsRegistry(context.numberOfValidators, config.weightsOfValidators, config.absoluteFTT),
+      blockVsBallot = new Picker[String](context.random, Map("block" -> config.blocksFraction, "ballot" -> (1 - config.blocksFraction))),
+      brickHashGenerator = new FakeSha256Digester(context.random, 8)
+    ))
+  }
 
-  override def toString: String = s"Validator-$validatorId"
+  private var localClock: SimTimepoint = state.localClock
+  val messagesBuffer: MsgBuffer[Brick] = state.messagesBuffer
+  val knownBricks: mutable.Set[Brick] = state.knownBricks
+  var mySwimlaneLastMessageSequenceNumber: Int = state.mySwimlaneLastMessageSequenceNumber
+  val mySwimlane: ArrayBuffer[Brick] = state.mySwimlane
+  var myLastMessagePublished: Option[Brick] = state.myLastMessagePublished
+  val block2bgame: mutable.Map[Block, BGame] = state.block2bgame
+  var lastFinalizedBlock: Block = state.lastFinalizedBlock
+  var globalPanorama: ACC.Panorama = state.globalPanorama
+  val panoramasBuilder: ACC.PanoramaBuilder = state.panoramasBuilder
+  val equivocatorsRegistry: EquivocatorsRegistry = state.equivocatorsRegistry
+  val blockVsBallot: Picker[String] = state.blockVsBallot
+  val brickHashGenerator: CryptographicDigester = state.brickHashGenerator
+  var currentFinalityDetector: Option[ACC.FinalityDetector] = None
 
-  override def clone(): Validator = {
-    val copy = new NaiveBlockchainHonestValidator(
-      blockchainNode,
-      validatorId,
-      context,
-      weightsOfValidators: ValidatorId => Ether,
-      totalWeight: Ether,
-      blocksFraction: Double,
-      runForkChoiceFromGenesis: Boolean,
-      relativeFTT: Double,
-      absoluteFTT: Ether,
-      ackLevel: Int,
-      brickProposeDelaysGenerator: IntSequenceGenerator,
-      blockPayloadGenerator: IntSequenceGenerator,
-      msgValidationCostModel: IntSequenceGenerator,
-      msgCreationCostModel: IntSequenceGenerator,
-      msgBufferSherlockMode: Boolean,
+  override def toString: String = s"Validator-${config.validatorId}"
 
+  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = new NaiveBlockchainHonestValidator(bNode, vContext, config, this.generateStateSnapshot().clone())
+
+  private def generateStateSnapshot(): NaiveBlockchainHonestValidator.StateSnapshot =
+    NaiveBlockchainHonestValidator.StateSnapshot(
+      localClock = localClock,
+      messagesBuffer = messagesBuffer,
+      knownBricks = knownBricks,
+      mySwimlaneLastMessageSequenceNumber = mySwimlaneLastMessageSequenceNumber,
+      mySwimlane = mySwimlane,
+      myLastMessagePublished = myLastMessagePublished,
+      block2bgame = block2bgame,
+      lastFinalizedBlock = lastFinalizedBlock,
+      globalPanorama = globalPanorama,
+      panoramasBuilder = panoramasBuilder,
+      equivocatorsRegistry = equivocatorsRegistry,
+      blockVsBallot = blockVsBallot,
+      brickHashGenerator = brickHashGenerator
     )
-  }
-
-  def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
-    val bgame: BGame = block2bgame(bGameAnchor)
-    return new ACC.ReferenceFinalityDetector(
-      relativeFTT,
-      absoluteFTT,
-      ackLevel,
-      weightsOfValidators,
-      totalWeight,
-      nextInSwimlane,
-      vote = brick => bgame.decodeVote(brick),
-      message2panorama = panoramasBuilder.panoramaOf,
-      estimator = bgame)
-  }
 
   //#################### PUBLIC API ############################
 
   override def startup(time: SimTimepoint): Unit = {
     localClock = SimTimepoint.max(time, localClock)
-    val newBGame = new BGame(context.genesis, weightsOfValidators, equivocatorsRegistry)
+    val newBGame = new BGame(context.genesis, config.weightsOfValidators, equivocatorsRegistry)
     block2bgame += context.genesis -> newBGame
-    currentFinalityDetector = createFinalityDetector(context.genesis)
-    absoluteFtt = currentFinalityDetector.getAbsoluteFtt
     scheduleNextWakeup()
   }
 
@@ -294,7 +336,7 @@ class NaiveBlockchainHonestValidator(
     //which makes the whole simulation looking more realistic
     registerProcessingTime(1L)
 
-    currentFinalityDetector.onLocalJDagUpdated(globalPanorama) match {
+    finalityDetector.onLocalJDagUpdated(globalPanorama) match {
       case Some(summit) =>
         if (msgBufferSherlockMode && ! summit.isFinalized)
           context.addOutputEvent(localTime, SemanticEventPayload.PreFinality(lastFinalizedBlock, summit))
@@ -308,6 +350,28 @@ class NaiveBlockchainHonestValidator(
       case None =>
         //no consensus yet, do nothing
     }
+  }
+
+  private def finalityDetector: ACC.FinalityDetector = currentFinalityDetector match {
+    case Some(fd) => fd
+    case None =>
+      val fd = this.createFinalityDetector(lastFinalizedBlock)
+      currentFinalityDetector = Some(fd)
+      fd
+  }
+
+  protected def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
+    val bgame: BGame = block2bgame(bGameAnchor)
+    return new ACC.ReferenceFinalityDetector(
+      config.relativeFTT,
+      config.absoluteFTT,
+      config.ackLevel,
+      config.weightsOfValidators,
+      config.totalWeight,
+      nextInSwimlane,
+      vote = brick => bgame.decodeVote(brick),
+      message2panorama = panoramasBuilder.panoramaOf,
+      estimator = bgame)
   }
 
   @tailrec

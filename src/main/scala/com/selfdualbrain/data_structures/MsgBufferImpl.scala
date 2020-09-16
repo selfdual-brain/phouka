@@ -2,9 +2,11 @@ package com.selfdualbrain.data_structures
 
 import scala.collection.mutable
 
-class MsgBufferImpl[E] extends MsgBuffer[E] {
-  private var msg2dep: ImmutableMultiDictWithBulkAdd[E, E] = ImmutableMultiDictWithBulkAdd.empty[E, E]
-  private val dep2msg: mutable.MultiDict[E, E]  = mutable.MultiDict.empty[E,E]
+class MsgBufferImpl[E] private (m2d: ImmutableMultiDictWithBulkAdd[E, E], d2m: mutable.MultiDict[E, E]) extends MsgBuffer[E] {
+  private var msg2dep: ImmutableMultiDictWithBulkAdd[E, E] = m2d
+  private val dep2msg: mutable.MultiDict[E, E]  = d2m
+
+  def this() = this(ImmutableMultiDictWithBulkAdd.empty[E, E], mutable.MultiDict.empty[E,E])
 
   override def addMessage(msg: E, missingDependencies: Iterable[E]): Unit = {
     msg2dep = msg2dep.bulkAdd(msg, missingDependencies.toSet)
@@ -28,4 +30,5 @@ class MsgBufferImpl[E] extends MsgBuffer[E] {
 
   override def isEmpty: Boolean = msg2dep.isEmpty
 
+  override def clone(): MsgBufferImpl[E] = new MsgBufferImpl[E](msg2dep, dep2msg.clone().asInstanceOf[mutable.MultiDict[E, E]])
 }

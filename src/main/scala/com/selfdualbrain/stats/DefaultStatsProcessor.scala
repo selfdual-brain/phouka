@@ -227,7 +227,7 @@ class DefaultStatsProcessor(val experimentSetup: ExperimentSetup) extends Simula
 
     event match {
       case Event.External(id, timepoint, destination, payload) => //ignored
-      case Event.MessagePassing(id, timepoint, source, destination, payload) =>
+      case Event.Transport(id, timepoint, source, destination, payload) =>
         payload match {
           case MessagePassingEventPayload.WakeUpForCreatingNewBrick => //ignored
           case MessagePassingEventPayload.BrickDelivered(brick) =>

@@ -14,12 +14,45 @@ import com.selfdualbrain.blockchain_structure.ValidatorId
   *
   * @param numberOfValidators
   */
-class EquivocatorsRegistry(numberOfValidators: Int, weightsOfValidators: ValidatorId => Ether, absoluteFTT: Ether) {
-  private var set = Set.empty[ValidatorId]
-  private val array = new Array[ValidatorId](numberOfValidators)
-  private var last: Int = -1
-  private var totalWeightOfEquivocatorsX: Ether = 0L
-  private var catastropheFlag: Boolean = false
+class EquivocatorsRegistry private (
+                                     numberOfValidators: Int,
+                                     weightsOfValidators: ValidatorId => Ether,
+                                     absoluteFTT: Ether,
+                                     pSet: Set[ValidatorId],
+                                     pArray: Array[ValidatorId],
+                                     pLast: Int,
+                                     pTotalWeightOfEquivocators: Ether,
+                                     pCatastropheFlag: Boolean
+                                   ) extends Cloneable {
+
+  def this(numberOfValidators: Int, weightsOfValidators: ValidatorId => Ether, absoluteFTT: Ether) =
+    this(
+      numberOfValidators,
+      weightsOfValidators,
+      absoluteFTT,
+      pSet = Set.empty[ValidatorId],
+      pArray = new Array[ValidatorId](numberOfValidators),
+      pLast = -1,
+      pTotalWeightOfEquivocators = 0L,
+      pCatastropheFlag = false
+    )
+
+  private var set: Set[ValidatorId] = pSet
+  private val array: Array[ValidatorId] = pArray
+  private var last: Int = pLast
+  private var totalWeightOfEquivocatorsX: Ether = pTotalWeightOfEquivocators
+  private var catastropheFlag: Boolean = pCatastropheFlag
+
+  override def clone(): EquivocatorsRegistry = new EquivocatorsRegistry(
+    numberOfValidators,
+    weightsOfValidators,
+    absoluteFTT,
+    set.clone().asInstanceOf[Set[ValidatorId]],
+    array.clone().asInstanceOf[Array[ValidatorId]],
+    last,
+    totalWeightOfEquivocatorsX,
+    catastropheFlag
+  )
 
   def isKnownEquivocator(vid: ValidatorId): Boolean = set.contains(vid)
 

@@ -50,11 +50,11 @@ trait ValidatorContext {
   /**
     * General way of sending private events (= events an agent schedules for itself)
     */
-  def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: MessagePassingEventPayload)
+  def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: EventPayload)
 
   /**
     * General way of announcing semantic events.
     */
-  def addOutputEvent(timepoint: SimTimepoint, payload: SemanticEventPayload)
+  def addOutputEvent(timepoint: SimTimepoint, payload: EventPayload)
 
 }

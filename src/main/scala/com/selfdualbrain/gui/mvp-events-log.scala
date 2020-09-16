@@ -163,7 +163,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     private val EMPTY: String = ""
     private def eventDetails(event: Event[ValidatorId]): String = event match {
       case Event.External(id, timepoint, destination, payload) => EMPTY
-      case Event.MessagePassing(id, timepoint, source, destination, payload) =>
+      case Event.Transport(id, timepoint, source, destination, payload) =>
         payload match {
           case MessagePassingEventPayload.WakeUpForCreatingNewBrick => EMPTY
           case MessagePassingEventPayload.BrickDelivered(block) => s"$block"

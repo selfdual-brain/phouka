@@ -7,7 +7,7 @@ import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import scala.util.Random
 
 /**
-  * Semi-realistic model of network, where the probabilistic distribution of delivery delays is gaussian
+  * Idealised model of a network, where the probabilistic distribution of delivery delays is gaussian
   * but the mean and standard deviation are chosen separately for each pair of agents.
   * Conceptually this attempts to mimic realistic topology of the network, where different connection speeds
   * can be measured between every pair of hosts.
@@ -18,7 +18,11 @@ import scala.util.Random
   * (a) randomly pick 3 numbers: lMin, lMax, bandwidth (lMin, lMax model latency distribution using pseudo-gaussian)
   * (b) we model delivery delay as: pseudo-gaussian(lMin,lMax) + message-size/bandwidth
   *
-  * There is some extra cosmetic complexity due to units conversion.
+  * Caution: Please notice that this model is still quite far from real-life network behaviour - primarily because we completely
+  * ignore messages influencing each other, i.e. the delay of every message is calculated as if this is the only message
+  * transmitted over the network at the moment. To remove this simplification one would have to implement transmission
+  * channels that do actual "queuing" of transmitted bytes, plus this cannot be done within the simple DES model.
+  * All we are capturing here is systemic differences in message propagation times due to network performance characteristics.
   */
 class SymmetricLatencyBandwidthGraphNetwork(
                                              random: Random,

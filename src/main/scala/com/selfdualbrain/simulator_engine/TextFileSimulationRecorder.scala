@@ -34,7 +34,7 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
         //currently ignored
         return
 
-      case Event.MessagePassing(id, timepoint, source, destination, payload) =>
+      case Event.Transport(id, timepoint, source, destination, payload) =>
         payload match {
           case MessagePassingEventPayload.WakeUpForCreatingNewBrick =>
             s"(validator $destination) propose wake-up"

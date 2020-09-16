@@ -161,7 +161,7 @@ class SimulationDisplayModel(
       allEvents(selectedStep) match {
         case Event.External(id, timepoint, destination, payload) => //do nothing
 
-        case Event.MessagePassing(id, timepoint, source, destination, payload) =>
+        case Event.Transport(id, timepoint, source, destination, payload) =>
           payload match {
             case MessagePassingEventPayload.WakeUpForCreatingNewBrick => //do nothing
             case MessagePassingEventPayload.BrickDelivered(block) => //do nothing
@@ -198,7 +198,7 @@ class SimulationDisplayModel(
       allEvents(selectedStep) match {
         case Event.External(id, timepoint, destination, payload) => //do nothing
 
-        case Event.MessagePassing(id, timepoint, source, destination, payload) =>
+        case Event.Transport(id, timepoint, source, destination, payload) =>
           payload match {
             case MessagePassingEventPayload.WakeUpForCreatingNewBrick => //do nothing
             case MessagePassingEventPayload.BrickDelivered(block) => //do nothing

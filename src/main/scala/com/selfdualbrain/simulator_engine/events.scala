@@ -6,30 +6,28 @@ import com.selfdualbrain.des.Event
 import com.selfdualbrain.time.TimeDelta
 
 sealed abstract class EventPayload(val filteringTag: Int)
+object EventPayload {
+  //TRANSPORT
+  case class BrickDelivered(brick: Brick) extends EventPayload(EventTag.BRICK_DELIVERED)
 
-sealed abstract class MessagePassingEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
-object MessagePassingEventPayload {
-  case class BrickDelivered(brick: Brick) extends MessagePassingEventPayload(EventTag.BRICK_DELIVERED)
-  case object WakeUpForCreatingNewBrick extends MessagePassingEventPayload(EventTag.WAKE_UP)
-}
+  //LOOPBACK
+  case object WakeUpForCreatingNewBrick extends EventPayload(EventTag.WAKE_UP)
+  case class BroadcastBrick(brick: Brick) extends EventPayload(EventTag.BROADCAST_BRICK)
 
-sealed abstract class SemanticEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
-object SemanticEventPayload {
-  case class BrickProposed(forkChoiceWinner: Block, brickJustCreated: Brick) extends SemanticEventPayload(EventTag.BRICK_PROPOSED)
-  case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends SemanticEventPayload(EventTag.DIRECT_ACCEPT)
-  case class AddedIncomingBrickToMsgBuffer(bufferedBrick: Brick, missingDependencies: Iterable[Brick], bufTransition: MsgBufferTransition)  extends SemanticEventPayload(EventTag.ADDED_ENTRY_TO_BUF)
-  case class AcceptedIncomingBrickAfterBuffering(bufferedBrick: Brick, bufTransition: MsgBufferTransition) extends SemanticEventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
-  case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends SemanticEventPayload(EventTag.PRE_FINALITY)
-  case class BlockFinalized(bGameAnchor: Block, finalizedBlock: NormalBlock, summit: ACC.Summit) extends SemanticEventPayload(EventTag.FINALITY)
-  case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends SemanticEventPayload(EventTag.EQUIVOCATION)
-  case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends SemanticEventPayload(EventTag.CATASTROPHE)
-}
+  //SEMANTIC
+  case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends EventPayload(EventTag.DIRECT_ACCEPT)
+  case class AddedIncomingBrickToMsgBuffer(bufferedBrick: Brick, missingDependencies: Iterable[Brick], bufTransition: MsgBufferTransition)  extends EventPayload(EventTag.ADDED_ENTRY_TO_BUF)
+  case class AcceptedIncomingBrickAfterBuffering(bufferedBrick: Brick, bufTransition: MsgBufferTransition) extends EventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
+  case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends EventPayload(EventTag.PRE_FINALITY)
+  case class BlockFinalized(bGameAnchor: Block, finalizedBlock: NormalBlock, summit: ACC.Summit) extends EventPayload(EventTag.FINALITY)
+  case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends EventPayload(EventTag.EQUIVOCATION)
+  case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends EventPayload(EventTag.CATASTROPHE)
 
-sealed abstract class ExternalEventPayload(filteringTag: Int) extends EventPayload(filteringTag)
-object ExternalEventPayload {
-  case class Bifurcation(numberOfClones: Int) extends ExternalEventPayload(EventTag.BIFURCATION)
-  case object NodeCrash extends ExternalEventPayload(EventTag.NODE_CRASH)
-  case class NetworkOutage(period: TimeDelta) extends ExternalEventPayload(EventTag.NETWORK_OUTAGE)
+  //EXTERNAL
+  case class Bifurcation(numberOfClones: Int) extends EventPayload(EventTag.BIFURCATION)
+  case object NodeCrash extends EventPayload(EventTag.NODE_CRASH)
+  case class NetworkOutageBegin(period: TimeDelta) extends EventPayload(EventTag.NETWORK_OUTAGE_BEGIN)
+  case object NetworkOutageEnd extends EventPayload(EventTag.NETWORK_OUTAGE_END)
 }
 
 case class MsgBufferTransition(snapshotBefore: MsgBufferSnapshot, snapshotAfter: MsgBufferSnapshot)
@@ -37,7 +35,7 @@ case class MsgBufferTransition(snapshotBefore: MsgBufferSnapshot, snapshotAfter:
 object EventTag {
   val BRICK_DELIVERED = 1
   val WAKE_UP = 2
-  val BRICK_PROPOSED = 3
+  val BROADCAST_BRICK = 3
   val DIRECT_ACCEPT = 4
   val ADDED_ENTRY_TO_BUF = 5
   val REMOVED_ENTRY_FROM_BUF = 6
@@ -47,12 +45,13 @@ object EventTag {
   val CATASTROPHE = 10
   val BIFURCATION = 11
   val NODE_CRASH = 12
-  val NETWORK_OUTAGE = 13
+  val NETWORK_OUTAGE_BEGIN = 13
+  val NETWORK_OUTAGE_END = 14
 
   val collection = Map(
     BRICK_DELIVERED -> "brick delivery",
     WAKE_UP -> "wake up",
-    BRICK_PROPOSED -> "propose",
+    BROADCAST_BRICK -> "propose",
     DIRECT_ACCEPT -> "accept (direct)",
     ADDED_ENTRY_TO_BUF -> "buffering",
     REMOVED_ENTRY_FROM_BUF -> "accept (from buf)",
@@ -62,16 +61,9 @@ object EventTag {
     CATASTROPHE -> "catastrophe"
   )
 
-  def of(event: Event[ValidatorId]): Int = {
-    val p: EventPayload = event match {
-      case Event.External(id, timepoint, destination, payload) => throw new RuntimeException("not supported")
-      case Event.MessagePassing(id, timepoint, source, destination, payload) => payload.asInstanceOf[MessagePassingEventPayload]
-      case Event.Semantic(id, timepoint, source, payload) => payload.asInstanceOf[SemanticEventPayload]
-    }
-    return p.filteringTag
-  }
+  def of(event: Event[ValidatorId, EventPayload]): Int = event.payload.filteringTag
 
-  def asString(event: Event[ValidatorId]): String = collection(EventTag.of(event))
+  def asString(event: Event[ValidatorId, EventPayload]): String = collection(EventTag.of(event))
 
   def tag2description(eventTag: Int): String = collection(eventTag)
 }

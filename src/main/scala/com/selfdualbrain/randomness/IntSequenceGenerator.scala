@@ -4,7 +4,7 @@ import com.selfdualbrain.time.TimeUnit
 
 import scala.util.Random
 
-trait IntSequenceGenerator extends Iterator[Int] {
+trait IntSequenceGenerator extends Iterator[Int] with Cloneable {
   override def hasNext: Boolean = true
 }
 

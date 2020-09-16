@@ -6,30 +6,29 @@ import com.selfdualbrain.time.SimTimepoint
   * Contract of DES event queue.
   *
   * @tparam A type of agent id
-  * @tparam AP agent messages payload type
-  * @tparam OP output messages payload type
+  * @tparam P agent messages payload type
   */
-trait SimEventsQueue[A,AP,OP,EP] extends Iterator[Event[A]] {
+trait SimEventsQueue[A,P] extends Iterator[Event[A,P]] {
 
   /**
     * Adds an event to the timeline.
     */
-  def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: EP): Event[A]
+  def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: P): Event[A,P]
 
   /**
     * Adds an event to the timeline.
     */
-  def addMessagePassingEvent(timepoint: SimTimepoint, source: A, destination: A, payload: AP): Event[A]
+  def addMessagePassingEvent(timepoint: SimTimepoint, source: A, destination: A, payload: P): Event[A,P]
 
   /**
     * Adds an event to the timeline.
     */
-  def addOutputEvent(timepoint: SimTimepoint, source: A, payload: OP): Event[A]
+  def addOutputEvent(timepoint: SimTimepoint, source: A, payload: P): Event[A,P]
 
   /**
     * Pulls closest event from the timeline, advancing the time flow.
     */
-  def pullNextEvent(): Option[Event[A]]
+  def pullNextEvent(): Option[Event[A,P]]
 
   /**
     * Time of last event pulled.
@@ -44,12 +43,12 @@ case class ExtEventIngredients[A,EP](timepoint: SimTimepoint, destination: A, pa
   * Base class of (business-logic-independent) event envelopes to be used with SimEventsQueue.
   * @tparam A type of agent identifier
   */
-sealed trait Event[A] extends Ordered[Event[A]] {
+sealed trait Event[A,P] extends Ordered[Event[A,P]] {
   def id: Long
 
   def timepoint: SimTimepoint
 
-  override def compare(that: Event[A]): Int = {
+  override def compare(that: Event[A,P]): Int = {
     val timeDiff = timepoint.compare(that.timepoint)
     return if (timeDiff != 0)
       timeDiff
@@ -58,6 +57,8 @@ sealed trait Event[A] extends Ordered[Event[A]] {
   }
 
   def loggingAgent: A
+
+  def payload: P
 }
 
 object Event  {
@@ -65,7 +66,7 @@ object Event  {
   /**
     * Envelope for "external events".
     * Such events are targeting an agent, but does not have a sender - rather it is the simulation engine itself that sends them.
-    * They can be used to represent the changes in the environment where agents live.
+    * They can be used to represent changes in the environment where agents live.
     *
     * @param id id of this event
     * @param timepoint sim-timepoint when this event should be delivered to the target agent
@@ -74,13 +75,14 @@ object Event  {
     * @tparam A type of agent identifier
     * @tparam P type of business-logic-specific payload
     */
-  case class External[A,P](id: Long, timepoint: SimTimepoint, destination: A, payload: P) extends Event[A] {
+  case class External[A,P](id: Long, timepoint: SimTimepoint, destination: A, payload: P) extends Event[A,P] {
     override def loggingAgent: A = destination
   }
 
   /**
-    * Envelope for a message-passing event - to be handled by an agent.
-    * Such event represents the act of delivery - to be handled by recipient agent.
+    * Envelope for a (agent-to-agent) message-passing events.
+    * Such event represents the act of transporting a message from source agent to destination agent.
+    * Caution: the timepoint refers to the "delivery" point in time.
     *
     * @param id id of this event
     * @param timepoint sim-timepoint when this event should be delivered to the target agent
@@ -90,8 +92,24 @@ object Event  {
     * @tparam A type of agent identifier
     * @tparam P type of business-logic-specific payload
     */
-  case class MessagePassing[A,P](id: Long, timepoint: SimTimepoint, source: A, destination: A, payload: P) extends Event[A] {
+  case class Transport[A,P](id: Long, timepoint: SimTimepoint, source: A, destination: A, payload: P) extends Event[A,P] {
     override def loggingAgent: A = destination
+  }
+
+  /**
+    * Envelope for messages scheduled by an agent to itself.
+    * Such self-messages can be used for representing async operations and in-agent concurrency.
+    * Can be seen as "alerts" or "timers" that an agent sets for itself.
+    *
+    * @param id id of this event
+    * @param timepoint scheduled timepoint of agent "wake up"
+    * @param agent agent scheduling this event
+    * @param payload business-logic-specific payload
+    * @tparam A type of agent identifier
+    * @tparam P type of business-logic-specific payload
+    */
+  case class Loopback[A,P](id: Long, timepoint: SimTimepoint, agent: A, payload: P) extends Event[A,P] {
+    override def loggingAgent: A = agent
   }
 
   /**
@@ -107,7 +125,7 @@ object Event  {
     * @tparam A type of agent identifier
     * @tparam P type of business-logic-specific payload
     */
-  case class Semantic[A,P](id: Long, timepoint: SimTimepoint, source: A, payload: P) extends Event[A] {
+  case class Semantic[A,P](id: Long, timepoint: SimTimepoint, source: A, payload: P) extends Event[A,P] {
     override def loggingAgent: A = source
   }
 }
