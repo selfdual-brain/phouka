@@ -1,5 +1,6 @@
 package com.selfdualbrain.simulator_engine
 
+import com.selfdualbrain.CloningSupport
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.ValidatorId
 
@@ -23,7 +24,7 @@ class EquivocatorsRegistry private (
                                      pLast: Int,
                                      pTotalWeightOfEquivocators: Ether,
                                      pCatastropheFlag: Boolean
-                                   ) extends Cloneable {
+                                   ) extends CloningSupport[EquivocatorsRegistry] {
 
   def this(numberOfValidators: Int, weightsOfValidators: ValidatorId => Ether, absoluteFTT: Ether) =
     this(
@@ -43,7 +44,8 @@ class EquivocatorsRegistry private (
   private var totalWeightOfEquivocatorsX: Ether = pTotalWeightOfEquivocators
   private var catastropheFlag: Boolean = pCatastropheFlag
 
-  override def clone(): EquivocatorsRegistry = new EquivocatorsRegistry(
+
+  override def createDetachedCopy(): EquivocatorsRegistry = new EquivocatorsRegistry(
     numberOfValidators,
     weightsOfValidators,
     absoluteFTT,

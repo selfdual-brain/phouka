@@ -1,7 +1,5 @@
 package com.selfdualbrain.randomness
 
-import com.selfdualbrain.config_files_support.ConfigurationReader
-import com.selfdualbrain.config_files_support.ConfigurationReader.PrimitiveType._
 import com.selfdualbrain.time.TimeUnit
 
 sealed abstract class IntSequenceConfig {

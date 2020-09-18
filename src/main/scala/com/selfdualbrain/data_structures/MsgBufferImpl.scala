@@ -30,5 +30,5 @@ class MsgBufferImpl[E] private (m2d: ImmutableMultiDictWithBulkAdd[E, E], d2m: m
 
   override def isEmpty: Boolean = msg2dep.isEmpty
 
-  override def clone(): MsgBufferImpl[E] = new MsgBufferImpl[E](msg2dep, dep2msg.clone().asInstanceOf[mutable.MultiDict[E, E]])
+  override def createDetachedCopy(): MsgBuffer[E] = new MsgBufferImpl[E](msg2dep, dep2msg.clone().asInstanceOf[mutable.MultiDict[E, E]])
 }

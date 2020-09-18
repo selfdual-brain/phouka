@@ -1,5 +1,6 @@
 package com.selfdualbrain.simulator_engine
 
+import com.selfdualbrain.CloningSupport
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, NormalBlock, ValidatorId}
 import com.selfdualbrain.simulator_engine.BGame.IndexedArrayOfAccumulators
@@ -7,7 +8,7 @@ import com.selfdualbrain.simulator_engine.BGame.IndexedArrayOfAccumulators
 import scala.collection.mutable
 
 /**
-  * Cache of voting data for a single b-game anchored at the given block.
+  * Cache of voting data for a single b-game anchored at a given block.
   * We do here incremental calculation of fork-choice on the level of a single b-game.
   *
   * Remark 1: This makes fork-choice pretty fast, while keeping the implementation super-simplistic.
@@ -24,18 +25,47 @@ import scala.collection.mutable
   * Remark 3: This was written with "fork-choice that starts always from genesis" in mind.
   * The point is that we want to use the simulator to "manually" validate the consensus theory.
   */
-class BGame(anchor: Block, weight: ValidatorId => Ether, equivocatorsRegistry: EquivocatorsRegistry) extends ACC.Estimator {
+class BGame private (
+                      anchor: Block,
+                      weight: ValidatorId => Ether,
+                      equivocatorsRegistry: EquivocatorsRegistry,
+                      pBrick2con: mutable.Map[Brick, NormalBlock],
+                      pCon2sum: IndexedArrayOfAccumulators[NormalBlock],
+                      pValidator2con: mutable.HashMap[ValidatorId, NormalBlock],
+                      pLastKnownEquivocator: Int
+                    ) extends ACC.Estimator {
+
+  def this(anchor: Block, weight: ValidatorId => Ether, equivocatorsRegistry: EquivocatorsRegistry) = this(
+    anchor,
+    weight,
+    equivocatorsRegistry,
+    pBrick2con = new mutable.HashMap[Brick, NormalBlock],
+    pCon2sum = new IndexedArrayOfAccumulators[NormalBlock],
+    pValidator2con = new mutable.HashMap[ValidatorId, NormalBlock],
+    pLastKnownEquivocator = -1
+  )
+
   //brick -> consensus value
-  val brick2con = new mutable.HashMap[Brick, NormalBlock]
+  val brick2con: mutable.Map[Brick, NormalBlock] = pBrick2con
   //consensus value -> sum of votes
-  val con2sum = new IndexedArrayOfAccumulators[NormalBlock]
+  val con2sum: IndexedArrayOfAccumulators[NormalBlock] = pCon2sum
   //last votes
-  val validator2con = new mutable.HashMap[ValidatorId, NormalBlock]
+  val validator2con: mutable.HashMap[ValidatorId, NormalBlock] = pValidator2con
   //references the stream of equivocators published by the registry
-  var lastKnownEquivocator: Int = -1
+  var lastKnownEquivocator: Int = pLastKnownEquivocator
   //current fork choice winner
   var forkChoiceWinnerMemoized: Option[NormalBlock] = None
   var isFcMemoValid: Boolean = false
+
+  override def createDetachedCopy(anotherRegistry: EquivocatorsRegistry): BGame = new BGame(
+    anchor,
+    weight,
+    anotherRegistry,
+    brick2con.clone(),
+    con2sum.createDetachedCopy(),
+    validator2con.clone(),
+    lastKnownEquivocator
+  )
 
   override def toString: String = s"BGame-${anchor.id}"
 
@@ -113,7 +143,7 @@ class BGame(anchor: Block, weight: ValidatorId => Ether, equivocatorsRegistry: E
 
 object BGame {
 
-  class Accumulator {
+  class Accumulator extends Cloneable with CloningSupport[Accumulator] {
     private var sum: Ether = 0L
 
     def currentValue: Ether = sum
@@ -128,10 +158,15 @@ object BGame {
       assert(sum >= 0)
       return sum
     }
+
+    override def createDetachedCopy(): Accumulator = this.clone().asInstanceOf[Accumulator]
   }
 
-  class IndexedArrayOfAccumulators[K] {
-    val internalMap = new mutable.HashMap[K,Accumulator]
+  class IndexedArrayOfAccumulators[K] private(m: mutable.Map[K,Accumulator]) extends CloningSupport[IndexedArrayOfAccumulators[K]] {
+
+    def this() = this(new mutable.HashMap[K,Accumulator])
+
+    private val internalMap: mutable.Map[K,Accumulator] = m
 
     def get(key: K): Ether =
       internalMap.get(key) match {
@@ -167,5 +202,6 @@ object BGame {
         case Some(acc) => acc
       }
 
+    override def createDetachedCopy(): IndexedArrayOfAccumulators[K] = new IndexedArrayOfAccumulators[K](CloningSupport.deepCopyOfMapViaDetachedCopy(internalMap))
   }
 }

@@ -1,11 +1,14 @@
 package com.selfdualbrain.randomness
 
+import com.selfdualbrain.CloningSupport
 import com.selfdualbrain.time.TimeUnit
 
 import scala.util.Random
 
-trait IntSequenceGenerator extends Iterator[Int] with Cloneable {
+abstract class IntSequenceGenerator extends Iterator[Int] with Cloneable with CloningSupport[IntSequenceGenerator] {
   override def hasNext: Boolean = true
+
+  override def createDetachedCopy(): IntSequenceGenerator = this.clone().asInstanceOf[IntSequenceGenerator]
 }
 
 object IntSequenceGenerator {
@@ -56,9 +59,9 @@ object IntSequenceGenerator {
   class PseudoGaussianGen(random: Random, min: Int, max: Int) extends IntSequenceGenerator {
     private val numberOfPossibleValues = max - min + 1
     require(numberOfPossibleValues >= 2)
-    private val length: Double = numberOfPossibleValues.toInt
-    private val mean: Double = length / 2
-    private val sd: Double = length / 6
+    private val intervalLength: Double = numberOfPossibleValues.toDouble
+    private val mean: Double = intervalLength / 2
+    private val sd: Double = intervalLength / 6
 
     def next(): Int = {
       var x: Double = 0
