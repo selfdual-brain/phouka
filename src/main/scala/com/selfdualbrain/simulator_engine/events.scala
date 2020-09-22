@@ -11,8 +11,11 @@ object EventPayload {
   case class BrickDelivered(brick: Brick) extends EventPayload(EventTag.BRICK_DELIVERED)
 
   //LOOPBACK
-  case object WakeUpForCreatingNewBrick extends EventPayload(EventTag.WAKE_UP)
+  case class WakeUpForCreatingNewBrick(strategySpecificMarker: Any) extends EventPayload(EventTag.WAKE_UP)
+
+  //ENGINE
   case class BroadcastBrick(brick: Brick) extends EventPayload(EventTag.BROADCAST_BRICK)
+  case object NetworkOutagePossibleEnd extends EventPayload(EventTag.NETWORK_OUTAGE_END)
 
   //SEMANTIC
   case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends EventPayload(EventTag.DIRECT_ACCEPT)
@@ -22,12 +25,13 @@ object EventPayload {
   case class BlockFinalized(bGameAnchor: Block, finalizedBlock: NormalBlock, summit: ACC.Summit) extends EventPayload(EventTag.FINALITY)
   case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends EventPayload(EventTag.EQUIVOCATION)
   case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends EventPayload(EventTag.CATASTROPHE)
+  case class ConsumedBrickDelivery(consumedEventId: Long, consumptionDelay: TimeDelta, brick: Brick) extends EventPayload(EventTag.CONSUMED_BRICK_DELIVERY)
+  case class ConsumedWakeUp(consumedEventId: Long, consumptionDelay: TimeDelta, strategySpecificMarker: Any) extends EventPayload(EventTag.CONSUMED_WAKEUP)
 
   //EXTERNAL
   case class Bifurcation(numberOfClones: Int) extends EventPayload(EventTag.BIFURCATION)
   case object NodeCrash extends EventPayload(EventTag.NODE_CRASH)
   case class NetworkOutageBegin(period: TimeDelta) extends EventPayload(EventTag.NETWORK_OUTAGE_BEGIN)
-  case object NetworkOutageEnd extends EventPayload(EventTag.NETWORK_OUTAGE_END)
 }
 
 case class MsgBufferTransition(snapshotBefore: MsgBufferSnapshot, snapshotAfter: MsgBufferSnapshot)
@@ -47,10 +51,12 @@ object EventTag {
   val NODE_CRASH = 12
   val NETWORK_OUTAGE_BEGIN = 13
   val NETWORK_OUTAGE_END = 14
+  val CONSUMED_BRICK_DELIVERY = 15
+  val CONSUMED_WAKEUP = 16
 
   val collection = Map(
     BRICK_DELIVERED -> "brick delivery",
-    WAKE_UP -> "wake up",
+    WAKE_UP -> "wake-up",
     BROADCAST_BRICK -> "propose",
     DIRECT_ACCEPT -> "accept (direct)",
     ADDED_ENTRY_TO_BUF -> "buffering",
@@ -58,7 +64,13 @@ object EventTag {
     PRE_FINALITY -> "pre-finality",
     FINALITY -> "block finalized",
     EQUIVOCATION -> "equivocation",
-    CATASTROPHE -> "catastrophe"
+    CATASTROPHE -> "catastrophe",
+    BIFURCATION -> "bifurcation",
+    NODE_CRASH -> "node crash",
+    NETWORK_OUTAGE_BEGIN -> "network outage begin",
+    NETWORK_OUTAGE_END -> "network outage end",
+    CONSUMED_BRICK_DELIVERY -> "brick consumption",
+    CONSUMED_WAKEUP -> "wake-up consumption"
   )
 
   def of(event: Event[ValidatorId, EventPayload]): Int = event.payload.filteringTag

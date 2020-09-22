@@ -28,17 +28,11 @@ trait Validator {
 
   /**
     * The time for creating next brick has just arrived.
-    * This happens because of
+    * This wake up must have been set as an "alarm" via validator context (some time ago).
     *
-    * @param time
+    * @param time time now
     */
-  def onScheduledBrickCreation(time: SimTimepoint): Unit
-
-  /**
-    * A validator must keep own clock.
-    * This clock is needed so that time of execution of local operations can be simulated.
-    */
-  def localTime: SimTimepoint
+  def onScheduledBrickCreation(time: SimTimepoint, strategySpecificMarker: Any): Unit
 
   /**
     * A validator must be able to clone itself.

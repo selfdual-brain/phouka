@@ -21,14 +21,15 @@ class ClassicDesQueue[A,P](extStreams: IndexedSeq[Iterator[ExtEventIngredients[A
   override def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: P): Event[A,P] =
     this addEvent {id => Event.External(id, timepoint, destination, payload)}
 
-  override def addMessagePassingEvent(timepoint: SimTimepoint, source: A, destination: A, payload: P): Event[A,P] = {
+  override def addTransportEvent(timepoint: SimTimepoint, source: A, destination: A, payload: P): Event[A,P] = {
     val newEvent = this addEvent {id => Event.Transport(id, timepoint, source, destination, payload)}
-    if (timepoint > highestTimepointOfMessagePassingEvent)
-      highestTimepointOfMessagePassingEvent = timepoint
-    if (highestTimepointOfMessagePassingEvent >= currentExtEventsHorizon) {
-      currentExtEventsHorizon += extEventsHorizonMargin
-      ensureExtEventsAreGeneratedUpToCurrentHorizon()
-    }
+    ensureExtEventsAreGeneratedUpToHorizon(timepoint)
+    return newEvent
+  }
+
+  override def addLoopbackEvent(timepoint: SimTimepoint, agent: A, payload: P): Event[A, P] = {
+    val newEvent = this addEvent {id => Event.Loopback(id, timepoint, agent, payload)}
+    ensureExtEventsAreGeneratedUpToHorizon(timepoint)
     return newEvent
   }
 
@@ -59,16 +60,22 @@ class ClassicDesQueue[A,P](extStreams: IndexedSeq[Iterator[ExtEventIngredients[A
     return newEvent
   }
 
-  private def ensureExtEventsAreGeneratedUpToCurrentHorizon(): Unit = {
-    for (i <- 0 until numberOfExtStreams if ! extStreamEofFlags(i)) {
-      while (extStreamsClocks(i) <= currentExtEventsHorizon && (! extStreamEofFlags(i))) {
-        val stream = extStreams(i)
-        if (stream.hasNext) {
-          val x = stream.next()
-          addExternalEvent(x.timepoint, x.destination, x.payload)
-          extStreamsClocks(i) = x.timepoint
-        } else {
-          extStreamEofFlags(i) = true
+  private def ensureExtEventsAreGeneratedUpToHorizon(msgPassingEventTimepoint: SimTimepoint): Unit = {
+    if (msgPassingEventTimepoint > highestTimepointOfMessagePassingEvent)
+      highestTimepointOfMessagePassingEvent = msgPassingEventTimepoint
+
+    if (highestTimepointOfMessagePassingEvent >= currentExtEventsHorizon) {
+      currentExtEventsHorizon += extEventsHorizonMargin
+      for (i <- 0 until numberOfExtStreams if ! extStreamEofFlags(i)) {
+        while (extStreamsClocks(i) <= currentExtEventsHorizon && (! extStreamEofFlags(i))) {
+          val stream = extStreams(i)
+          if (stream.hasNext) {
+            val x = stream.next()
+            addExternalEvent(x.timepoint, x.destination, x.payload)
+            extStreamsClocks(i) = x.timepoint
+          } else {
+            extStreamEofFlags(i) = true
+          }
         }
       }
     }

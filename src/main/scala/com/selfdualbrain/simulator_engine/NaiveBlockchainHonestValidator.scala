@@ -5,21 +5,22 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures._
 import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
-import com.selfdualbrain.randomness.{IntSequenceConfig, IntSequenceGenerator, LongSequenceConfig, LongSequenceGenerator, Picker}
-import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.randomness._
+import com.selfdualbrain.time.SimTimepoint
 
 import scala.annotation.tailrec
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.util.Random
 
 object NaiveBlockchainHonestValidator {
   case class Config(
                     //integer id of a validator; simulation engine allocates these ids from 0,...,n-1 interval
                     validatorId: ValidatorId,
                     //randomness source to be used
-                    random: Random,
+//                    random: Random,
+                    //number of validators (not to be mistaken with number of active nodes)
+                    numberOfValidators: Int,
                     //absolute weights of validators
                     weightsOfValidators: ValidatorId => Ether,
                     //total weight of validators
@@ -47,7 +48,6 @@ object NaiveBlockchainHonestValidator {
                    )
 
   case class StateSnapshot(
-                    localClock: SimTimepoint,
                     messagesBuffer: MsgBuffer[Brick],
                     knownBricks: mutable.Set[Brick],
                     mySwimlaneLastMessageSequenceNumber: Int,
@@ -70,7 +70,6 @@ object NaiveBlockchainHonestValidator {
       val clonedEquivocatorsRegistry = this.equivocatorsRegistry.createDetachedCopy()
 
       StateSnapshot(
-        localClock = this.localClock,
         messagesBuffer = this.messagesBuffer.createDetachedCopy(),
         knownBricks = this.knownBricks.clone(),
         mySwimlaneLastMessageSequenceNumber = this.mySwimlaneLastMessageSequenceNumber,
@@ -116,7 +115,6 @@ class NaiveBlockchainHonestValidator private (
 
   def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: NaiveBlockchainHonestValidator.Config) = {
     this(blockchainNode, context, config, NaiveBlockchainHonestValidator.StateSnapshot(
-      localClock = SimTimepoint.zero,
       messagesBuffer = new MsgBufferImpl[Brick],
       knownBricks = new mutable.HashSet[Brick](1000, 0.75),
       mySwimlaneLastMessageSequenceNumber = -1,
@@ -126,18 +124,18 @@ class NaiveBlockchainHonestValidator private (
       lastFinalizedBlock = context.genesis,
       globalPanorama = ACC.Panorama.empty,
       panoramasBuilder = new ACC.PanoramaBuilder,
-      equivocatorsRegistry = new EquivocatorsRegistry(context.numberOfValidators, config.weightsOfValidators, config.absoluteFTT),
+      equivocatorsRegistry = new EquivocatorsRegistry(config.numberOfValidators, config.weightsOfValidators, config.absoluteFTT),
       blockVsBallot = new Picker[String](context.random, Map("block" -> config.blocksFraction, "ballot" -> (1 - config.blocksFraction))),
       brickHashGenerator = new FakeSha256Digester(context.random, 8),
-      brickProposeDelaysGenerator = LongSequenceGenerator.fromConfig(config.brickProposeDelaysGeneratorConfig, config.random),
-      blockPayloadGenerator = IntSequenceGenerator.fromConfig(config.blockPayloadGeneratorConfig, config.random),
-      msgValidationCostGenerator = LongSequenceGenerator.fromConfig(config.msgValidationCostModel, config.random),
-      msgCreationCostGenerator = LongSequenceGenerator.fromConfig(config.msgCreationCostModel, config.random)
+      brickProposeDelaysGenerator = LongSequenceGenerator.fromConfig(config.brickProposeDelaysGeneratorConfig, context.random),
+      blockPayloadGenerator = IntSequenceGenerator.fromConfig(config.blockPayloadGeneratorConfig, context.random),
+      msgValidationCostGenerator = LongSequenceGenerator.fromConfig(config.msgValidationCostModel, context.random),
+      msgCreationCostGenerator = LongSequenceGenerator.fromConfig(config.msgCreationCostModel, context.random)
     ))
   }
 
   //=========== state ==============
-  private var localClock: SimTimepoint = state.localClock
+//  private var localClock: SimTimepoint = state.localClock
   val messagesBuffer: MsgBuffer[Brick] = state.messagesBuffer
   val knownBricks: mutable.Set[Brick] = state.knownBricks
   var mySwimlaneLastMessageSequenceNumber: Int = state.mySwimlaneLastMessageSequenceNumber
@@ -160,12 +158,14 @@ class NaiveBlockchainHonestValidator private (
 
   override def toString: String = s"Validator-${config.validatorId}"
 
-  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator =
-    new NaiveBlockchainHonestValidator(bNode, vContext, config, this.generateStateSnapshot().createDetachedCopy())
+  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
+    val validatorInstance = new NaiveBlockchainHonestValidator(bNode, vContext, config, this.generateStateSnapshot().createDetachedCopy())
+    validatorInstance.scheduleNextWakeup()
+    return validatorInstance
+  }
 
   private def generateStateSnapshot(): NaiveBlockchainHonestValidator.StateSnapshot =
     NaiveBlockchainHonestValidator.StateSnapshot(
-      localClock = localClock,
       messagesBuffer = messagesBuffer,
       knownBricks = knownBricks,
       mySwimlaneLastMessageSequenceNumber = mySwimlaneLastMessageSequenceNumber,
@@ -187,36 +187,33 @@ class NaiveBlockchainHonestValidator private (
   //#################### PUBLIC API ############################
 
   override def startup(time: SimTimepoint): Unit = {
-    localClock = SimTimepoint.max(time, localClock)
     val newBGame = new BGame(context.genesis, config.weightsOfValidators, equivocatorsRegistry)
     block2bgame += context.genesis -> newBGame
     scheduleNextWakeup()
   }
 
   def onNewBrickArrived(time: SimTimepoint, msg: Brick): Unit = {
-    localClock = SimTimepoint.max(time, localClock)
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! knownBricks.contains(j))
 
     //simulation of incoming message processing processing time
-    registerProcessingTime(msgValidationCostGenerator.next())
+    context.registerProcessingTime(msgValidationCostGenerator.next())
 
     if (missingDependencies.isEmpty) {
-      context.addOutputEvent(localClock, EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
+      context.addOutputEvent(context.time(), EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
       runBufferPruningCascadeFor(msg)
     } else {
       if (config.msgBufferSherlockMode) {
         val bufferTransition = doBufferOp {
           messagesBuffer.addMessage(msg, missingDependencies)
         }
-        context.addOutputEvent(localClock, EventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferTransition))
+        context.addOutputEvent(context.time(), EventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferTransition))
       } else {
         messagesBuffer.addMessage(msg, missingDependencies)
       }
     }
   }
 
-  override def onScheduledBrickCreation(time: SimTimepoint): Unit = {
-    localClock = SimTimepoint.max(time, localClock)
+  override def onScheduledBrickCreation(time: SimTimepoint, strategySpecificMarker: Any): Unit = {
     blockVsBallot.select() match {
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)
@@ -224,11 +221,9 @@ class NaiveBlockchainHonestValidator private (
     scheduleNextWakeup()
   }
 
-  override def localTime: SimTimepoint = localClock
-
   //#################### HANDLING OF INCOMING MESSAGES ############################
 
-  def runBufferPruningCascadeFor(msg: Brick): Unit = {
+  protected def runBufferPruningCascadeFor(msg: Brick): Unit = {
     val queue = new mutable.Queue[Brick]()
     queue enqueue msg
 
@@ -242,7 +237,7 @@ class NaiveBlockchainHonestValidator private (
         if (config.msgBufferSherlockMode) {
           val bufferTransition = doBufferOp {messagesBuffer.fulfillDependency(nextBrick)}
           if (nextBrick != msg)
-            context.addOutputEvent(localClock, EventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
+            context.addOutputEvent(context.time(), EventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
         } else {
           messagesBuffer.fulfillDependency(nextBrick)
         }
@@ -268,17 +263,17 @@ class NaiveBlockchainHonestValidator private (
 
   //################## PUBLISHING OF NEW MESSAGES ############################
 
-  def publishNewBrick(shouldBeBlock: Boolean): Unit = {
+  protected def publishNewBrick(shouldBeBlock: Boolean): Unit = {
     val brick = createNewBrick(shouldBeBlock)
     globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(brick))
     addToLocalJdag(brick)
-    context.broadcast(localTime, brick)
+    context.broadcast(context.time(), brick)
     myLastMessagePublished = Some(brick)
   }
 
-  def createNewBrick(shouldBeBlock: Boolean): Brick = {
+  protected def createNewBrick(shouldBeBlock: Boolean): Brick = {
     //simulation of "create new message" processing time
-    registerProcessingTime(msgCreationCostGenerator.next())
+    context.registerProcessingTime(msgCreationCostGenerator.next())
 
     val creator: ValidatorId = config.validatorId
     mySwimlaneLastMessageSequenceNumber += 1
@@ -306,7 +301,7 @@ class NaiveBlockchainHonestValidator private (
         NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
-          timepoint = localClock,
+          timepoint = context.time(),
           justifications,
           toBeSlashedInThisBlock,
           creator,
@@ -319,7 +314,7 @@ class NaiveBlockchainHonestValidator private (
         Ballot(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
-          timepoint = localClock,
+          timepoint = context.time(),
           justifications,
           creator,
           prevInSwimlane = myLastMessagePublished,
@@ -330,17 +325,17 @@ class NaiveBlockchainHonestValidator private (
     return brick
   }
 
-  def scheduleNextWakeup(): Unit = {
-    context.scheduleNextBrickPropose(localClock + brickProposeDelaysGenerator.next() * 1000)
+  protected def scheduleNextWakeup(): Unit = {
+    context.scheduleNextBrickPropose(context.time() + brickProposeDelaysGenerator.next() * 1000, Unit)
   }
 
   //########################## J-DAG ##########################################
 
-  def addToLocalJdag(brick: Brick): Unit = {
+  protected def addToLocalJdag(brick: Brick): Unit = {
     //adding one microsecond of simulated processing time here so that during buffer pruning cascade subsequent
     //add-to-jdag events have different timepoints
     //which makes the whole simulation looking more realistic
-    registerProcessingTime(1L)
+    context.registerProcessingTime(1L)
 
     knownBricks += brick
     val oldLastEq = equivocatorsRegistry.lastSeqNumber
@@ -349,12 +344,12 @@ class NaiveBlockchainHonestValidator private (
     if (newLastEq > oldLastEq) {
       for (vid <- equivocatorsRegistry.getNewEquivocators(oldLastEq)) {
         val (m1,m2) = globalPanorama.evidences(vid)
-        context.addOutputEvent(localTime, EventPayload.EquivocationDetected(vid, m1, m2))
+        context.addOutputEvent(context.time(), EventPayload.EquivocationDetected(vid, m1, m2))
         if (equivocatorsRegistry.areWeAtEquivocationCatastropheSituation) {
           val equivocators = equivocatorsRegistry.allKnownEquivocators
           val absoluteFttOverrun: Ether = equivocatorsRegistry.totalWeightOfEquivocators - config.absoluteFTT
           val relativeFttOverrun: Double = equivocatorsRegistry.totalWeightOfEquivocators.toDouble / config.totalWeight - config.relativeFTT
-          context.addOutputEvent(localTime, EventPayload.EquivocationCatastrophe(equivocators, absoluteFttOverrun, relativeFttOverrun))
+          context.addOutputEvent(context.time(), EventPayload.EquivocationCatastrophe(equivocators, absoluteFttOverrun, relativeFttOverrun))
         }
       }
     }
@@ -376,14 +371,14 @@ class NaiveBlockchainHonestValidator private (
     //adding one microsecond of simulated processing time here so that when LFB chain is advancing
     //several blocks at a time, subsequent finality events have different timepoints
     //which makes the whole simulation looking more realistic
-    registerProcessingTime(1L)
+    context.registerProcessingTime(1L)
 
     finalityDetector.onLocalJDagUpdated(globalPanorama) match {
       case Some(summit) =>
         if (config.msgBufferSherlockMode && ! summit.isFinalized)
-          context.addOutputEvent(localTime, EventPayload.PreFinality(lastFinalizedBlock, summit))
+          context.addOutputEvent(context.time(), EventPayload.PreFinality(lastFinalizedBlock, summit))
         if (summit.isFinalized) {
-          context.addOutputEvent(localTime, EventPayload.BlockFinalized(lastFinalizedBlock, summit.consensusValue, summit))
+          context.addOutputEvent(context.time(), EventPayload.BlockFinalized(lastFinalizedBlock, summit.consensusValue, summit))
           lastFinalizedBlock = summit.consensusValue
           currentFinalityDetector = None
           advanceLfbChainAsManyStepsAsPossible()
@@ -458,12 +453,6 @@ class NaiveBlockchainHonestValidator private (
   private def nextInSwimlane(brick: Brick): Option[Brick] = {
     val pos = brick.positionInSwimlane
     return mySwimlane.lift(pos + 1)
-  }
-
-  //########################## LOCAL TIME #######################################
-
-  protected def registerProcessingTime(t: TimeDelta): Unit = {
-    localClock += t
   }
 
 }

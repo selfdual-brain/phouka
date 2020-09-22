@@ -57,7 +57,7 @@ class BGame private (
   var forkChoiceWinnerMemoized: Option[NormalBlock] = None
   var isFcMemoValid: Boolean = false
 
-  override def createDetachedCopy(anotherRegistry: EquivocatorsRegistry): BGame = new BGame(
+  def createDetachedCopy(anotherRegistry: EquivocatorsRegistry): BGame = new BGame(
     anchor,
     weight,
     anotherRegistry,

@@ -18,12 +18,20 @@ trait SimEventsQueue[A,P] extends Iterator[Event[A,P]] {
   /**
     * Adds an event to the timeline.
     */
-  def addMessagePassingEvent(timepoint: SimTimepoint, source: A, destination: A, payload: P): Event[A,P]
+  def addTransportEvent(timepoint: SimTimepoint, source: A, destination: A, payload: P): Event[A,P]
+
+  /**
+    * Adds an event to the timeline.
+    */
+  def addLoopbackEvent(timepoint: SimTimepoint, agent: A, payload: P): Event[A,P]
 
   /**
     * Adds an event to the timeline.
     */
   def addOutputEvent(timepoint: SimTimepoint, source: A, payload: P): Event[A,P]
+
+
+  def addEngineEvent(timepoint: SimTimepoint, agent: Option[A], payload: P): Event[A,P]
 
   /**
     * Pulls closest event from the timeline, advancing the time flow.
@@ -56,7 +64,7 @@ sealed trait Event[A,P] extends Ordered[Event[A,P]] {
       id.compareTo(that.id)
   }
 
-  def loggingAgent: A
+  def loggingAgent: Option[A]
 
   def payload: P
 }
@@ -76,7 +84,7 @@ object Event  {
     * @tparam P type of business-logic-specific payload
     */
   case class External[A,P](id: Long, timepoint: SimTimepoint, destination: A, payload: P) extends Event[A,P] {
-    override def loggingAgent: A = destination
+    override def loggingAgent: Option[A] = Some(destination)
   }
 
   /**
@@ -93,7 +101,7 @@ object Event  {
     * @tparam P type of business-logic-specific payload
     */
   case class Transport[A,P](id: Long, timepoint: SimTimepoint, source: A, destination: A, payload: P) extends Event[A,P] {
-    override def loggingAgent: A = destination
+    override def loggingAgent: Option[A] = Some(destination)
   }
 
   /**
@@ -109,7 +117,23 @@ object Event  {
     * @tparam P type of business-logic-specific payload
     */
   case class Loopback[A,P](id: Long, timepoint: SimTimepoint, agent: A, payload: P) extends Event[A,P] {
-    override def loggingAgent: A = agent
+    override def loggingAgent: Option[A] = Some(agent)
+  }
+
+  /**
+    * Envelope for messages scheduled by the engine.
+    * Such messages are not going to be processed by any agent, rather it is the engine itself who schedules them and consumes them.
+    * Usage is engine-specific (for example to implement network outage simulation).
+    *
+    * @param id id of this event
+    * @param timepoint scheduled timepoint
+    * @param agent relevant agent (if present)
+    * @param payload business-logic-specific payload
+    * @tparam A type of agent identifier
+    * @tparam P type of business-logic-specific payload
+    */
+  case class Engine[A,P](id: Long, timepoint: SimTimepoint, agent: Option[A], payload: P) extends Event[A,P] {
+    override def loggingAgent: Option[A] = agent
   }
 
   /**
@@ -126,6 +150,8 @@ object Event  {
     * @tparam P type of business-logic-specific payload
     */
   case class Semantic[A,P](id: Long, timepoint: SimTimepoint, source: A, payload: P) extends Event[A,P] {
-    override def loggingAgent: A = source
+    override def loggingAgent: Option[A] = Some(source)
   }
+
+
 }
