@@ -82,8 +82,8 @@ object ImmutableMultiDictWithBulkAdd extends MapFactory[ImmutableMultiDictWithBu
       case _ => (newBuilder[K, V] ++= source).result()
     }
 
-  def newBuilder[K, V]: Builder[(K, V), ImmutableMultiDictWithBulkAdd[K, V]] =
-    new ImmutableBuilder[(K, V), ImmutableMultiDictWithBulkAdd[K, V]](empty[K, V]) {
+  def newBuilder[K, V]: mutable.Builder[(K, V), ImmutableMultiDictWithBulkAdd[K, V]] =
+    new mutable.ImmutableBuilder[(K, V), ImmutableMultiDictWithBulkAdd[K, V]](empty[K, V]) {
       def addOne(elem: (K, V)): this.type = { elems = elems + elem; this }
     }
 

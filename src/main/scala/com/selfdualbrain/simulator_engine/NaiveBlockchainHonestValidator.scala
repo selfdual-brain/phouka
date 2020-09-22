@@ -1,9 +1,8 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.CloningSupport
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.data_structures._
+import com.selfdualbrain.data_structures.{CloningSupport, _}
 import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness._
 import com.selfdualbrain.time.SimTimepoint
@@ -195,7 +194,7 @@ class NaiveBlockchainHonestValidator private (
   def onNewBrickArrived(time: SimTimepoint, msg: Brick): Unit = {
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! knownBricks.contains(j))
 
-    //simulation of incoming message processing processing time
+    //simulation of incoming message processing time
     context.registerProcessingTime(msgValidationCostGenerator.next())
 
     if (missingDependencies.isEmpty) {
@@ -326,7 +325,7 @@ class NaiveBlockchainHonestValidator private (
   }
 
   protected def scheduleNextWakeup(): Unit = {
-    context.scheduleNextBrickPropose(context.time() + brickProposeDelaysGenerator.next() * 1000, Unit)
+    context.scheduleNextBrickPropose(context.time() + brickProposeDelaysGenerator.next(), Unit)
   }
 
   //########################## J-DAG ##########################################

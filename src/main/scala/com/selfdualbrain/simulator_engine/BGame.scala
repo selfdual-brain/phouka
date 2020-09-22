@@ -1,8 +1,8 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.CloningSupport
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, NormalBlock, ValidatorId}
+import com.selfdualbrain.data_structures.CloningSupport
 import com.selfdualbrain.simulator_engine.BGame.IndexedArrayOfAccumulators
 
 import scala.collection.mutable

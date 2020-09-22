@@ -5,12 +5,12 @@ import java.util.concurrent.{ArrayBlockingQueue, BlockingQueue}
 /**
   * Wraps any simulation observer into an observer that runs in a separate thread.
   */
-class ThreadedSimulationObserver[A](underlyingObserver: SimulationObserver[A], bufferCapacity: Int) extends SimulationObserver[A] {
-  private val buffer: BlockingQueue[(Long, Event[A])] = new ArrayBlockingQueue[(Long, Event[A])](bufferCapacity)
+class ThreadedSimulationObserver[A,P](underlyingObserver: SimulationObserver[A,P], bufferCapacity: Int) extends SimulationObserver[A,P] {
+  private val buffer: BlockingQueue[(Long, Event[A,P])] = new ArrayBlockingQueue[(Long, Event[A,P])](bufferCapacity)
   private val consumer = new EventsConsumer
   private var consumerThread: Thread = new Thread(new EventsConsumer)
 
-  override def onSimulationEvent(step: Long, event: Event[A]): Unit = {
+  override def onSimulationEvent(step: Long, event: Event[A,P]): Unit = {
     val tuple = (step, event)
     buffer.put(tuple)
   }

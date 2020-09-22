@@ -4,7 +4,7 @@ import java.io.File
 
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
 import com.selfdualbrain.des.Event
-import com.selfdualbrain.simulator_engine.{ExternalEventPayload, MessagePassingEventPayload, SemanticEventPayload}
+import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.stats.SimulationStats
 import com.selfdualbrain.time.SimTimepoint
 
@@ -37,13 +37,13 @@ abstract class GenericSimpleLoopSimulation[T <: {def configFile: File}] extends 
     //todo
   }
 
-  def onExternalEvent(stepId: Long, eventId: Long, timepoint: SimTimepoint, destination: BlockchainNode, payload: ExternalEventPayload): Boolean = false
+  def onExternalEvent(stepId: Long, eventId: Long, timepoint: SimTimepoint, destination: BlockchainNode, payload: EventPayload): Boolean = false
 
-  def onMessagePassingEvent(stepId: Long, eventId: Long, timepoint: SimTimepoint, source: BlockchainNode, destination: BlockchainNode, payload: MessagePassingEventPayload): Boolean = false
+  def onMessagePassingEvent(stepId: Long, eventId: Long, timepoint: SimTimepoint, source: BlockchainNode, destination: BlockchainNode, payload: EventPayload): Boolean = false
 
-  def onSemanticEvent(stepId:Long, eventId: Long, timepoint: SimTimepoint, source: BlockchainNode, payload: SemanticEventPayload): Boolean = false
+  def onSemanticEvent(stepId:Long, eventId: Long, timepoint: SimTimepoint, source: BlockchainNode, payload: EventPayload): Boolean = false
 
-  def afterAnyEvent(step: Long, event: Event[BlockchainNode]) = false
+  def afterAnyEvent(step: Long, event: Event[BlockchainNode, EventPayload]) = false
 
   def enableRecording(targetDir: File): Unit = {
     //todo

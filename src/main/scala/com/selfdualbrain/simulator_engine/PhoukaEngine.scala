@@ -153,10 +153,7 @@ class PhoukaEngine(
           val newBox = new NodeBox(newNodeId, newValidator, context)
           nodes.append(newBox)
         }
-
-        val clones: IndexedSeq[Validator] = (1 to numberOfClones).map(i => box.validatorInstance.clone()
-
-
+        true
 
       case EventPayload.NodeCrash =>
         box.status = NodeStatus.CRASHED

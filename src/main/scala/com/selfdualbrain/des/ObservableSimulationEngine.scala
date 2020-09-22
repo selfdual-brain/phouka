@@ -7,11 +7,11 @@ package com.selfdualbrain.des
   *
   * @tparam A type of agent identifiers
   */
-trait ObservableSimulationEngine[A] extends SimulationEngine[A] {
+trait ObservableSimulationEngine[A,P] extends SimulationEngine[A,P] {
 
-  def addObserver(observer: SimulationObserver[A]): Unit
+  def addObserver(observer: SimulationObserver[A,P]): Unit
 
-  def observers: Iterable[SimulationObserver[A]]
+  def observers: Iterable[SimulationObserver[A,P]]
 
 }
 
@@ -21,7 +21,7 @@ trait ObservableSimulationEngine[A] extends SimulationEngine[A] {
   *
   * @tparam A type of agent identifiers
   */
-trait SimulationObserver[A] {
+trait SimulationObserver[A,P] {
 
   /**
     * Yet another simulation event has just been emitted by the engine.
@@ -30,7 +30,7 @@ trait SimulationObserver[A] {
     * @param step number of simulation "step"
     * @param event event data
     */
-  def onSimulationEvent(step: Long, event: Event[A]): Unit
+  def onSimulationEvent(step: Long, event: Event[A,P]): Unit
 
   /**
     * Gives a chance to release resources allocated by this observer.

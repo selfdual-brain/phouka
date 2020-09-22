@@ -1,6 +1,6 @@
 package com.selfdualbrain.randomness
 
-import com.selfdualbrain.CloningSupport
+import com.selfdualbrain.data_structures.CloningSupport
 import com.selfdualbrain.time.TimeUnit
 
 import scala.util.Random

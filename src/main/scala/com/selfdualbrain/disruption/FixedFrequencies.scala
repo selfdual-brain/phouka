@@ -3,7 +3,7 @@ package com.selfdualbrain.disruption
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
 import com.selfdualbrain.des.ExtEventIngredients
 import com.selfdualbrain.randomness.LongSequenceGenerator
-import com.selfdualbrain.simulator_engine.ExternalEventPayload
+import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.{EventStreamsMerge, SimTimepoint, TimeDelta, TimeUnit}
 
 import scala.collection.immutable.ArraySeq
@@ -65,17 +65,17 @@ class FixedFrequencies(
         lastNodeIdUsed += 1
         val newBlockchainNode: Int = lastNodeIdUsed
         aliveNodes += newBlockchainNode -> selectedNodeValidatorId
-        ExtEventIngredients(timepoint, BlockchainNode(selectedNode), ExternalEventPayload.Bifurcation(numberOfClones = 1))
+        ExtEventIngredients(timepoint, BlockchainNode(selectedNode), EventPayload.Bifurcation(numberOfClones = 1))
 
       //crash
       case 2 =>
         aliveNodes -= selectedNode
-        ExtEventIngredients(timepoint, BlockchainNode(selectedNode), ExternalEventPayload.NodeCrash)
+        ExtEventIngredients(timepoint, BlockchainNode(selectedNode), EventPayload.NodeCrash)
 
       //outage
       case 3 =>
         val outageLength = outageLengthGenerator.get.next()
-        ExtEventIngredients(timepoint, BlockchainNode(selectedNode), ExternalEventPayload.NetworkOutageBegin(outageLength))
+        ExtEventIngredients(timepoint, BlockchainNode(selectedNode), EventPayload.NetworkOutageBegin(outageLength))
     }
 
   }

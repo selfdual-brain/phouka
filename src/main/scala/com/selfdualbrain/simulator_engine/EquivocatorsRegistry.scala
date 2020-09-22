@@ -1,8 +1,8 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.CloningSupport
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.ValidatorId
+import com.selfdualbrain.data_structures.CloningSupport
 
 /**
   * Discovering of equivocations (and so - equivocators) is encapsulated in merging of panoramas. The outcome of merging
