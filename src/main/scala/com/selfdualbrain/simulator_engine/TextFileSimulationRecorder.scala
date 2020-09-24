@@ -11,59 +11,87 @@ import com.selfdualbrain.des.{Event, SimulationObserver}
   * @param eagerFlush should the flush be done after every event ? (which decreases performance).
   * @tparam A type of agent ids
   */
-class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeLogged: Option[Iterable[A]]) extends SimulationObserver[A] {
-  private val BUFFER_SIZE: Int = 8192 * 16 //16 times more than the default size hardcoded in JDK - this is important because usually we are going to write events with quite crazy speed
+class TextFileSimulationRecorder[A,P](file: File, eagerFlush: Boolean, agentsToBeLogged: Option[Iterable[A]]) extends SimulationObserver[A,P] {
+  private val BUFFER_SIZE: Int = 8192 * 16 //=16 times bigger than the default size hardcoded in JDK - this is important because usually we are going to write events with quite crazy speed
   private val fileWriter = new FileWriter(file)
   private val bufferedWriter = new BufferedWriter(fileWriter, BUFFER_SIZE)
   private val agentsSet: Option[Set[A]] = agentsToBeLogged.map(coll => coll.toSet)
 
-  override def onSimulationEvent(step: Long, event: Event[A]): Unit =
+  override def onSimulationEvent(step: Long, event: Event[A,P]): Unit =
     agentsSet match {
       case None =>
         recordEvent(step, event)
       case Some(set) =>
-        if (set.contains(event.loggingAgent))
+        if (event.loggingAgent.isDefined && set.contains(event.loggingAgent.get))
           recordEvent(step, event)
     }
 
-  private def recordEvent(step: Long, event: Event[A]): Unit = {
-    val prefix: String = s"$step:${event.timepoint.toString} [eid ${event.id}]: "
+  private def recordEvent(step: Long, event: Event[A,P]): Unit = {
+    val loggingAgentId: String = event.loggingAgent match {
+      case Some(id) => id.toString
+      case None => "none"
+    }
+    val prefix: String = s"$step:${event.timepoint.toString} [eid ${event.id}]: (validator $loggingAgentId) "
 
-    val description = event match {
+    val description: String = event match {
+
       case Event.External(id, timepoint, destination, payload) =>
-        //currently ignored
-        return
+        payload match {
+          case EventPayload.Bifurcation(numberOfClones) =>
+            s"bifurcation (clones=$numberOfClones)"
+          case EventPayload.NodeCrash =>
+            "node crash"
+          case EventPayload.NetworkDisruptionBegin(period) =>
+            s"network disruption begin (period=$period)"
+        }
 
       case Event.Transport(id, timepoint, source, destination, payload) =>
         payload match {
-          case MessagePassingEventPayload.WakeUpForCreatingNewBrick =>
-            s"(validator $destination) propose wake-up"
-          case MessagePassingEventPayload.BrickDelivered(block) =>
-            s"(validator $destination) received $block"
+          case EventPayload.BrickDelivered(brick) =>
+            s"brick $brick delivery - arrival"
+        }
+
+      case Event.Loopback(id, timepoint, agent, payload) =>
+        payload match {
+          case EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker) =>
+            s"wakeup - arrived, marker=$strategySpecificMarker"
+        }
+
+      case Event.Engine(id, timepoint, agent, payload) =>
+        payload match {
+          case EventPayload.BroadcastBrick(brick) =>
+            s"published $brick"
+          case EventPayload.NetworkDisruptionEnd(eventId) =>
+            s"network disruption end (disruption $eventId)"
         }
 
       case Event.Semantic(id, timepoint, source, payload) =>
         payload match {
-          case SemanticEventPayload.BrickProposed(forkChoiceWinner, brick) =>
-            s"(validator $source) published $brick"
-          case SemanticEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
-            s"(validator $source) directly added incoming $brick to local blockdag"
-          case SemanticEventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
+          case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
+            s"directly added incoming $brick to local blockdag"
+          case EventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
             val dependencies = missingDependencies.map(d => d.id).mkString(",")
             val bufSnapshot = msgBufferSnapshotDescription(bufTransition.snapshotAfter)
-            s"(validator $source) added brick to msg buffer, brick=$brick missing dependencies = $dependencies, buffer state after=[$bufSnapshot]"
-          case SemanticEventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
+            s"added brick to msg buffer, brick=$brick missing dependencies = $dependencies, buffer state after=[$bufSnapshot]"
+          case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
             val bufSnapshot = msgBufferSnapshotDescription(bufTransition.snapshotAfter)
-            s"(validator $source) accepted brick from msg buffer, brick=$brick, buffer state after=[$bufSnapshot]"
-          case SemanticEventPayload.PreFinality(bGameAnchor, partialSummit) =>
-            s"(validator $source) pre-finality - level ${partialSummit.level}"
-          case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
-            s"(validator $source) finalized $finalizedBlock - generation=${finalizedBlock.generation}"
-          case SemanticEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
-            s"(validator $source) detected equivocation by $evilValidator - conflicting bricks are ${brick1.id} and ${brick2.id}"
-          case SemanticEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
-            s"(validator $source) detected equivocation catastrophe - evil validators are ${validators.mkString(",")} absolute ftt exceeded by $absoluteFttExceededBy"
+            s"accepted brick from msg buffer, brick=$brick, buffer state after=[$bufSnapshot]"
+          case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
+            s"pre-finality - level ${partialSummit.level}"
+          case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+            s"finalized $finalizedBlock - generation=${finalizedBlock.generation}"
+          case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
+            s"detected equivocation by $evilValidator - conflicting bricks are ${brick1.id} and ${brick2.id}"
+          case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
+            s"detected equivocation catastrophe - evil validators are ${validators.mkString(",")} absolute ftt exceeded by $absoluteFttExceededBy"
+          case EventPayload.ConsumedBrickDelivery(consumedEventId, consumptionDelay, brick) =>
+            s"brick $brick delivery - consumption (-> event $consumedEventId) delay=$consumptionDelay"
+          case EventPayload.ConsumedWakeUp(consumedEventId, consumptionDelay, strategySpecificMarker) =>
+            s"wakeup - consumed (-> event $consumedEventId) delay=$consumptionDelay"
+          case EventPayload.NetworkConnectionRestored =>
+            s"network connection restored"
         }
+
     }
 
     outputMsg(s"$prefix$description")

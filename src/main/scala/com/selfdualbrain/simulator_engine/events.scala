@@ -15,7 +15,7 @@ object EventPayload {
 
   //ENGINE
   case class BroadcastBrick(brick: Brick) extends EventPayload(EventTag.BROADCAST_BRICK)
-  case object NetworkOutagePossibleEnd extends EventPayload(EventTag.NETWORK_OUTAGE_END)
+  case class NetworkDisruptionEnd(disruptionEventId: Long) extends EventPayload(EventTag.NETWORK_DISRUPTION_END)
 
   //SEMANTIC
   case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends EventPayload(EventTag.DIRECT_ACCEPT)
@@ -27,11 +27,13 @@ object EventPayload {
   case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends EventPayload(EventTag.CATASTROPHE)
   case class ConsumedBrickDelivery(consumedEventId: Long, consumptionDelay: TimeDelta, brick: Brick) extends EventPayload(EventTag.CONSUMED_BRICK_DELIVERY)
   case class ConsumedWakeUp(consumedEventId: Long, consumptionDelay: TimeDelta, strategySpecificMarker: Any) extends EventPayload(EventTag.CONSUMED_WAKEUP)
+  case object NetworkConnectionLost extends EventPayload(EventTag.NETWORK_CONNECTION_LOST)
+  case object NetworkConnectionRestored extends EventPayload(EventTag.NETWORK_CONNECTION_RESTORED)
 
   //EXTERNAL
   case class Bifurcation(numberOfClones: Int) extends EventPayload(EventTag.BIFURCATION)
   case object NodeCrash extends EventPayload(EventTag.NODE_CRASH)
-  case class NetworkOutageBegin(period: TimeDelta) extends EventPayload(EventTag.NETWORK_OUTAGE_BEGIN)
+  case class NetworkDisruptionBegin(period: TimeDelta) extends EventPayload(EventTag.NETWORK_DISRUPTION_BEGIN)
 }
 
 case class MsgBufferTransition(snapshotBefore: MsgBufferSnapshot, snapshotAfter: MsgBufferSnapshot)
@@ -49,10 +51,12 @@ object EventTag {
   val CATASTROPHE = 10
   val BIFURCATION = 11
   val NODE_CRASH = 12
-  val NETWORK_OUTAGE_BEGIN = 13
-  val NETWORK_OUTAGE_END = 14
+  val NETWORK_DISRUPTION_BEGIN = 13
+  val NETWORK_DISRUPTION_END = 14
   val CONSUMED_BRICK_DELIVERY = 15
   val CONSUMED_WAKEUP = 16
+  val NETWORK_CONNECTION_RESTORED = 17
+  val NETWORK_CONNECTION_LOST = 18
 
   val collection = Map(
     BRICK_DELIVERED -> "brick delivery",
@@ -67,10 +71,12 @@ object EventTag {
     CATASTROPHE -> "catastrophe",
     BIFURCATION -> "bifurcation",
     NODE_CRASH -> "node crash",
-    NETWORK_OUTAGE_BEGIN -> "network outage begin",
-    NETWORK_OUTAGE_END -> "network outage end",
+    NETWORK_DISRUPTION_BEGIN -> "network connection down",
+    NETWORK_DISRUPTION_END -> "network restore attempt",
     CONSUMED_BRICK_DELIVERY -> "brick consumption",
-    CONSUMED_WAKEUP -> "wake-up consumption"
+    CONSUMED_WAKEUP -> "wake-up consumption",
+    NETWORK_CONNECTION_LOST -> "network connection lost",
+    NETWORK_CONNECTION_RESTORED -> "network connection restored"
   )
 
   def of(event: Event[ValidatorId, EventPayload]): Int = event.payload.filteringTag

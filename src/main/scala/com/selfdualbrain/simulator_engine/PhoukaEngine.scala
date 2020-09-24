@@ -55,7 +55,7 @@ class PhoukaEngine(
   }
 
   //holds together stuff related to one node
-  class NodeBox(val nodeId: BlockchainNode, val validatorInstance: Validator, val context: ValidatorContextImpl) {
+  private class NodeBox(val nodeId: BlockchainNode, val validatorInstance: Validator, val context: ValidatorContextImpl) {
     var status: NodeStatus = NodeStatus.NORMAL
     var networkOutageGoingToBeFixedAt: SimTimepoint = SimTimepoint.zero
     var broadcastBuffer = new ArrayBuffer[Brick]
@@ -159,12 +159,14 @@ class PhoukaEngine(
         box.status = NodeStatus.CRASHED
         true
 
-      case EventPayload.NetworkOutageBegin(period) =>
+      case EventPayload.NetworkDisruptionBegin(period) =>
+        if (box.status == NodeStatus.NORMAL)
+          desQueue.addOutputEvent(timepoint, box.nodeId, EventPayload.NetworkConnectionLost)
         box.status = NodeStatus.NETWORK_OUTAGE
         val end: SimTimepoint = timepoint + period
         if (end > box.networkOutageGoingToBeFixedAt) {
           box.networkOutageGoingToBeFixedAt = end
-          desQueue.addLoopbackEvent(end, box.nodeId, EventPayload.NetworkOutagePossibleEnd)
+          desQueue.addLoopbackEvent(end, box.nodeId, EventPayload.NetworkDisruptionEnd(eventId))
         }
         true
 
@@ -202,9 +204,10 @@ class PhoukaEngine(
             true
         }
 
-      case EventPayload.NetworkOutagePossibleEnd =>
+      case EventPayload.NetworkDisruptionEnd(disruptionEventId) =>
         if (box.networkOutageGoingToBeFixedAt <= timepoint) {
           box.status = NodeStatus.NORMAL
+          desQueue.addOutputEvent(timepoint, box.nodeId, EventPayload.NetworkConnectionRestored)
           for (brick <- box.broadcastBuffer)
             broadcast(box.nodeId, timepoint, brick)
           for (brick <- box.receivedBricksBuffer) {

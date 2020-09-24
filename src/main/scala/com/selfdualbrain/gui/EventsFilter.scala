@@ -16,9 +16,9 @@ object EventsFilter {
   case class Standard(validators: Set[ValidatorId], takeAllValidatorsFlag: Boolean, eventTags: Set[Int], takeAllEventsFlag: Boolean) extends EventsFilter {
 
     override def isEventIncluded(event: Event[ValidatorId,EventPayload]): Boolean = {
-      val validatorIsIncluded: Boolean = takeAllValidatorsFlag || validators.contains(event.loggingAgent)
+      val validatorIsIncluded: Boolean = takeAllValidatorsFlag || (event.loggingAgent.isDefined && validators.contains(event.loggingAgent.get))
       val eventTypeIsIncluded: Boolean = takeAllEventsFlag || eventTags.contains(EventTag.of(event))
-      return validatorIsIncluded && eventTypeIsIncluded
+      return (event.loggingAgent.isEmpty || validatorIsIncluded) && eventTypeIsIncluded
     }
 
   }

@@ -35,7 +35,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
 
   case class ConnectionParams(latencyGenerator: IntSequenceGenerator, bandwidth: Int)
 
-  private var networkGeometryTable: Array[Array[ConnectionParams]] = Array.ofDim(initialNumberOfNodes,initialNumberOfNodes)[ConnectionParams]
+  private var networkGeometryTable: Array[Array[ConnectionParams]] = Array.ofDim[ConnectionParams](initialNumberOfNodes,initialNumberOfNodes)
   for {
     sourceNode <- 0 until initialNumberOfNodes
     targetNode <- 0 until sourceNode
@@ -67,7 +67,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
     assert (newNumberOfNodes > oldNumberOfNodes)
 
     //we want to retain geometry of previously existing connections
-    val newGeometryTable = Array.ofDim(initialNumberOfNodes,initialNumberOfNodes)[ConnectionParams]
+    val newGeometryTable = Array.ofDim[ConnectionParams](initialNumberOfNodes,initialNumberOfNodes)
     for {
       sourceNode <- 0 until oldNumberOfNodes
       targetNode <- 0 until oldNumberOfNodes

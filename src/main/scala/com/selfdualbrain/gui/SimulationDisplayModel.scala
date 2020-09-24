@@ -75,13 +75,13 @@ import scala.collection.mutable.ArrayBuffer
   */
 class SimulationDisplayModel(
                               val experimentConfig: ExperimentConfig,
-                              val engine: SimulationEngine[BlockchainNode],
+                              val engine: SimulationEngine[BlockchainNode, EventPayload],
                               stats: SimulationStats,
                               genesis: Genesis) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
 
   //only-growing collection of (all) events
   //index in this collection coincides with step-id
-  private val allEvents = new ArrayBuffer[Event[BlockchainNode]]
+  private val allEvents = new ArrayBuffer[Event[BlockchainNode, EventPayload]]
 
   //This array is used as a map: validator-id ----> array-buffer.
   //(where the key is validator id - and it corresponds to array index).
@@ -95,7 +95,7 @@ class SimulationDisplayModel(
 
   //subset of all-events, obtained via filtering; this is what "events log" table is showing
   //gets re-populated from scratch every time filter is changed
-  private var filteredEvents = new ArrayBuffer[(Int, Event[ValidatorId])]
+  private var filteredEvents = new ArrayBuffer[(Int, Event[ValidatorId, EventPayload])]
 
   //the id of validator for which the jdag graph is displayed
   private var currentlyObservedValidator: ValidatorId = 0
@@ -163,28 +163,28 @@ class SimulationDisplayModel(
 
         case Event.Transport(id, timepoint, source, destination, payload) =>
           payload match {
-            case MessagePassingEventPayload.WakeUpForCreatingNewBrick => //do nothing
-            case MessagePassingEventPayload.BrickDelivered(block) => //do nothing
+            case EventPayload.WakeUpForCreatingNewBrick => //do nothing
+            case EventPayload.BrickDelivered(block) => //do nothing
           }
 
         case Event.Semantic(id, timepoint, source, payload) =>
           payload match {
-            case SemanticEventPayload.BrickProposed(forkChoiceWinner, brick) =>
+            case EventPayload.BrickProposed(forkChoiceWinner, brick) =>
               knownBricks += brick
-            case SemanticEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
+            case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
               knownBricks += brick
-            case SemanticEventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
+            case EventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
               msgBufferSnapshot = bufTransition.snapshotAfter
-            case SemanticEventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
+            case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
               msgBufferSnapshot = bufTransition.snapshotAfter
-            case SemanticEventPayload.PreFinality(bGameAnchor, partialSummit) =>
+            case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
               lastPartialSummitForCurrentBGame = Some(partialSummit)
-            case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+            case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
               lastFinalizedBlock = finalizedBlock
               lastPartialSummitForCurrentBGame = None
-            case SemanticEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
+            case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
               equivocators += evilValidator
-            case SemanticEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
+            case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
               equivocationCatastrophe = true
           }
       }
@@ -200,29 +200,29 @@ class SimulationDisplayModel(
 
         case Event.Transport(id, timepoint, source, destination, payload) =>
           payload match {
-            case MessagePassingEventPayload.WakeUpForCreatingNewBrick => //do nothing
-            case MessagePassingEventPayload.BrickDelivered(block) => //do nothing
+            case EventPayload.WakeUpForCreatingNewBrick => //do nothing
+            case EventPayload.BrickDelivered(block) => //do nothing
           }
 
         case Event.Semantic(id, timepoint, source, payload) =>
           payload match {
-            case SemanticEventPayload.BrickProposed(forkChoiceWinner, brick) =>
+            case EventPayload.BrickProposed(forkChoiceWinner, brick) =>
               knownBricks -= brick
-            case SemanticEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
+            case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
               knownBricks -= brick
-            case SemanticEventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
+            case EventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
               msgBufferSnapshot = bufTransition.snapshotBefore
-            case SemanticEventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
+            case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
               msgBufferSnapshot = bufTransition.snapshotBefore
-            case SemanticEventPayload.PreFinality(bGameAnchor, partialSummit) =>
+            case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
               lastPartialSummitForCurrentBGame = undoPreFinalityStep(selectedStep)
-            case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+            case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
               val (lfb, partialSummit) = undoFinalityStep(selectedStep)
               lastFinalizedBlock = lfb
               lastPartialSummitForCurrentBGame = partialSummit
-            case SemanticEventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
+            case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
               equivocators -= evilValidator
-            case SemanticEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
+            case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
               equivocationCatastrophe = false
           }
       }
@@ -236,9 +236,9 @@ class SimulationDisplayModel(
         allEvents(i) match {
           case Event.Semantic(id, timepoint, source, payload) =>
             payload match {
-              case SemanticEventPayload.PreFinality(bGameAnchor, partialSummit) =>
+              case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
                 return Some(partialSummit)
-              case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+              case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
                 return None
               case other =>
               //ignore
@@ -258,9 +258,9 @@ class SimulationDisplayModel(
         allEvents(i) match {
           case Event.Semantic(id, timepoint, source, payload) =>
             payload match {
-              case SemanticEventPayload.PreFinality(bGameAnchor, partialSummit) =>
+              case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
                 return (bGameAnchor, Some(partialSummit))
-              case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+              case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
                 return (finalizedBlock, None)
               case other =>
               //ignore
@@ -306,7 +306,7 @@ class SimulationDisplayModel(
       event match {
         case Event.Semantic(id, timepoint, source, payload) =>
           payload match {
-            case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
+            case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
               summits(source) += summit
               assert(summits(source)(bGameAnchor.generation) == summit)
             case other =>
@@ -360,9 +360,9 @@ class SimulationDisplayModel(
 
   //--------------------- EVENTS LOG -------------------------
 
-  def eventsAfterFiltering: ArrayBuffer[(Int,Event[ValidatorId])] = filteredEvents
+  def eventsAfterFiltering: ArrayBuffer[(Int,Event[ValidatorId,EventPayload])] = filteredEvents
 
-  def getEvent(step: Int): Event[ValidatorId] = allEvents(step)
+  def getEvent(step: Int): Event[ValidatorId,EventPayload] = allEvents(step)
 
   def getFilter: EventsFilter = eventsFilter
 

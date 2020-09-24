@@ -4,6 +4,8 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.data_structures.CloningSupport
 
+import scala.collection.immutable.HashSet
+
 /**
   * Discovering of equivocations (and so - equivocators) is encapsulated in merging of panoramas. The outcome of merging
   * is a collection of equivocators. Every time a brick is added to local jdag, currently on-going b-game must take into account
@@ -19,7 +21,7 @@ class EquivocatorsRegistry private (
                                      numberOfValidators: Int,
                                      weightsOfValidators: ValidatorId => Ether,
                                      absoluteFTT: Ether,
-                                     pSet: Set[ValidatorId],
+                                     pSet: HashSet[ValidatorId],
                                      pArray: Array[ValidatorId],
                                      pLast: Int,
                                      pTotalWeightOfEquivocators: Ether,
@@ -31,14 +33,14 @@ class EquivocatorsRegistry private (
       numberOfValidators,
       weightsOfValidators,
       absoluteFTT,
-      pSet = Set.empty[ValidatorId],
+      pSet = new HashSet[ValidatorId],
       pArray = new Array[ValidatorId](numberOfValidators),
       pLast = -1,
       pTotalWeightOfEquivocators = 0L,
       pCatastropheFlag = false
     )
 
-  private var set: Set[ValidatorId] = pSet
+  private var set: HashSet[ValidatorId] = pSet
   private val array: Array[ValidatorId] = pArray
   private var last: Int = pLast
   private var totalWeightOfEquivocatorsX: Ether = pTotalWeightOfEquivocators
@@ -49,7 +51,7 @@ class EquivocatorsRegistry private (
     numberOfValidators,
     weightsOfValidators,
     absoluteFTT,
-    set.clone().asInstanceOf[Set[ValidatorId]],
+    set.clone().asInstanceOf[HashSet[ValidatorId]],
     array.clone().asInstanceOf[Array[ValidatorId]],
     last,
     totalWeightOfEquivocatorsX,
