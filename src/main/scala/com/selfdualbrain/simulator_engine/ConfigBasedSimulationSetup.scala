@@ -41,7 +41,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   override def absoluteFTT: Ether = ???
 
-  override def engine: ObservableSimulationEngine[BlockchainNode] = ???
+  override def engine: ObservableSimulationEngine[BlockchainNode, EventPayload] = ???
 
   override def guiCompatibleStats: Option[SimulationStats] = ???
 }

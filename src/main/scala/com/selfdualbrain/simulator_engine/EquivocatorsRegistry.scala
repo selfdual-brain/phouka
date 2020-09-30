@@ -21,7 +21,7 @@ class EquivocatorsRegistry private (
                                      numberOfValidators: Int,
                                      weightsOfValidators: ValidatorId => Ether,
                                      absoluteFTT: Ether,
-                                     pSet: HashSet[ValidatorId],
+                                     pSet: Set[ValidatorId],
                                      pArray: Array[ValidatorId],
                                      pLast: Int,
                                      pTotalWeightOfEquivocators: Ether,
@@ -40,7 +40,7 @@ class EquivocatorsRegistry private (
       pCatastropheFlag = false
     )
 
-  private var set: HashSet[ValidatorId] = pSet
+  private var set: Set[ValidatorId] = pSet
   private val array: Array[ValidatorId] = pArray
   private var last: Int = pLast
   private var totalWeightOfEquivocatorsX: Ether = pTotalWeightOfEquivocators
@@ -51,7 +51,7 @@ class EquivocatorsRegistry private (
     numberOfValidators,
     weightsOfValidators,
     absoluteFTT,
-    set.clone().asInstanceOf[HashSet[ValidatorId]],
+    set,
     array.clone().asInstanceOf[Array[ValidatorId]],
     last,
     totalWeightOfEquivocatorsX,

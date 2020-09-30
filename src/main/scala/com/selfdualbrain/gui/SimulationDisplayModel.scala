@@ -13,13 +13,15 @@ import scala.collection.mutable.ArrayBuffer
 
 /**
   * This is the model for "simulation display" GUI. All the non-trivial GUI logic happens here.
-  * This model allows for different arrangement of actual forms and windows.
+  * This model allows for different arrangements of actual forms and windows.
   *
   * ============== Concepts ==============
   * The GUI is centered around showing the log of events generated along a single simulation.
   * The simulation engine is an iterator of events. On every engine.next() a new event is produced.
-  * Because event ids are assigned as events are created internally in the engine, and events are subject
-  * to DES-queue-implied shuffling caused by how we simulate physical time, we distinguish step-id and event-id:
+  *
+  * Event ids are assigned sequentially along events actual creation inside the engine. On the other hand, events are subject
+  * to DES-queue-implied sorting along the flow of simulated time. Therefore, when looking at the stream of events emitted by
+  * the engine, event ids are "shuffled". To help with this we distinguish step-id and event-id:
   * - event-id is assigned at (internal) event creation
   * - step-id is assigned at the moment the event leaves the engine via engine.next()
   *
@@ -28,11 +30,11 @@ import scala.collection.mutable.ArrayBuffer
   *
   * In the simulation display we want to offer to the user full freedom in browsing the history of executed simulation.
   * If needed, the used may also extend the simulation history by generating more events from the engine.
-  * In terms of the generated blockchain, "full freedom" means that the GUI offer 3-dimensional browsing:
+  * In terms of the generated blockchain, "full freedom" means that the GUI offers 3-dimensional browsing:
   *
-  * Dimension 1: selecting steps along the events log - this dimension is additionally equipped with simple filtering
-  * Dimension 2: selecting validator to be observed
-  * Dimension 3: selecting brick within the local jdag of a validator
+  * Dimension 1: selecting steps along the events log
+  * Dimension 2: selecting a validator to be observed
+  * Dimension 3: selecting a brick within the local jdag of a validator
   *
   * The collection of all events is kept in the "allEvents" ArrayBuffer. The last step simulated so far (= emitted by the engine) we refer
   * to as "simulation horizon". The pointers (cursors) in all 3 browsing dimensions are:
@@ -63,11 +65,13 @@ import scala.collection.mutable.ArrayBuffer
   * - adjust events filter
   * - export log to text file
   *
-  * Implementation remark: simulation engine uses Long value for representing step id. This makes a very long simulations possible (without using the GUI).
+  * Implementation remark: simulation engine uses Long value for representing step id. This makes very long simulations possible (without using the GUI).
   * For simulations that are using GUI, we store all simulation steps produced by the engine in a single ArrayBuffer. JVM enforces the limit of array size
-  * to 2147483647, i.e. whatever a 32-bit number can address. This makes the limit on the number of steps that can be displayed in the GUI. To bypass
-  * this limit we would need to introduce some external storage (= a database). For now this is not supported.
-  * Because of this, within SimulationDisplayModel we represent stepId as Int.
+  * to 2147483647, i.e. whatever a 32-bit number can address. This establishes the limit on the number of steps that can be displayed in the GUI. To bypass
+  * this limit we would need to introduce some external storage (= a database). For now external storage is not supported.
+  *
+  * Because of this, within SimulationDisplayModel we represent stepId as Int and so we assume that only simulations not longer than what fits into Int are supported
+  * in the GUI.
   *
   * @param experimentConfig
   * @param engine

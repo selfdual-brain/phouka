@@ -1,5 +1,6 @@
 package com.selfdualbrain.blockchain_structure
 
+import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.hashing.Hash
 import com.selfdualbrain.time.SimTimepoint
 
@@ -65,7 +66,9 @@ case class NormalBlock(
                         creator: ValidatorId,
                         prevInSwimlane: Option[Brick],
                         parent: Block,
+                        numberOfTransactions: Int,
                         payloadSize: Int,
+                        totalGas: Long,
                         hash: Hash
  ) extends Block with Brick {
 

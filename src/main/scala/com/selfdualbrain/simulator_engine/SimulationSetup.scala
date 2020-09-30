@@ -24,7 +24,7 @@ abstract class SimulationSetup {
   def absoluteFTT: Ether
   def disruptionModel: DisruptionModel
   def validatorsFactory: ValidatorsFactory
-  def engine: ObservableSimulationEngine[BlockchainNode]
+  def engine: ObservableSimulationEngine[BlockchainNode, EventPayload]
   def guiCompatibleStats: Option[SimulationStats]
 }
 

@@ -47,7 +47,7 @@ sealed abstract class BlocksBuildingStrategyModel
 object BlocksBuildingStrategyModel {
   case class FixedNumberOfTransactions(n: Int) extends BlocksBuildingStrategyModel
   case class CostAndSizeLimit(costLimit: Long, sizeLimit: Int) extends BlocksBuildingStrategyModel
-  case class CreatorProcessingTimeLimit(processingTime: TimeDelta) extends BlocksBuildingStrategyModel
+//  case class CreatorProcessingTimeLimit(processingTime: TimeDelta) extends BlocksBuildingStrategyModel
 }
 
 sealed abstract class FinalizerConfig

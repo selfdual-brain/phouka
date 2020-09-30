@@ -5,7 +5,8 @@ import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{CloningSupport, _}
 import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness._
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.transactions.BlockPayloadBuilder
 
 import scala.annotation.tailrec
 import scala.collection.immutable.ArraySeq
@@ -16,8 +17,6 @@ object NaiveBlockchainHonestValidator {
   case class Config(
                     //integer id of a validator; simulation engine allocates these ids from 0,...,n-1 interval
                     validatorId: ValidatorId,
-                    //randomness source to be used
-//                    random: Random,
                     //number of validators (not to be mistaken with number of active nodes)
                     numberOfValidators: Int,
                     //absolute weights of validators
@@ -37,7 +36,9 @@ object NaiveBlockchainHonestValidator {
                     //todo: doc
                     brickProposeDelaysGeneratorConfig: LongSequenceConfig,
                     //todo: doc
-                    blockPayloadGeneratorConfig: IntSequenceConfig,
+                    blockPayloadBuilder: BlockPayloadBuilder,
+                    //todo: doc
+                    computingPower: Long, //using [gas/second] units
                     //todo: doc
                     msgValidationCostModel: LongSequenceConfig,
                     //todo: doc
@@ -60,7 +61,6 @@ object NaiveBlockchainHonestValidator {
                     blockVsBallot: Picker[String],
                     brickHashGenerator: CryptographicDigester,
                     brickProposeDelaysGenerator: LongSequenceGenerator,
-                    blockPayloadGenerator: IntSequenceGenerator,
                     msgValidationCostGenerator: LongSequenceGenerator,
                     msgCreationCostGenerator: LongSequenceGenerator
                   ) extends CloningSupport[StateSnapshot] {
@@ -82,7 +82,6 @@ object NaiveBlockchainHonestValidator {
         blockVsBallot = this.blockVsBallot,
         brickHashGenerator = this.brickHashGenerator,
         brickProposeDelaysGenerator = this.brickProposeDelaysGenerator.createDetachedCopy(),
-        blockPayloadGenerator = this.blockPayloadGenerator.createDetachedCopy(),
         msgValidationCostGenerator = this.msgValidationCostGenerator.createDetachedCopy(),
         msgCreationCostGenerator = this.msgCreationCostGenerator.createDetachedCopy()
       )
@@ -127,7 +126,6 @@ class NaiveBlockchainHonestValidator private (
       blockVsBallot = new Picker[String](context.random, Map("block" -> config.blocksFraction, "ballot" -> (1 - config.blocksFraction))),
       brickHashGenerator = new FakeSha256Digester(context.random, 8),
       brickProposeDelaysGenerator = LongSequenceGenerator.fromConfig(config.brickProposeDelaysGeneratorConfig, context.random),
-      blockPayloadGenerator = IntSequenceGenerator.fromConfig(config.blockPayloadGeneratorConfig, context.random),
       msgValidationCostGenerator = LongSequenceGenerator.fromConfig(config.msgValidationCostModel, context.random),
       msgCreationCostGenerator = LongSequenceGenerator.fromConfig(config.msgCreationCostModel, context.random)
     ))
@@ -147,7 +145,6 @@ class NaiveBlockchainHonestValidator private (
   val blockVsBallot: Picker[String] = state.blockVsBallot
   val brickHashGenerator: CryptographicDigester = state.brickHashGenerator
   val brickProposeDelaysGenerator: LongSequenceGenerator = state.brickProposeDelaysGenerator
-  val blockPayloadGenerator: IntSequenceGenerator = state.blockPayloadGenerator
   val msgValidationCostGenerator: LongSequenceGenerator = state.msgValidationCostGenerator
   val msgCreationCostGenerator: LongSequenceGenerator = state.msgCreationCostGenerator
 
@@ -178,7 +175,6 @@ class NaiveBlockchainHonestValidator private (
       blockVsBallot = blockVsBallot,
       brickHashGenerator = brickHashGenerator,
       brickProposeDelaysGenerator = brickProposeDelaysGenerator,
-      blockPayloadGenerator = blockPayloadGenerator,
       msgValidationCostGenerator = msgValidationCostGenerator,
       msgCreationCostGenerator = msgCreationCostGenerator
     )
@@ -195,6 +191,10 @@ class NaiveBlockchainHonestValidator private (
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! knownBricks.contains(j))
 
     //simulation of incoming message processing time
+    val payloadValidationTime: TimeDelta = msg match {
+      case x: NormalBlock => (x.totalGas.toDouble * 1000000 / config.computingPower).toLong
+      case x: Ballot => 0L
+    }
     context.registerProcessingTime(msgValidationCostGenerator.next())
 
     if (missingDependencies.isEmpty) {
@@ -297,6 +297,7 @@ class NaiveBlockchainHonestValidator private (
             panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
 
+        val payload = config.blockPayloadBuilder.next()
         NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
@@ -306,7 +307,9 @@ class NaiveBlockchainHonestValidator private (
           creator,
           prevInSwimlane = myLastMessagePublished,
           parent = forkChoiceWinner,
-          payloadSize = blockPayloadGenerator.next(),
+          numberOfTransactions = payload.numberOfTransactions,
+          payloadSize = payload.transactionsBinarySize,
+          totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = brickHashGenerator.generateHash()
         )
       } else
