@@ -1,5 +1,6 @@
 package com.selfdualbrain.gui
 
+import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.StaticSplitPanel
 import com.selfdualbrain.gui_framework.{MvpView, PanelEdge, Presenter}

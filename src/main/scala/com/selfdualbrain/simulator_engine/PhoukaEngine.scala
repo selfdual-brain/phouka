@@ -72,6 +72,7 @@ class PhoukaEngine(
     val newBox = new NodeBox(nodeId, newValidator, context)
     nodes.append(newBox)
     context.ensureLocalTimeIsNotEarlierThan(desQueue.currentTime)
+    desQueue.addEngineEvent(context.time(), Some(nodeId), EventPayload.NewAgentSpawned)
     newValidator.startup(desQueue.currentTime)
   }
 
@@ -152,6 +153,7 @@ class PhoukaEngine(
           val newValidator = box.validatorInstance.clone(newNodeId, context)
           val newBox = new NodeBox(newNodeId, newValidator, context)
           nodes.append(newBox)
+          desQueue.addEngineEvent(context.time(), Some(newNodeId), EventPayload.NewAgentSpawned)
         }
         true
 
@@ -231,7 +233,7 @@ class PhoukaEngine(
     * The delivery will always happen, but the delay is (in general) arbitrary long.
     * The actual delay is derived from the network model configured for the current simulation.
     *
-    * Remark: Please notice that conceptually we cover here the whole comms stack: physical network, IP protocol and gossip (with retransmissions). Alll this
+    * Remark: Please notice that conceptually we cover here the whole comms stack: physical network, IP protocol and gossip (with retransmissions). All this
     * effectively looks like "broadcast service with delivery guarantee".
     *
     * @param sender sending agent id

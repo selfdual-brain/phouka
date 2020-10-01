@@ -3,6 +3,7 @@ package com.selfdualbrain.gui
 import java.awt.{BorderLayout, Dimension, GridBagConstraints, GridBagLayout, Insets}
 
 import com.selfdualbrain.blockchain_structure.ValidatorId
+import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.MvpView.JCheckBoxOps
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, RibbonPanel, StaticSplitPanel}

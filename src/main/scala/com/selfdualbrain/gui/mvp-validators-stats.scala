@@ -3,6 +3,7 @@ package com.selfdualbrain.gui
 import java.awt.{BorderLayout, Dimension}
 
 import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.ColumnDefinition
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartTable}

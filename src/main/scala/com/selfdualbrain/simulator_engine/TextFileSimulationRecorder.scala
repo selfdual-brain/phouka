@@ -59,6 +59,8 @@ class TextFileSimulationRecorder[A,P](file: File, eagerFlush: Boolean, agentsToB
 
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
+          case EventPayload.NewAgentSpawned =>
+            s"spawned new agent ${agent.get}"
           case EventPayload.BroadcastBrick(brick) =>
             s"published $brick"
           case EventPayload.NetworkDisruptionEnd(eventId) =>

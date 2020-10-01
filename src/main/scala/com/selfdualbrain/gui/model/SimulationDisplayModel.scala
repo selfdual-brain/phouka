@@ -1,8 +1,8 @@
-package com.selfdualbrain.gui
+package com.selfdualbrain.gui.model
 
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{Event, SimulationEngine}
-import com.selfdualbrain.gui.SimulationDisplayModel.{Ev, SimulationEngineStopCondition}
+import com.selfdualbrain.gui.EventsFilter
 import com.selfdualbrain.gui_framework.EventsBroadcaster
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.stats.{SimulationStats, ValidatorStats}
@@ -81,11 +81,21 @@ class SimulationDisplayModel(
                               val experimentConfig: ExperimentConfig,
                               val engine: SimulationEngine[BlockchainNode, EventPayload],
                               stats: SimulationStats,
-                              genesis: Genesis) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
+                              genesis: Genesis,
+                              expectedNumberOfBricks: Int,
+                              expectedNumberOfEvents: Int,
+                              maxNumberOfAgents: Int
+                            ) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
 
   //only-growing collection of (all) events
   //index in this collection coincides with step-id
-  private val allEvents = new ArrayBuffer[Event[BlockchainNode, EventPayload]]
+  private val allEvents = new ArrayBuffer[Event[BlockchainNode, EventPayload]](expectedNumberOfEvents)
+
+  private val agentStateSnapshots = new ArrayBuffer[AgentStateSnapshot](expectedNumberOfEvents)
+
+  private val agent2bricksHistory = new Array[NodeKnownBricksHistory](maxNumberOfAgents)
+  for (i <- 1 to experimentConfig.numberOfValidators)
+    agent2bricksHistory(i) = new NodeKnownBricksHistory(expectedNumberOfBricks, expectedNumberOfEvents)
 
   //This array is used as a map: validator-id ----> array-buffer.
   //(where the key is validator id - and it corresponds to array index).
@@ -114,11 +124,44 @@ class SimulationDisplayModel(
   private var simulationEngineStopCondition: SimulationEngineStopCondition = new SimulationEngineStopCondition.NextNumberOfSteps(20)
 
   /**
+    * Keeps snapshot of whatever information we want to show about a blockchain node (along the history of simulation).
+    * We keep one snapshot per simulation step.
+    * Caution: since one simulation step only changes stats of one blockchain node, we just keep the snapshot for this single node.
+    */
+  case class AgentStateSnapshot(
+                               step: Int,
+                               knownBricksSnapshot: Int,
+                               jDagSize: Int,
+                               jDagDepth: Int,
+                               publishedBricks: Int,
+                               publishedBlocks: Int,
+                               publishedBallots: Int,
+                               receivedBricks: Int,
+                               receivedBlocks: Int,
+                               receivedBallots: Int,
+                               acceptedBricks: Int,
+                               acceptedBlocks: Int,
+                               acceptedBallots: Int,
+                               bricksWaitingInTheBuffer: Int,
+                               lastBrickPublished: Option[Brick],
+                               ownBlocksFinalized: Int,
+                               ownBlocksTentative: Int,
+                               ownBlocksOrphaned: Int,
+                               isEquivocator: Boolean,
+                               lfbChainLength: Int,
+                               lastFinalitySummit: Option[ACC.Summit],
+                               currentBGameAnchor: Block,
+                               currentBGameLastSummit: Option[ACC.Summit],
+                               forkChoiceWinner: Block
+                               )
+
+  /**
     * Represents observed validator state as inferred from events log.
     * Caution: this class is mutable. As the user moves the "selected event" on the events log table, we accordingly
     * update the RenderedValidatorState by incremental processing of events.
     * Important remark: when the selected event is "step N" we calculate the state so that all steps from 0 to N (inclusive) were executed
     */
+  @deprecated
   class RenderedValidatorState {
 
     //number of step which is currently highlighted

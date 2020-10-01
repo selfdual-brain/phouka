@@ -2,10 +2,11 @@ package com.selfdualbrain.gui
 
 import com.selfdualbrain.gui.SimulationDisplayModel.SimulationEngineStopCondition
 import com.selfdualbrain.gui.SimulationDisplayModel.SimulationEngineStopCondition.NextNumberOfSteps
+import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.MvpView.{AbstractButtonOps, JTextComponentOps}
 import com.selfdualbrain.gui_framework._
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.layout_dsl.components.{RibbonPanel, StaticSplitPanel, RadioButtonsListPanel}
+import com.selfdualbrain.gui_framework.layout_dsl.components.{RadioButtonsListPanel, RibbonPanel, StaticSplitPanel}
 
 /**
   * Component that offers control over starting the simulation engine.

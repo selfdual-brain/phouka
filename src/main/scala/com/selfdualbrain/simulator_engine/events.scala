@@ -16,6 +16,7 @@ object EventPayload {
   //ENGINE
   case class BroadcastBrick(brick: Brick) extends EventPayload(EventTag.BROADCAST_BRICK)
   case class NetworkDisruptionEnd(disruptionEventId: Long) extends EventPayload(EventTag.NETWORK_DISRUPTION_END)
+  case object NewAgentSpawned extends EventPayload(EventTag.NEW_AGENT_SPAWNED)
 
   //SEMANTIC
   case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends EventPayload(EventTag.DIRECT_ACCEPT)
@@ -39,6 +40,7 @@ object EventPayload {
 case class MsgBufferTransition(snapshotBefore: MsgBufferSnapshot, snapshotAfter: MsgBufferSnapshot)
 
 object EventTag {
+  val NEW_AGENT_SPAWNED = 0
   val BRICK_DELIVERED = 1
   val WAKE_UP = 2
   val BROADCAST_BRICK = 3
@@ -59,6 +61,7 @@ object EventTag {
   val NETWORK_CONNECTION_LOST = 18
 
   val collection = Map(
+    NEW_AGENT_SPAWNED -> "agent created",
     BRICK_DELIVERED -> "brick delivery",
     WAKE_UP -> "wake-up",
     BROADCAST_BRICK -> "propose",

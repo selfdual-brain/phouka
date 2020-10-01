@@ -1,5 +1,6 @@
 import com.selfdualbrain.blockchain_structure.Genesis
 import com.selfdualbrain.gui._
+import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.randomness.IntSequenceConfig
 import com.selfdualbrain.simulator_engine.{ExperimentConfig, ExperimentSetup, NaiveValidatorsFactory, PhoukaEngine, StatsProcessorConfig}
