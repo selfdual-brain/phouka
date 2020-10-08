@@ -16,7 +16,7 @@ object EventPayload {
   //ENGINE
   case class BroadcastBrick(brick: Brick) extends EventPayload(EventTag.BROADCAST_BRICK)
   case class NetworkDisruptionEnd(disruptionEventId: Long) extends EventPayload(EventTag.NETWORK_DISRUPTION_END)
-  case object NewAgentSpawned extends EventPayload(EventTag.NEW_AGENT_SPAWNED)
+  case class NewAgentSpawned(validatorId: ValidatorId) extends EventPayload(EventTag.NEW_AGENT_SPAWNED)
 
   //SEMANTIC
   case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends EventPayload(EventTag.DIRECT_ACCEPT)

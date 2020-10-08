@@ -2,13 +2,46 @@ package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.ValidatorId
-import com.selfdualbrain.simulator_engine.ExperimentSetup
 import com.selfdualbrain.time.SimTimepoint
 
 /**
   * Definition of what statistics (calculated in realtime) we want to have for a blockchain simulation.
   *
+  * ==========================================================================================
+  *          GENERAL DISCUSSION ON WHAT EXTRA COMPLEXITY IS IMPLIED BY FAULTY VALIDATORS
+  * ==========================================================================================
+  * Remark: there is some inherent complexity of the semantics of statistics coming from the phenomenon of "faulty validators".
+  * For a "vanilla" blockchain with all validators following the same "honest" behaviour, things are simple because
+  * one validator = one blockchain node. On the other hand, when we go into simulation of "faulty" things get hairy.
+  * As an example of problems we run into when faulty behaviour simulation is enabled, consider the fundamental concept of "latency".
+  * From a general point of view in any blockchain we have two "latencies"
+  * - transaction-level-latency: time between (1) transaction is sent by a client to blockchain node and (2) transaction gets finalized
+  * - block-level-latency: time between (1) block is proposed and (2) block gets finalized
+  * These times are of course going to be different for every transaction/block. Let us focus on the block-level-latency case. These times
+  * can be seen as a random variable and we would like to calculate the distribution of this random variable, or at least some typical
+  * parameters of this distribution, such as mean and standard deviation. In the case of a single blockchain node V the dataset
+  * to be considered is easy to pick - we need to consider all blocks finalized up to some point in time, then for every such block we
+  * take the distance on the timeline between proposal (done by V) and finalization (as observed at V). Troubles show up when we would like
+  * to measure the distribution of latency across all nodes. What is the set of times we should take as the starting point of this calculation ?
+  * When all blockchain nodes are honest, we could take into account only blocks that are seen as finalized on ALL nodes, then take
+  * the spectrum of latencies measured for all these blocks per node, throw all these times into a single set and run calculations of mean value
+  * and standard deviation. However, this naive approach leads to pathology when some nodes are crashed or turned into equivocators via bifurcation.
+  * A crashed node will never signal finality, so our set of "completely finalized blocks" will no longer move forward. For a bifurcated
+  * equivocator things are even more tricky - should we count it in the stats as a single validator or rather two nodes ? Going for "single validator"
+  * feels wrong, because the same block is signaled as finalized twice. Going for "two nodes" feels wrong, because it introduces a bias
+  * into the latency distribution we are attempting to measure. Possibly we could then eliminate faulty nodes from the "working set", and so measure
+  * the distribution of latency along the honest/healthy nodes only ? But this is also tricky - because when exactly a node can be considered faulty ?
+  *
+  * We evade that sort of troubles by rather ad-hoc approach to throw faulty validators out of calculation. The validator is considered faulty when
+  * the engine marks it as faulty. Currently this happens when the validator bifurcates or its only node crashes.
+  *
+  * ===========================================================================================
+  *                                       NOTATION
+  * ===========================================================================================
+  * (see the discussion above explaining why we ignore the difference between a validator and a blockchain node for the purpose of statistics)
+  *
   * For defining the meaning of numbers precisely, the following notation is used:
+  *
   * lfb(g) - visibly finalized block with generation g
   * b.cTime - block creation time
   * b.fTime(v) - block finalization time as seen by validator v
@@ -26,8 +59,8 @@ import com.selfdualbrain.time.SimTimepoint
   * simulation(t).blocks - the set of all blocks in simulation(t)
   * simulation(t).ballots - the set of all ballots in simulation(t)
   * simulation(t).bricks - a set-theoretic sum: simulation(t).blocks + simulation(t).ballots
-  * simulation(t).receivedBlocks(v) - the set of blocks that were received from network by validator v
-  * simulation(t).receivedBallots(v) - the set of ballots that were received from network by validator v
+  * simulation(t).receivedBlocks(v) - the set of blocks that were received from the network by validator v
+  * simulation(t).receivedBallots(v) - the set of ballots that were received from the network by validator v
   * simulation(t).acceptedBlocks(v) := simulation(t).receivedBlocks(v) * simulation(t).jdagBlocks(v) (* denotes sets intersection)
   * simulation(t).acceptedBallots(v) := simulation(t).receivedBallots(v) * simulation(t).jdagBallots(v) (* denotes sets intersection)
   * simulation(t).jdagBlocks(v) - the set of blocks that are added to local j-dag of v
@@ -42,13 +75,15 @@ import com.selfdualbrain.time.SimTimepoint
   */
 trait SimulationStats {
 
-  def experimentSetup: ExperimentSetup
-
   //timepoint of the last event of the simulation
   def totalTime: SimTimepoint
 
   //number of events in the simulation
   def numberOfEvents: Long
+
+  def isFaulty(vid: ValidatorId): Boolean
+
+  def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint]
 
   //simulation(t).blocks.size
   def numberOfBlocksPublished: Long
@@ -118,6 +153,9 @@ trait SimulationStats {
   //number of blocks visibly finalized per second (calculated for the whole time of simulation)
   //simulation(t).blocks.filter(b => b.isVisiblyFinalized) / t.asSeconds
   def cumulativeThroughput: Double
+
+  //number of transactions finalized per second (calculated for the whole time of simulation)
+  def cumulativeTPS: Double
 
   //Latency is time from publishing a block B to B becoming finalized.
   //Of course this time is different for each validator.

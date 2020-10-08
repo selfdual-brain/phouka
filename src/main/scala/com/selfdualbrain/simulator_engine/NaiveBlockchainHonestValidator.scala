@@ -181,13 +181,13 @@ class NaiveBlockchainHonestValidator private (
 
   //#################### PUBLIC API ############################
 
-  override def startup(time: SimTimepoint): Unit = {
+  override def startup(): Unit = {
     val newBGame = new BGame(context.genesis, config.weightsOfValidators, equivocatorsRegistry)
     block2bgame += context.genesis -> newBGame
     scheduleNextWakeup()
   }
 
-  def onNewBrickArrived(time: SimTimepoint, msg: Brick): Unit = {
+  def onNewBrickArrived(msg: Brick): Unit = {
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! knownBricks.contains(j))
 
     //simulation of incoming message processing time
@@ -212,7 +212,7 @@ class NaiveBlockchainHonestValidator private (
     }
   }
 
-  override def onScheduledBrickCreation(time: SimTimepoint, strategySpecificMarker: Any): Unit = {
+  override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
     blockVsBallot.select() match {
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)

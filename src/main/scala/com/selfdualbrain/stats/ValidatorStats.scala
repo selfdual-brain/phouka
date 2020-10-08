@@ -1,6 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.time.SimTimepoint
 
 trait ValidatorStats {
 
@@ -70,6 +71,9 @@ trait ValidatorStats {
   //simulation(t).blocks.filter(b => b.creator == v and b.seenFinalizedAt(v)).size / t.asSeconds
   def averageThroughputIAmGenerating: Double
 
+  //Average number of transactions per second (calculated for blocks created by this validator only).
+  def averageTpsIamGenerating: Double
+
   //Orphan rate (calculated for blocks created by this validator only).
   //simulation(t).blocks.filter(b => b.creator == v and b.isOrphaned).size / simulation(t).blocks.filter(b => b.creator == v).size
   def averageFractionOfMyBlocksThatGetOrphaned: Double
@@ -87,8 +91,6 @@ trait ValidatorStats {
   //Fraction of received bricks that landed in msg-buffer.
   //simulation(t).jdagBricks(v).filter(b => b.wasBuffered).size / simulation(t).acceptedBricks(v)
   def averageBufferingChanceForIncomingBricks: Double
-
-  def wasObservedAsEquivocator: Boolean
 
   def observedNumberOfEquivocators: Int
 

@@ -45,7 +45,7 @@ class PhoukaEngine(
     )
   var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
-  private var currentNumberOfNodes: Int = numberOfValidators
+  private var lastNodeIdAllocated: Int = -1
 
   sealed abstract class NodeStatus
   object NodeStatus {
@@ -55,7 +55,7 @@ class PhoukaEngine(
   }
 
   //holds together stuff related to one node
-  private class NodeBox(val nodeId: BlockchainNode, val validatorInstance: Validator, val context: ValidatorContextImpl) {
+  private class NodeBox(val nodeId: BlockchainNode, val validatorId: ValidatorId, val validatorInstance: Validator, val context: ValidatorContextImpl) {
     var status: NodeStatus = NodeStatus.NORMAL
     var networkOutageGoingToBeFixedAt: SimTimepoint = SimTimepoint.zero
     var broadcastBuffer = new ArrayBuffer[Brick]
@@ -67,13 +67,14 @@ class PhoukaEngine(
   private val nodes: ArrayBuffer[NodeBox] = new ArrayBuffer[NodeBox](numberOfValidators)
   for (i <- 0 until numberOfValidators) {
     val nodeId = BlockchainNode(i)
+    lastNodeIdAllocated = i
     val context = new ValidatorContextImpl(nodeId, SimTimepoint.zero)
     val newValidator = validatorsFactory.create(BlockchainNode(i), i, context)
-    val newBox = new NodeBox(nodeId, newValidator, context)
+    val newBox = new NodeBox(nodeId, i, newValidator, context)
     nodes.append(newBox)
-    context.ensureLocalTimeIsNotEarlierThan(desQueue.currentTime)
-    desQueue.addEngineEvent(context.time(), Some(nodeId), EventPayload.NewAgentSpawned)
-    newValidator.startup(desQueue.currentTime)
+    context.moveForwardLocalClockToAtLeast(desQueue.currentTime)
+    desQueue.addEngineEvent(context.time(), Some(nodeId), EventPayload.NewAgentSpawned(i))
+    newValidator.startup()
   }
 
   log.info(s"init completed")
@@ -133,9 +134,7 @@ class PhoukaEngine(
           box.receivedBricksBuffer.append(brick)
           true
         } else {
-          box.context.ensureLocalTimeIsNotEarlierThan(timepoint)
-          desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedBrickDelivery(eventId, box.context.time() - timepoint, brick))
-          box.validatorInstance.onNewBrickArrived(desQueue.currentTime, brick)
+          performBrickConsumption(box, eventId, brick, timepoint)
           false
         }
       case other =>
@@ -146,14 +145,14 @@ class PhoukaEngine(
   protected def handleExternal(box: NodeBox, eventId: Long, timepoint: SimTimepoint, destination: BlockchainNode, payload: EventPayload): Boolean = {
     payload match {
       case EventPayload.Bifurcation(numberOfClones) =>
-        val numberOfExistingNodes: Int = nodes.size
         for (i <- 1 to numberOfClones) {
-          val newNodeId = BlockchainNode(nodes.size)
+          lastNodeIdAllocated += 1
+          val newNodeId = BlockchainNode(lastNodeIdAllocated)
           val context = new ValidatorContextImpl(newNodeId, box.context.time())
           val newValidator = box.validatorInstance.clone(newNodeId, context)
-          val newBox = new NodeBox(newNodeId, newValidator, context)
+          val newBox = new NodeBox(newNodeId, box.validatorId, newValidator, context)
           nodes.append(newBox)
-          desQueue.addEngineEvent(context.time(), Some(newNodeId), EventPayload.NewAgentSpawned)
+          desQueue.addEngineEvent(context.time(), Some(newNodeId), EventPayload.NewAgentSpawned(box.validatorId))
         }
         true
 
@@ -181,7 +180,7 @@ class PhoukaEngine(
   protected def handleLoopback(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: BlockchainNode, payload: EventPayload): Boolean = {
     payload match {
       case EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker) =>
-        box.context.ensureLocalTimeIsNotEarlierThan(timepoint)
+        box.context.moveForwardLocalClockToAtLeast(timepoint)
         desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedWakeUp(eventId, box.context.time() - timepoint, strategySpecificMarker))
         box.validatorInstance.onScheduledBrickCreation(timepoint, strategySpecificMarker)
         true
@@ -212,15 +211,22 @@ class PhoukaEngine(
           desQueue.addOutputEvent(timepoint, box.nodeId, EventPayload.NetworkConnectionRestored)
           for (brick <- box.broadcastBuffer)
             broadcast(box.nodeId, timepoint, brick)
-          for (brick <- box.receivedBricksBuffer) {
-            box.context.ensureLocalTimeIsNotEarlierThan(timepoint)
-            desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedBrickDelivery(eventId, box.context.time() - timepoint, brick))
-            box.validatorInstance.onNewBrickArrived(desQueue.currentTime, brick)
-          }
+          for (brick <- box.receivedBricksBuffer)
+            performBrickConsumption(box, eventId, brick, timepoint)
           true
         } else false
 
     }
+  }
+
+  private def performBrickConsumption(destinationAgentBox: NodeBox, eventId: Long, brick: Brick, brickDeliveryTimepoint: SimTimepoint): Unit = {
+    destinationAgentBox.context.moveForwardLocalClockToAtLeast(brickDeliveryTimepoint)
+    desQueue.addOutputEvent(
+      timepoint = destinationAgentBox.context.time(),
+      source = destinationAgentBox.nodeId,
+      payload = EventPayload.ConsumedBrickDelivery(eventId, destinationAgentBox.context.time() - brickDeliveryTimepoint, brick)
+    )
+    destinationAgentBox.validatorInstance.onNewBrickArrived(brick)
   }
 
   protected def nextBrickId(): BlockdagVertexId = {
@@ -241,7 +247,7 @@ class PhoukaEngine(
     * @param brick payload
     */
   protected  def broadcast(sender: BlockchainNode, sendingTimepoint: SimTimepoint, brick: Brick): Unit = {
-    for (i <- 0 until currentNumberOfNodes if i != sender.address) {
+    for (i <- 0 to lastNodeIdAllocated if i != sender.address) {
       val effectiveDelay: Long = math.max(1, networkModel.calculateMsgDelay(brick, sender, BlockchainNode(i), sendingTimepoint)) // we enforce minimum delay = 1 microsecond
       val targetTimepoint: SimTimepoint = sendingTimepoint + effectiveDelay
       desQueue.addTransportEvent(targetTimepoint, sender, BlockchainNode(i), EventPayload.BrickDelivered(brick))
@@ -251,7 +257,7 @@ class PhoukaEngine(
   private class ValidatorContextImpl(nodeId: BlockchainNode, initialTimepointOfLocalClock: SimTimepoint) extends ValidatorContext {
     private var localClock: SimTimepoint = initialTimepointOfLocalClock
 
-    private[PhoukaEngine] def ensureLocalTimeIsNotEarlierThan(timepoint: SimTimepoint): Unit = {
+    private[PhoukaEngine] def moveForwardLocalClockToAtLeast(timepoint: SimTimepoint): Unit = {
       localClock = SimTimepoint.max(timepoint, localClock)
     }
 

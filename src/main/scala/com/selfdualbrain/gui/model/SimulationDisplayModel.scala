@@ -1,6 +1,7 @@
 package com.selfdualbrain.gui.model
 
 import com.selfdualbrain.blockchain_structure._
+import com.selfdualbrain.data_structures.{FastIntMap, FastIntMapWithAutoinit, FastMapOnIntInterval}
 import com.selfdualbrain.des.{Event, SimulationEngine}
 import com.selfdualbrain.gui.EventsFilter
 import com.selfdualbrain.gui_framework.EventsBroadcaster
@@ -87,15 +88,18 @@ class SimulationDisplayModel(
                               maxNumberOfAgents: Int
                             ) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
 
-  //only-growing collection of (all) events
-  //index in this collection coincides with step-id
-  private val allEvents = new ArrayBuffer[Event[BlockchainNode, EventPayload]](expectedNumberOfEvents)
+  //only-growing collection of (all) events: step-id ----> event
+  private val allEvents = new FastMapOnIntInterval[Event[BlockchainNode, EventPayload]](expectedNumberOfEvents)
 
-  private val agentStateSnapshots = new ArrayBuffer[AgentStateSnapshot](expectedNumberOfEvents)
+  //stepId ---> state snapshot
+  //for step x we keep the snapshot of e.loggingAgent, where e is the event corresponding to x
+  //if there is no logging agent, the state snapshot is None
+  private val agentStateSnapshots = new FastIntMap[AgentStateSnapshot](expectedNumberOfEvents)
 
-  private val agent2bricksHistory = new Array[NodeKnownBricksHistory](maxNumberOfAgents)
-  for (i <- 1 to experimentConfig.numberOfValidators)
-    agent2bricksHistory(i) = new NodeKnownBricksHistory(expectedNumberOfBricks, expectedNumberOfEvents)
+  //agent id ---> bricks history
+  private val agent2bricksHistory = new FastMapOnIntInterval[NodeKnownBricksHistory](maxNumberOfAgents)
+//  for (i <- 0 until experimentConfig.numberOfValidators)
+//    agent2bricksHistory(i) = new NodeKnownBricksHistory(expectedNumberOfBricks, expectedNumberOfEvents)
 
   //This array is used as a map: validator-id ----> array-buffer.
   //(where the key is validator id - and it corresponds to array index).
@@ -103,7 +107,7 @@ class SimulationDisplayModel(
   //Position in the buffer corresponds to generation of LFB chain element,
   //i.e in the cell 13 there is summit ending b-game for LFB-chain element at height 13
   //and at cell 0 is the summit for b-game anchored at Genesis.
-  private val summits = new Array[ArrayBuffer[ACC.Summit]](experimentConfig.numberOfValidators)
+  private val summits = new FastMapOnIntInterval[ArrayBuffer[ACC.Summit]](experimentConfig.numberOfValidators)
   for (vid <- 0 until experimentConfig.numberOfValidators)
     summits(vid) = new ArrayBuffer[ACC.Summit]
 

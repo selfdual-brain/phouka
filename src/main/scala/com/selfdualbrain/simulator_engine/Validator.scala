@@ -1,7 +1,6 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick}
-import com.selfdualbrain.time.SimTimepoint
 
 /**
   * Defines features of an agent ("validator") to be compatible with PhoukaEngine.
@@ -12,27 +11,22 @@ trait Validator {
   /**
     * Called by the engine at the beginning of the simulation.
     * Gives this agent the chance to self-initialize.
-    *
-    * @param time simulated time
     */
-  def startup(time: SimTimepoint): Unit
+  def startup(): Unit
 
   /**
     * Brick has been delivered to this agent.
     * This delivery happens because of other agent calling broadcast().
     *
-    * @param time delivery time
     * @param brick brick to be handled
     */
-  def onNewBrickArrived(time: SimTimepoint, brick: Brick): Unit
+  def onNewBrickArrived(brick: Brick): Unit
 
   /**
     * The time for creating next brick has just arrived.
     * This wake up must have been set as an "alarm" via validator context (some time ago).
-    *
-    * @param time time now
     */
-  def onScheduledBrickCreation(time: SimTimepoint, strategySpecificMarker: Any): Unit
+  def onScheduledBrickCreation(strategySpecificMarker: Any): Unit
 
   /**
     * A validator must be able to clone itself.
