@@ -2,7 +2,7 @@ package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{Ballot, NormalBlock, ValidatorId}
-import com.selfdualbrain.data_structures.FastMapOnIntInterval
+import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
 import com.selfdualbrain.des.{Event, SimulationObserver}
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -53,7 +53,7 @@ class DefaultStatsProcessor(
   //counters of "blocks below generation"
   private val blocksByGenerationCounters = new TreeNodesByGenerationCounter
   //metainfo+stats we attach to LFB chain elements
-  private val finalityMap = new ArrayBuffer[LfbElementInfo]
+  private val finalityMap = new FastIntMap[LfbElementInfo](numberOfValidators)
   //exact sum of finality delays (as microseconds) for all completely finalized blocks
   private var exactSumOfFinalityDelays: Long = 0L
   //"moving window average" of latency (the moving window is expressed in terms of certain number of generations)
@@ -75,8 +75,6 @@ class DefaultStatsProcessor(
 
   latencyMovingWindowAverage.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
   latencyMovingWindowStandardDeviation.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
-
-  finalityMap.addOne(new LfbElementInfo(0)) //corresponds to Genesis block; this way we keep index in finalityMap coherent with generation
 
   /**
     * Updates statistics by taking into account given event.
@@ -144,7 +142,7 @@ class DefaultStatsProcessor(
         val vid = agentId2validatorId(source)
         if (! faultyValidatorsMap(vid)) {
           val vStats = vid2stats(source)
-          handleSemanticEvent(eventPayload, vStats)
+          handleSemanticEvent(vid, eventTimepoint, eventPayload, vStats)
           visiblyFinalizedBlocksMovingWindowCounter.silence(eventTimepoint.micros)
           assert (
             assertion = vStats.myJdagSize == vStats.numberOfBricksIPublished + vStats.receivedHandledBricks - vStats.numberOfBricksInTheBuffer,
@@ -155,8 +153,20 @@ class DefaultStatsProcessor(
 
   }
 
-  private def handleSemanticEvent(payload: EventPayload, vStats: PerValidatorCounters): Unit = {
+  private def handleSemanticEvent(vid: ValidatorId, eventTimepoint: SimTimepoint, payload: EventPayload, vStats: PerValidatorCounters): Unit = {
     payload match {
+
+      case EventPayload.ConsumedWakeUp(consumedEventId, consumptionDelay, strategySpecificMarker) =>
+        //ignore
+
+      case EventPayload.ConsumedBrickDelivery(consumedEventId, consumptionDelay, brick) =>
+        //ignore
+
+      case EventPayload.NetworkConnectionLost =>
+        //ignore
+
+      case EventPayload.NetworkConnectionRestored =>
+        //ignore
 
       case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
         if (brick.isInstanceOf[NormalBlock])
@@ -183,53 +193,43 @@ class DefaultStatsProcessor(
         vStats.sumOfBufferingTimes += eventTimepoint.micros - brick.timepoint.micros
 
       case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
-      //do nothing
+        //do nothing
 
       case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
-        //because of how finality works, we may miss at most one finalityMap cell
-        if (finalityMap.length < finalizedBlock.generation + 1)
-          finalityMap += new LfbElementInfo(finalizedBlock.generation)
-        //ensure we are good
-        assert (finalityMap.length >= finalizedBlock.generation + 1, s"${finalityMap.length}, ${finalizedBlock.generation}")
-        //be careful here: this finality event may be hitting some "old" block (not the last one !)
+        //possibly this is the moment when we are witnessing a completely new element of the LFB chain
+        if (finalityMap.size < finalizedBlock.generation)
+          finalityMap += finalizedBlock.generation -> new LfbElementInfo(finalizedBlock, numberOfValidators)
+
+        //ensure that previous LfbElementInfo is already there; otherwise we must have a bug in the finality machinery
+        assert (finalizedBlock.generation == 1 || finalityMap.contains(finalizedBlock.generation - 1))
+
+        //be careful here: this finality event may be hitting some "old" block (= below the topmost element of finalityMap)
         val lfbElementInfo = finalityMap(finalizedBlock.generation)
+
+        //if this condition fails then:
+        //  - either the finality theorem proof is wrong (wow !)
+        //  - or we have a bug in the core protocol implementation
+        //  - or the FTT is exceeded and so finalized blocks no longer form a chain (which is a practical consequence of equivocation catastrophe)
+        if (lfbElementInfo.block != finalizedBlock)
+          throw new CatastropheException
+
         //updating stats happens here
-        lfbElementInfo.updateWithAnotherFinalityEventObserved(finalizedBlock, validatorAnnouncingEvent, eventTimepoint)
-        //special handling of "just turned to be visibly finalized", so when first finality observation happens
+        lfbElementInfo.onFinalityEventObserved(vid, eventTimepoint, faultyValidatorsMap)
+
+        //special handling of "just turned to be visibly finalized", i.e. when first finality observation happens
         if (lfbElementInfo.numberOfConfirmations == 1) {
           visiblyFinalizedBlocksCounter += 1
           assert (visiblyFinalizedBlocksCounter == finalizedBlock.generation)
           vid2stats(finalizedBlock.creator).myVisiblyFinalizedBlocksCounter += 1
           visiblyFinalizedBlocksMovingWindowCounter.beep(finalizedBlock.generation, eventTimepoint.micros)
         }
+
         //special handling of "the last missing confirmation of finality of given block is just announced" (= now we have finality timepoints for all validators)
-        if (lfbElementInfo.numberOfConfirmations ==) {
-          //updating basic counters
-          completelyFinalizedBlocksCounter += 1
-          vid2stats(finalizedBlock.creator).myCompletelyFinalizedBlocksCounter += 1
-          //if we done the math right, then it is impossible for higher block to reach "completely finalized" state before lower block
-          assert (completelyFinalizedBlocksCounter == finalizedBlock.generation)
-          //updating cumulative latency
-          exactSumOfFinalityDelays += lfbElementInfo.sumOfFinalityDelaysAsMicroseconds
-          //calculating average and standard deviation of latency (within moving window)
-          val latencyCalculationStartingGeneration: Int = math.max(1, lfbElementInfo.generation - latencyMovingWindow + 1)
-          val latencyCalculationEndingGeneration: Int = lfbElementInfo.generation
-          val numberOfGenerations: Int = latencyCalculationEndingGeneration - latencyCalculationStartingGeneration + 1
-          val sumOfFinalityDelays: Double =
-            (latencyCalculationStartingGeneration to latencyCalculationEndingGeneration).map(generation => finalityMap(generation).sumOfFinalityDelaysAsSeconds).sum
-          val sumOfSquaredFinalityDelays: Double =
-            (latencyCalculationStartingGeneration to latencyCalculationEndingGeneration).map(generation => finalityMap(generation).sumOfSquaredFinalityDelays).sum
-          val n: Int = numberOfGenerations * numberOfValidators
-          val average: Double = sumOfFinalityDelays.toDouble / n
-          val standardDeviation: Double = math.sqrt(sumOfSquaredFinalityDelays.toDouble / n - average * average)
-          //storing latency and standard deviation values (for current generation)
-          latencyMovingWindowAverage.addOne(average)
-          latencyMovingWindowStandardDeviation.addOne(standardDeviation)
-          assert (latencyMovingWindowAverage.length == lfbElementInfo.generation + 1)
-          assert (latencyMovingWindowStandardDeviation.length == lfbElementInfo.generation + 1)
-        }
+        if (lfbElementInfo.isCompletelyFinalizedAgainst(faultyValidatorsMap))
+          onBlockAchievingCompletelyFinalizedStatus(lfbElementInfo)
+
         //special handling of the case when this finality event is emitted by the creator of the finalized block
-        if (validatorAnnouncingEvent == finalizedBlock.creator) {
+        if (vid == finalizedBlock.creator) {
           vStats.myFinalizedBlocksCounter += 1
           vStats.sumOfLatenciesOfAllLocallyCreatedBlocks += eventTimepoint - finalizedBlock.timepoint
         }
@@ -249,6 +249,37 @@ class DefaultStatsProcessor(
         vStats.isAfterObservingEquivocationCatastropheX = true
     }
 
+  }
+
+  private def onBlockAchievingCompletelyFinalizedStatus(lfbElementInfo: LfbElementInfo): Unit = {
+    //updating basic counters
+    completelyFinalizedBlocksCounter += 1
+    vid2stats(lfbElementInfo.block.creator).myCompletelyFinalizedBlocksCounter += 1
+
+    //if we done the math right, then it is impossible for higher block to reach "completely finalized" state before lower block
+    assert (completelyFinalizedBlocksCounter == lfbElementInfo.block.generation)
+
+    //updating cumulative latency
+    exactSumOfFinalityDelays += lfbElementInfo.sumOfFinalityDelaysAsMicroseconds
+
+    //calculating average and standard deviation of latency (within moving window)
+    val latencyCalculationStartingGeneration: Int = math.max(1, lfbElementInfo.generation - latencyMovingWindow + 1)
+    val latencyCalculationEndingGeneration: Int = lfbElementInfo.generation
+    val numberOfGenerations: Int = latencyCalculationEndingGeneration - latencyCalculationStartingGeneration + 1
+    val sumOfFinalityDelays: Double =
+      (latencyCalculationStartingGeneration to latencyCalculationEndingGeneration).map(generation => finalityMap(generation).sumOfFinalityDelaysAsSeconds).sum
+    val sumOfSquaredFinalityDelays: Double =
+      (latencyCalculationStartingGeneration to latencyCalculationEndingGeneration).map(generation => finalityMap(generation).sumOfSquaredFinalityDelays).sum
+    val n: Int = numberOfGenerations * numberOfValidators
+    val average: Double = sumOfFinalityDelays.toDouble / n
+    val standardDeviation: Double = math.sqrt(sumOfSquaredFinalityDelays.toDouble / n - average * average)
+
+    //storing latency and standard deviation values (for current generation)
+    latencyMovingWindowAverage.addOne(average)
+    latencyMovingWindowStandardDeviation.addOne(standardDeviation)
+
+    assert (latencyMovingWindowAverage.length == lfbElementInfo.generation + 1)
+    assert (latencyMovingWindowStandardDeviation.length == lfbElementInfo.generation + 1)
   }
 
   override def totalTime: SimTimepoint = lastStepTimepoint

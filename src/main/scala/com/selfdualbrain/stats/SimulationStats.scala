@@ -49,7 +49,7 @@ import com.selfdualbrain.time.SimTimepoint
   * b.cfTime = validators.map(v => b.fTime(v)).max
   * b.latencySpectrum = validators.map(v => b.fTime(v) - b.cTime)
   * b.creator - validator that created block b
-  * b.seenFinalizedAt(v) - true if validator v can see a summit (on required FTT and ACK-LEVEL) finalizing block b
+  * b.seenFinalizedAt(v) - true if validator v witnessed a summit (on required FTT and ACK-LEVEL) finalizing block b before turning faulty
   * b.isOrphaned = for some block c, b != c and c.isVisiblyFinalized and b.generation == c.generation
   * b.isLocallyOrphaned(v) = for some block c in simulation(t).acceptedBlocks(v), b != c and b.generation == c.generation and c.isSeenFinalizedAt(v)
   * b.wasBuffered(v) - true if brick b was buffered by validator v
@@ -71,7 +71,7 @@ import com.selfdualbrain.time.SimTimepoint
   * gen(t,g) := simulation(t).blocks.filter(b => b.generation <= g)
   * lfb(k .. n) := (k to n).map(i => lfb(i))
   * b.isVisiblyFinalized := validators.filter(v => b.seenFinalizedAt(v)).size > 0
-  * b.isCompletelyFinalized := validators.filter(v => b.seenFinalizedAt(v)).size == validators.size
+  * b.isCompletelyFinalized := b.isVisiblyFinalized and for each validator v if v is non-faulty then b.seenFinalizedAt(v)
   */
 trait SimulationStats {
 
