@@ -6,6 +6,7 @@ import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
 import com.selfdualbrain.des.{Event, SimulationObserver}
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.util.RepeatUntilExitCondition
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -49,7 +50,7 @@ class DefaultStatsProcessor(
   //counter of completely finalized blocks (= all validators established finality)
   private var completelyFinalizedBlocksCounter: Long = 0
   //counter of visible equivocators (= for which at least one validator has seen an equivocation)
-  private var equivocators: mutable.Set[ValidatorId] = new mutable.HashSet[ValidatorId]
+  private var visibleEquivocators: mutable.Set[ValidatorId] = new mutable.HashSet[ValidatorId]
   //counters of "blocks below generation"
   private val blocksByGenerationCounters = new TreeNodesByGenerationCounter
   //metainfo+stats we attach to LFB chain elements
@@ -68,7 +69,9 @@ class DefaultStatsProcessor(
   //flags marking faulty validators
   private val faultyValidatorsMap = new Array[Boolean](numberOfValidators)
   //when a validator goes faulty, we free per-validator stats for this one
-  private val faultyFreezingPoints = new Array[SimTimepoint](numberOfValidators)
+  private val faultyFreezingPoints = new Array[Option[SimTimepoint]](numberOfValidators)
+  for (i <- faultyFreezingPoints.indices)
+    faultyFreezingPoints(i) = None
 
   for (i <- 0 until numberOfValidators)
     vid2stats(i) = new PerValidatorCounters(i)
@@ -116,7 +119,11 @@ class DefaultStatsProcessor(
         payload match {
           case EventPayload.Bifurcation(numberOfClones) =>
             val vid = agentId2validatorId(destination)
-            faultyValidatorsMap(vid) = true
+            if (! faultyValidatorsMap(vid)) {
+              faultyValidatorsMap(vid) = true
+              //todo
+            }
+
 
           case EventPayload.NodeCrash =>
             val vid = agentId2validatorId(destination)
@@ -197,13 +204,14 @@ class DefaultStatsProcessor(
 
       case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
         //possibly this is the moment when we are witnessing a completely new element of the LFB chain
-        if (finalityMap.size < finalizedBlock.generation)
+        if (! finalityMap.contains(finalizedBlock.generation))
           finalityMap += finalizedBlock.generation -> new LfbElementInfo(finalizedBlock, numberOfValidators)
 
         //ensure that previous LfbElementInfo is already there; otherwise we must have a bug in the finality machinery
         assert (finalizedBlock.generation == 1 || finalityMap.contains(finalizedBlock.generation - 1))
 
-        //be careful here: this finality event may be hitting some "old" block (= below the topmost element of finalityMap)
+        //we find the corresponding metainfo holder
+        //caution: be aware that this finality event may be hitting some "old" block (= below the topmost element of finalityMap)
         val lfbElementInfo = finalityMap(finalizedBlock.generation)
 
         //if this condition fails then:
@@ -214,18 +222,21 @@ class DefaultStatsProcessor(
           throw new CatastropheException
 
         //updating stats happens here
+        val wasVisiblyFinalizedBefore = lfbElementInfo.isVisiblyFinalized
+        val wasCompletelyFinalizedBefore = lfbElementInfo.isCompletelyFinalized
         lfbElementInfo.onFinalityEventObserved(vid, eventTimepoint, faultyValidatorsMap)
 
         //special handling of "just turned to be visibly finalized", i.e. when first finality observation happens
-        if (lfbElementInfo.numberOfConfirmations == 1) {
+        if (! wasVisiblyFinalizedBefore && lfbElementInfo.isVisiblyFinalized) {
           visiblyFinalizedBlocksCounter += 1
           assert (visiblyFinalizedBlocksCounter == finalizedBlock.generation)
           vid2stats(finalizedBlock.creator).myVisiblyFinalizedBlocksCounter += 1
           visiblyFinalizedBlocksMovingWindowCounter.beep(finalizedBlock.generation, eventTimepoint.micros)
         }
 
-        //special handling of "the last missing confirmation of finality of given block is just announced" (= now we have finality timepoints for all validators)
-        if (lfbElementInfo.isCompletelyFinalizedAgainst(faultyValidatorsMap))
+        //special handling of "the last missing confirmation of finality of given block is just announced"
+        //(= now we have finality timepoints for all non-faulty validators)
+        if (! wasCompletelyFinalizedBefore && lfbElementInfo.isCompletelyFinalized)
           onBlockAchievingCompletelyFinalizedStatus(lfbElementInfo)
 
         //special handling of the case when this finality event is emitted by the creator of the finalized block
@@ -238,7 +249,7 @@ class DefaultStatsProcessor(
         vStats.lastFinalizedBlockGeneration = finalizedBlock.generation
 
       case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
-        equivocators += evilValidator
+        visibleEquivocators += evilValidator
         vid2stats(evilValidator).wasObservedAsEquivocatorX = true
         if (! vStats.observedEquivocators.contains(evilValidator)) {
           vStats.observedEquivocators += evilValidator
@@ -263,8 +274,8 @@ class DefaultStatsProcessor(
     exactSumOfFinalityDelays += lfbElementInfo.sumOfFinalityDelaysAsMicroseconds
 
     //calculating average and standard deviation of latency (within moving window)
-    val latencyCalculationStartingGeneration: Int = math.max(1, lfbElementInfo.generation - latencyMovingWindow + 1)
-    val latencyCalculationEndingGeneration: Int = lfbElementInfo.generation
+    val latencyCalculationStartingGeneration: Int = math.max(1, lfbElementInfo.block.generation - latencyMovingWindow + 1)
+    val latencyCalculationEndingGeneration: Int = lfbElementInfo.block.generation
     val numberOfGenerations: Int = latencyCalculationEndingGeneration - latencyCalculationStartingGeneration + 1
     val sumOfFinalityDelays: Double =
       (latencyCalculationStartingGeneration to latencyCalculationEndingGeneration).map(generation => finalityMap(generation).sumOfFinalityDelaysAsSeconds).sum
@@ -278,8 +289,29 @@ class DefaultStatsProcessor(
     latencyMovingWindowAverage.addOne(average)
     latencyMovingWindowStandardDeviation.addOne(standardDeviation)
 
-    assert (latencyMovingWindowAverage.length == lfbElementInfo.generation + 1)
-    assert (latencyMovingWindowStandardDeviation.length == lfbElementInfo.generation + 1)
+    assert (latencyMovingWindowAverage.length == lfbElementInfo.block.generation + 1)
+    assert (latencyMovingWindowStandardDeviation.length == lfbElementInfo.block.generation + 1)
+  }
+
+  private def markValidatorAsFaulty(vid: ValidatorId, timepoint: SimTimepoint): Unit = {
+    faultyValidatorsMap(vid) = true
+    faultyFreezingPoints(vid) = Some(timepoint)
+
+    //a validator turning faulty may cause a cascade of finality map elements to turn into "completely finalized" state
+    //this cascade is implemented as the loop below
+    if (completelyFinalizedBlocksCounter < finalityMap.size) {
+      RepeatUntilExitCondition {
+        val criticalLfbElementPosition: Int = (completelyFinalizedBlocksCounter + 1).toInt
+        val lfbElementInfo = finalityMap(criticalLfbElementPosition)
+        lfbElementInfo.onYetAnotherValidatorWentFaulty(timepoint, faultyValidatorsMap)
+        if (lfbElementInfo.isCompletelyFinalized)
+          onBlockAchievingCompletelyFinalizedStatus(lfbElementInfo)
+
+        //exit condition
+        (! lfbElementInfo.isCompletelyFinalized) || completelyFinalizedBlocksCounter == finalityMap.size
+      }
+    }
+
   }
 
   override def totalTime: SimTimepoint = lastStepTimepoint
@@ -307,9 +339,9 @@ class DefaultStatsProcessor(
 
   override def numberOfCompletelyFinalizedBlocks: Long = completelyFinalizedBlocksCounter
 
-  override def numberOfObservedEquivocators: Int = equivocators.size
+  override def numberOfObservedEquivocators: Int = visibleEquivocators.size
 
-  override def weightOfObservedEquivocators: Ether = equivocators.map(vid => weightsMap(vid)).sum
+  override def weightOfObservedEquivocators: Ether = visibleEquivocators.map(vid => weightsMap(vid)).sum
 
   override def weightOfObservedEquivocatorsAsPercentage: Double = weightOfObservedEquivocators.toDouble / totalWeightOfValidators * 100
 
@@ -354,7 +386,7 @@ class DefaultStatsProcessor(
 
   override def isFaulty(vid: ValidatorId): Boolean = faultyValidatorsMap(vid)
 
-  override def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint] = ???
+  override def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint] = faultyFreezingPoints(vid)
 
   override def cumulativeTPS: Double = ???
 }

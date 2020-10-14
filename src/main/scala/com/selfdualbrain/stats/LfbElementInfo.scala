@@ -49,25 +49,38 @@ class LfbElementInfo(val block: NormalBlock, numberOfValidators: Int) {
   def sumOfSquaredFinalityDelays: Double = sumOfSquaredFinalityDelaysScaledToSeconds
 
   def onFinalityEventObserved(validator: ValidatorId, timepoint: SimTimepoint, faultyValidatorsMap: Array[Boolean]): Unit = {
-    if (vid2finalityTime(validator).isEmpty) {
+    if (! isCompletelyFinalizedX && ! faultyValidatorsMap(validator)) {
+      if (! isVisiblyFinalizedX) {
+        isVisiblyFinalizedX = true
+        visiblyFinalizedTimeX = timepoint
+      }
+      assert (vid2finalityTime(validator).isEmpty)
       confirmationsCounter += 1
       vid2finalityTime(validator) = Some(timepoint)
-      if (confirmationsCounter == 1)
-        visiblyFinalizedTimeX = timepoint
 
+      if (looksLikeAllHealthyValidatorsConfirmedFinality(faultyValidatorsMap)) {
+        isCompletelyFinalizedX = true
+        completelyFinalizedTimeX = timepoint
+        faultyValidatorsSnapshot = faultyValidatorsMap.clone()
+      }
+
+      val finalityDelay: TimeDelta = timepoint - block.timepoint
+      sumOfFinalityDelaysAsMicrosecondsX += finalityDelay
+      val finalityDelayAsSeconds: Double = finalityDelay.toDouble / 1000000
+      sumOfFinalityDelaysScaledToSeconds += finalityDelayAsSeconds
+      sumOfSquaredFinalityDelaysScaledToSeconds += finalityDelayAsSeconds * finalityDelayAsSeconds
     }
-
-    if (confirmationsCounter == numberOfValidators)
-      completelyFinalizedTimeX = timepoint
-
-    val finalityDelay: TimeDelta = timepoint - block.timepoint
-    sumOfFinalityDelaysAsMicrosecondsX += finalityDelay
-    val finalityDelayAsSeconds: Double = finalityDelay.toDouble / 1000000
-    sumOfFinalityDelaysScaledToSeconds += finalityDelayAsSeconds
-    sumOfSquaredFinalityDelaysScaledToSeconds += finalityDelayAsSeconds * finalityDelayAsSeconds
   }
 
-  private def isCompletelyFinalizedAgainst(faultyValidatorsMap: Array[Boolean]): Boolean = {
+  def onYetAnotherValidatorWentFaulty(timepoint: SimTimepoint, faultyValidatorsMap: Array[Boolean]): Unit = {
+    if (looksLikeAllHealthyValidatorsConfirmedFinality(faultyValidatorsMap)) {
+      isCompletelyFinalizedX = true
+      completelyFinalizedTimeX = timepoint
+      faultyValidatorsSnapshot = faultyValidatorsMap.clone()
+    }
+  }
+
+  private def looksLikeAllHealthyValidatorsConfirmedFinality(faultyValidatorsMap: Array[Boolean]): Boolean = {
     for (i <- 0 until numberOfValidators)
       if (! faultyValidatorsMap(i) && vid2finalityTime(i).isEmpty)
         return false
