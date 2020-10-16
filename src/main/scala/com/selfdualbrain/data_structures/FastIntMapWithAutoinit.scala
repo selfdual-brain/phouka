@@ -46,8 +46,6 @@ class FastIntMapWithAutoinit[E](initialSize: Int)(valuesInitializer: Int => E) e
   override def values: Iterable[E] = storage
 
   override def size: Int = storage.size
-
-  override def toArray[B >: (Int, E)](implicit evidence: ClassTag[B]): Array[B] = storage.toArray(evidence)
 }
 
 class FastMapOnIntInterval[E](initialSize: Int) extends FastIntMapWithAutoinit[E](initialSize)((i: Int) => throw new RuntimeException(s"only adding first key missing is supported; attempted key $i"))

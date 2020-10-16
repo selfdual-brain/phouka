@@ -6,7 +6,7 @@ import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.des.{Event, ObservableSimulationEngine, SimulationEngineChassis, SimulationObserver}
 import com.selfdualbrain.randomness.IntSequenceGenerator
 import com.selfdualbrain.simulator_engine._
-import com.selfdualbrain.stats.{DefaultStatsProcessor, SimulationStats}
+import com.selfdualbrain.stats.{DefaultStatsProcessor, BlockchainSimulationStats}
 import com.selfdualbrain.time.SimTimepoint
 
 class ConfigBasedBlockchainSimulation(config: ExperimentConfig) extends ObservableSimulationEngine[ValidatorId] {
@@ -28,7 +28,7 @@ class ConfigBasedBlockchainSimulation(config: ExperimentConfig) extends Observab
   }
 
   //stats
-  val statsProcessor: Option[SimulationStats] = config.statsProcessor map { cfg => new DefaultStatsProcessor(expSetup) }
+  val statsProcessor: Option[BlockchainSimulationStats] = config.statsProcessor map { cfg => new DefaultStatsProcessor(expSetup) }
 
   override def lastStepExecuted: Long = chassis.lastStepExecuted
 
@@ -40,5 +40,5 @@ class ConfigBasedBlockchainSimulation(config: ExperimentConfig) extends Observab
 
   override def addObserver(observer: SimulationObserver[ValidatorId]): Unit = chassis.addObserver(observer)
 
-  def stats: SimulationStats = statsProcessor.get
+  def stats: BlockchainSimulationStats = statsProcessor.get
 }

@@ -55,5 +55,4 @@ class FastIntMap[E](initialSize: Int = 16) extends mutable.Map[Int,E] {
 
   override def size: Int = storage.size
 
-  override def toArray[B >: (Int, E)](implicit evidence: ClassTag[B]): Array[B] = storage.toArray(evidence)
 }

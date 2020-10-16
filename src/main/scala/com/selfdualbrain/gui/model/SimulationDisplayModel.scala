@@ -6,7 +6,7 @@ import com.selfdualbrain.des.{Event, SimulationEngine}
 import com.selfdualbrain.gui.EventsFilter
 import com.selfdualbrain.gui_framework.EventsBroadcaster
 import com.selfdualbrain.simulator_engine._
-import com.selfdualbrain.stats.{SimulationStats, ValidatorStats}
+import com.selfdualbrain.stats.{BlockchainSimulationStats, ValidatorStats}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -81,7 +81,7 @@ import scala.collection.mutable.ArrayBuffer
 class SimulationDisplayModel(
                               val experimentConfig: ExperimentConfig,
                               val engine: SimulationEngine[BlockchainNode, EventPayload],
-                              stats: SimulationStats,
+                              stats: BlockchainSimulationStats,
                               genesis: Genesis,
                               expectedNumberOfBricks: Int,
                               expectedNumberOfEvents: Int,
@@ -331,7 +331,7 @@ class SimulationDisplayModel(
 
   //--------------------- SIMULATION STATS -------------------------
 
-  def simulationStatistics: SimulationStats = stats
+  def simulationStatistics: BlockchainSimulationStats = stats
 
   def perValidatorStats(vid: ValidatorId): ValidatorStats = simulationStatistics.perValidatorStats(vid)
 

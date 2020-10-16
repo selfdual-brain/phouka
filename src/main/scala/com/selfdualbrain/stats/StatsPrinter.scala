@@ -5,7 +5,7 @@ import com.selfdualbrain.textout.AbstractTextOutput
 class StatsPrinter(out: AbstractTextOutput, numberOfValidators: Int) {
   private val percentChar: Char = '%'
 
-  def print(stats: SimulationStats): Unit = {
+  def print(stats: BlockchainSimulationStats): Unit = {
     out.section("General") {
       out.print(s"total time [sec]: ${stats.totalTime} (${stats.totalTime.asHumanReadable.toStringCutToSeconds})")
       out.print(s"number of events: ${stats.numberOfEvents}")

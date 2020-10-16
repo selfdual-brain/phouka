@@ -5,7 +5,7 @@ import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick, ValidatorI
 import com.selfdualbrain.des.ObservableSimulationEngine
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.NetworkModel
-import com.selfdualbrain.stats.SimulationStats
+import com.selfdualbrain.stats.BlockchainSimulationStats
 
 import scala.util.Random
 
@@ -25,7 +25,7 @@ abstract class SimulationSetup {
   def disruptionModel: DisruptionModel
   def validatorsFactory: ValidatorsFactory
   def engine: ObservableSimulationEngine[BlockchainNode, EventPayload]
-  def guiCompatibleStats: Option[SimulationStats]
+  def guiCompatibleStats: Option[BlockchainSimulationStats]
 }
 
 

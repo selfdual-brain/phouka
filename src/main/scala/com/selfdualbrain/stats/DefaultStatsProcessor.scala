@@ -29,7 +29,7 @@ class DefaultStatsProcessor(
                              weightsMap: ValidatorId => Ether,
                              absoluteFTT: Ether,
                              totalWeightOfValidators: Ether
-                           ) extends SimulationObserver[ValidatorId, EventPayload] with SimulationStats {
+                           ) extends SimulationObserver[ValidatorId, EventPayload] with BlockchainSimulationStats {
 
   assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
 
@@ -49,6 +49,8 @@ class DefaultStatsProcessor(
   private var visiblyFinalizedBlocksCounter: Long = 0
   //counter of completely finalized blocks (= all validators established finality)
   private var completelyFinalizedBlocksCounter: Long = 0
+  //counter of transactions in visibly finalized blocks
+  private var transactionsCounter: Long = 0
   //counter of visible equivocators (= for which at least one validator has seen an equivocation)
   private var visibleEquivocators: mutable.Set[ValidatorId] = new mutable.HashSet[ValidatorId]
   //counters of "blocks below generation"
@@ -94,7 +96,7 @@ class DefaultStatsProcessor(
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
           case EventPayload.NewAgentSpawned(vid) =>
-            agentId2validatorId(agent) = vid
+            agentId2validatorId(agent.get) = vid
 
           case EventPayload.BroadcastBrick(brick) =>
             val vid = agentId2validatorId(agent.get)
@@ -230,7 +232,8 @@ class DefaultStatsProcessor(
         if (! wasVisiblyFinalizedBefore && lfbElementInfo.isVisiblyFinalized) {
           visiblyFinalizedBlocksCounter += 1
           assert (visiblyFinalizedBlocksCounter == finalizedBlock.generation)
-          vid2stats(finalizedBlock.creator).myVisiblyFinalizedBlocksCounter += 1
+          transactionsCounter += finalizedBlock.numberOfTransactions
+          vid2stats(finalizedBlock.creator).myBlocksThatGotVisiblyFinalizedStatusCounter += 1
           visiblyFinalizedBlocksMovingWindowCounter.beep(finalizedBlock.generation, eventTimepoint.micros)
         }
 
@@ -241,7 +244,7 @@ class DefaultStatsProcessor(
 
         //special handling of the case when this finality event is emitted by the creator of the finalized block
         if (vid == finalizedBlock.creator) {
-          vStats.myFinalizedBlocksCounter += 1
+          vStats.myBlocksThatICanSeeFinalizedCounter += 1
           vStats.sumOfLatenciesOfAllLocallyCreatedBlocks += eventTimepoint - finalizedBlock.timepoint
         }
 
@@ -249,11 +252,24 @@ class DefaultStatsProcessor(
         vStats.lastFinalizedBlockGeneration = finalizedBlock.generation
 
       case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
-        visibleEquivocators += evilValidator
-        vid2stats(evilValidator).wasObservedAsEquivocatorX = true
-        if (! vStats.observedEquivocators.contains(evilValidator)) {
-          vStats.observedEquivocators += evilValidator
-          vStats.weightOfObservedEquivocatorsX += weightsMap(evilValidator)
+        //The condition below is needed because of important corner case: when N1 and N2 are two blockchain nodes running on the same validator-id V1
+        //then N1 can notice validator V1 equivocating.
+        //Our approach to implementing equivocators works via cloning the state of a node (-> bifurcation).
+        //After a bifurcation, both clones operate "as usual" - so they are not "aware" they are now collectively producing equivocations;
+        //they can only "discover" (after some time) there is something fishy going on around - by realizing that "omg, the evil validator-id is just my own id.. wow".
+        //Said that, every "bifurcated" sibling will just attempt to continue doing "business us usual", i.e. producing blocks, accepting blocks, calculating finality etc.
+        //Here in stats we however deliberately handle the "observed equivocator" flags in the following way:
+        //"V was observed equivocating" = "some node N using validator id different than V witnessed equivocation by V
+        //and was considered healthy at the moment of this observation".
+        //Please notice that this definition is not "local" and in fact it could NOT be implemented in real blockchain. Only we here in the simulator,
+        //thanks to "god's view", are able to establish such concepts.
+        if (evilValidator != vid) {
+          visibleEquivocators += evilValidator
+          vid2stats(evilValidator).wasObservedAsEquivocatorX = true
+          if (! vStats.observedEquivocators.contains(evilValidator)) {
+            vStats.observedEquivocators += evilValidator
+            vStats.weightOfObservedEquivocatorsX += weightsMap(evilValidator)
+          }
         }
 
       case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
@@ -324,7 +340,7 @@ class DefaultStatsProcessor(
 
   override def fractionOfBallots: Double = numberOfBallotsPublished.toDouble / (numberOfBlocksPublished + numberOfBallotsPublished)
 
-  override def orphanRateCurve: Int => Double = { n =>
+  override val orphanRateCurve: Int => Double = { n =>
     assert (n >= 0)
     if (n == 0) 0
     else if (n > this.numberOfVisiblyFinalizedBlocks) throw new RuntimeException(s"orphan rate undefined yet for generation $n")
@@ -388,5 +404,5 @@ class DefaultStatsProcessor(
 
   override def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint] = faultyFreezingPoints(vid)
 
-  override def cumulativeTPS: Double = ???
+  override def cumulativeTPS: Double = transactionsCounter.toDouble / totalTime.asSeconds
 }

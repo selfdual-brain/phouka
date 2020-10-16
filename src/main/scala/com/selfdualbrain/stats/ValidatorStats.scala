@@ -1,7 +1,6 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.time.SimTimepoint
 
 trait ValidatorStats {
 
@@ -42,7 +41,7 @@ trait ValidatorStats {
   //simulation(t).jdagBlocks(v).filter(b => b.creator == v and b.isVisiblyFinalized)
   def numberOfMyBlocksThatAreVisiblyFinalized: Long
 
-  def numberOfMyBlocksThatAreTentative: Long
+//  def numberOfMyBlocksThatAreTentative: Long
 
   //simulation(t).jdagBlocks(v).filter(b => b.creator == v and b.isCompletelyFinalized)
   def numberOfMyBlocksThatAreCompletelyFinalized: Long

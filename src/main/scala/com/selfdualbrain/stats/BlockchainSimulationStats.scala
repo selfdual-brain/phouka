@@ -2,6 +2,7 @@ package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.ValidatorId
+import com.selfdualbrain.des.SimulationStats
 import com.selfdualbrain.time.SimTimepoint
 
 /**
@@ -73,13 +74,7 @@ import com.selfdualbrain.time.SimTimepoint
   * b.isVisiblyFinalized := validators.filter(v => b.seenFinalizedAt(v)).size > 0
   * b.isCompletelyFinalized := b.isVisiblyFinalized and for each validator v if v is non-faulty then b.seenFinalizedAt(v)
   */
-trait SimulationStats {
-
-  //timepoint of the last event of the simulation
-  def totalTime: SimTimepoint
-
-  //number of events in the simulation
-  def numberOfEvents: Long
+trait BlockchainSimulationStats extends SimulationStats {
 
   def isFaulty(vid: ValidatorId): Boolean
 
@@ -155,6 +150,7 @@ trait SimulationStats {
   def cumulativeThroughput: Double
 
   //number of transactions finalized per second (calculated for the whole time of simulation)
+  //(we count transactions in visibly finalized blocks)
   def cumulativeTPS: Double
 
   //Latency is time from publishing a block B to B becoming finalized.

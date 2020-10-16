@@ -5,7 +5,7 @@ import java.io.File
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.simulator_engine.EventPayload
-import com.selfdualbrain.stats.SimulationStats
+import com.selfdualbrain.stats.BlockchainSimulationStats
 import com.selfdualbrain.time.SimTimepoint
 
 /**
@@ -33,7 +33,7 @@ abstract class GenericSimpleLoopSimulation[T <: {def configFile: File}] extends 
 
   def afterLoopIsFinished(): Unit = {}
 
-  def printStats(stats: SimulationStats): Unit = {
+  def printStats(stats: BlockchainSimulationStats): Unit = {
     //todo
   }
 

@@ -8,13 +8,13 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{FieldsLadderPanel, RibbonPanel}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, PresentersTreeVertex}
 import com.selfdualbrain.simulator_engine.PhoukaEngine
-import com.selfdualbrain.stats.SimulationStats
+import com.selfdualbrain.stats.BlockchainSimulationStats
 import javax.swing.JTextField
 
 /**
   * Shows overall statistics of the simulation.
   */
-class SimulationStatsPresenter extends Presenter[SimulationDisplayModel, SimulationStats, PresentersTreeVertex, SimulationStatsView, Nothing] {
+class SimulationStatsPresenter extends Presenter[SimulationDisplayModel, BlockchainSimulationStats, PresentersTreeVertex, SimulationStatsView, Nothing] {
 
   override def createDefaultView(): SimulationStatsView = new SimulationStatsView(guiLayoutConfig)
 
@@ -33,10 +33,10 @@ class SimulationStatsPresenter extends Presenter[SimulationDisplayModel, Simulat
     //do nothing
   }
 
-  override def viewModel: SimulationStats = model.engine.asInstanceOf[PhoukaEngine].stats
+  override def viewModel: BlockchainSimulationStats = model.engine.asInstanceOf[PhoukaEngine].stats
 }
 
-class SimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadderPanel(guiLayoutConfig) with MvpView[SimulationStats, PresentersTreeVertex] {
+class SimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadderPanel(guiLayoutConfig) with MvpView[BlockchainSimulationStats, PresentersTreeVertex] {
 
   //SIMULATION RANGE
   private val simulationRange_Ribbon: RibbonPanel = addRibbon("Simulation range")

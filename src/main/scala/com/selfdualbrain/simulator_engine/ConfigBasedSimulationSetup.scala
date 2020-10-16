@@ -6,7 +6,7 @@ import com.selfdualbrain.des.ObservableSimulationEngine
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.NetworkModel
 import com.selfdualbrain.randomness.{IntSequenceGenerator, LongSequenceGenerator}
-import com.selfdualbrain.stats.SimulationStats
+import com.selfdualbrain.stats.BlockchainSimulationStats
 
 import scala.util.Random
 
@@ -43,5 +43,5 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   override def engine: ObservableSimulationEngine[BlockchainNode, EventPayload] = ???
 
-  override def guiCompatibleStats: Option[SimulationStats] = ???
+  override def guiCompatibleStats: Option[BlockchainSimulationStats] = ???
 }
