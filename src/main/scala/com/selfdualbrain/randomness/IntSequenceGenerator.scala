@@ -13,9 +13,7 @@ abstract class IntSequenceGenerator extends Iterator[Int] with Cloneable with Cl
 
 object IntSequenceGenerator {
 
-  def fromConfig(config: IntSequenceConfig, random: Random): IntSequenceGenerator = {
-
-    config match {
+  def fromConfig(config: IntSequenceConfig, random: Random): IntSequenceGenerator = config match {
       case IntSequenceConfig.Fixed(value) => new FixedGen(value)
       case IntSequenceConfig.Linear(start, growth) => new LinearGen(start, growth)
       case IntSequenceConfig.Exponential(start, growth) => new ExponentialGen(start, growth)
@@ -27,7 +25,6 @@ object IntSequenceGenerator {
       case IntSequenceConfig.Pareto(minValue, mean) => new ParetoGen(random, minValue, mean)
     }
 
-  }
 
   class FixedGen(value: Int) extends IntSequenceGenerator {
     override def next(): Int = value

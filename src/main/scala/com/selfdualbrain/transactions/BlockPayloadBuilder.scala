@@ -1,5 +1,8 @@
 package com.selfdualbrain.transactions
 
+import com.selfdualbrain.simulator_engine.BlocksBuildingStrategyModel
+import com.selfdualbrain.util.RepeatUntilExitCondition
+
 case class BlockPayload(numberOfTransactions: Int, transactionsBinarySize: Int, totalGasNeededForExecutingTransactions: Gas)
 
 trait BlockPayloadBuilder {
@@ -7,6 +10,12 @@ trait BlockPayloadBuilder {
 }
 
 object BlockPayloadBuilder {
+
+  def fromConfig(config: BlocksBuildingStrategyModel, transactionsStream: TransactionsStream): BlockPayloadBuilder = config match {
+    case BlocksBuildingStrategyModel.FixedNumberOfTransactions(n) => FixedNumberOfTransactions(n, transactionsStream)
+    case BlocksBuildingStrategyModel.CostAndSizeLimit(costLimit, sizeLimit) => CostAndSizeLimit(costLimit, sizeLimit, transactionsStream)
+  }
+
   class PayloadAccumulator {
     var numberOfTransactions: Int = 0
     var payloadSize: Int = 0
@@ -36,14 +45,13 @@ object BlockPayloadBuilder {
 
     override def next(): BlockPayload = {
       val acc = new PayloadAccumulator
-      var stop: Boolean = true
-      do {
+      RepeatUntilExitCondition {
         val t = transactionsStream.next()
-        if (acc.payloadSize + t.sizeInBytes > sizeLimit || acc.totalGas + t.costAsGas > sizeLimit)
-          stop = true
-        else
+        val exitCondition = acc.payloadSize + t.sizeInBytes > sizeLimit || acc.totalGas + t.costAsGas > sizeLimit
+        if (! exitCondition)
           acc.append(t)
-      } while (! stop)
+        exitCondition
+      }
 
       return acc.currentPayload
     }

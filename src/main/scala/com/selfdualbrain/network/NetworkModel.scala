@@ -1,5 +1,6 @@
 package com.selfdualbrain.network
 
+import com.selfdualbrain.simulator_engine.NetworkConfig
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 /**
@@ -24,3 +25,5 @@ trait NetworkModel[A,M] {
   def grow(newNumberOfNodes: Int): Unit
 
 }
+
+

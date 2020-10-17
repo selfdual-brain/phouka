@@ -1,6 +1,6 @@
 package com.selfdualbrain.network
 
-import com.selfdualbrain.randomness.IntSequenceGenerator
+import com.selfdualbrain.randomness.LongSequenceGenerator
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 /**
@@ -9,7 +9,7 @@ import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
   *
   * @param networkDelaysGenerator random delays generator (in microseconds)
   */
-class HomogenousNetworkWithRandomDelays[A,M](networkDelaysGenerator: IntSequenceGenerator) extends NetworkModel[A,M] {
+class HomogenousNetworkWithRandomDelays[A,M](networkDelaysGenerator: LongSequenceGenerator) extends NetworkModel[A,M] {
 
   override def calculateMsgDelay(msg: M, sender: A, destination: A, sendingTime: SimTimepoint): TimeDelta = networkDelaysGenerator.next()
 

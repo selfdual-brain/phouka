@@ -9,20 +9,24 @@ import scala.util.Random
 /**
   * Idealised model of a network, where the probabilistic distribution of delivery delays is gaussian
   * but the mean and standard deviation are chosen separately for each pair of agents.
-  * Conceptually this attempts to mimic realistic topology of the network, where different connection speeds
-  * can be measured between every pair of hosts.
   *
-  * However, wo do some explicit simplifications:
-  * 1. We assume the same speed in both directions (speed A->B is the same as speed B->A).
-  * 2. For modeling delays between two agents A,B, we:
+  * Conceptually this attempts to mimic realistic topology of the network: we model the whole network as a full simple graph,
+  * where every edge is labeled (with parameters of gaussian distribution of delays).
+  *
+  * Technically our approach is:
+  * 1. We assume the same connection speed in both directions (for agents A,B, the speed A->B is the same as the speed B->A).
+  * 2. For modeling delays at edge (A,B) in the connection graph we:
   * (a) randomly pick 3 numbers: lMin, lMax, bandwidth (lMin, lMax model latency distribution using pseudo-gaussian)
   * (b) we model delivery delay as: pseudo-gaussian(lMin,lMax) + message-size/bandwidth
   *
   * Caution: Please notice that this model is still quite far from real-life network behaviour - primarily because we completely
   * ignore messages influencing each other, i.e. the delay of every message is calculated as if this is the only message
-  * transmitted over the network at the moment. To remove this simplification one would have to implement transmission
-  * channels that do actual "queuing" of transmitted bytes, plus this cannot be done within the simple DES model.
-  * All we are capturing here is systemic differences in message propagation times due to network performance characteristics.
+  * transmitted over the network at the moment. To remove this simplification one would have to implement "transmission
+  * channel" concept with actual "queuing" of transmitted bytes. This is non-trivial because this cannot be done within the standard DES model,
+  * so more rich DES model is required to handle channels.
+  * All we are capturing if our simplified model is "systemic differences in message propagation times" (due to network performance characteristics).
+  * This should be enough to simulate latency and bandwidth in mostly honest network, but is definitely not enough for capturing behaviour
+  * of a blockchain during attacks such us "equivocation bomb".
   */
 class SymmetricLatencyBandwidthGraphNetwork(
                                              random: Random,

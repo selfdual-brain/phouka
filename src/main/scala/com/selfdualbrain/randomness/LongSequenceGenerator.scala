@@ -13,9 +13,7 @@ abstract class LongSequenceGenerator extends Iterator[Long] with Cloneable with 
 
 object LongSequenceGenerator {
 
-  def fromConfig(config: LongSequenceConfig, random: Random): LongSequenceGenerator = {
-
-    config match {
+  def fromConfig(config: LongSequenceConfig, random: Random): LongSequenceGenerator = config match {
       case LongSequenceConfig.Fixed(value) => new FixedGen(value)
       case LongSequenceConfig.Linear(start, growth) => new LinearGen(start, growth)
       case LongSequenceConfig.Exponential(start, growth) => new ExponentialGen(start, growth)
@@ -27,7 +25,6 @@ object LongSequenceGenerator {
       case LongSequenceConfig.Pareto(minValue, mean) => new ParetoGen(random, minValue, mean)
     }
 
-  }
 
   class FixedGen(value: Long) extends LongSequenceGenerator {
     override def next(): Long = value
