@@ -1,6 +1,5 @@
 package com.selfdualbrain.network
 
-import com.selfdualbrain.simulator_engine.NetworkConfig
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 /**
@@ -22,6 +21,11 @@ trait NetworkModel[A,M] {
     */
   def calculateMsgDelay(msg: M, sender: A, destination: A, sendingTime: SimTimepoint): TimeDelta
 
+  /**
+    * Informs the model about network growth.
+    *
+    * @param newNumberOfNodes number of new agents added to the network.
+    */
   def grow(newNumberOfNodes: Int): Unit
 
 }

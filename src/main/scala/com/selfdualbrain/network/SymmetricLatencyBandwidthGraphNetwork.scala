@@ -1,7 +1,7 @@
 package com.selfdualbrain.network
 
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick}
-import com.selfdualbrain.randomness.IntSequenceGenerator
+import com.selfdualbrain.randomness.LongSequenceGenerator
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.util.Random
@@ -10,8 +10,8 @@ import scala.util.Random
   * Idealised model of a network, where the probabilistic distribution of delivery delays is gaussian
   * but the mean and standard deviation are chosen separately for each pair of agents.
   *
-  * Conceptually this attempts to mimic realistic topology of the network: we model the whole network as a full simple graph,
-  * where every edge is labeled (with parameters of gaussian distribution of delays).
+  * Conceptually this attempts to mimic realistic topology of the network: we model the whole network as a full (simple) graph,
+  * where every edge is labeled (with parameters of gaussian distribution of delays). We call this graph "latency-bandwidth graph".
   *
   * Technically our approach is:
   * 1. We assume the same connection speed in both directions (for agents A,B, the speed A->B is the same as the speed B->A).
@@ -32,12 +32,12 @@ class SymmetricLatencyBandwidthGraphNetwork(
                                              random: Random,
                                              initialNumberOfNodes: Int,
                                              msgSizeCalculator: Brick => Int,
-                                             latencyAverageGen: IntSequenceGenerator, //here we interpret integers as microseconds
-                                             latencyMinMaxSpread: IntSequenceGenerator, ////here we interpret integers as microseconds
-                                             bandwidthGen: IntSequenceGenerator //here we measure bandwidth in bits/sec
+                                             latencyAverageGen: LongSequenceGenerator, //here we interpret integers as microseconds
+                                             latencyMinMaxSpread: LongSequenceGenerator, ////here we interpret integers as microseconds
+                                             bandwidthGen: LongSequenceGenerator //here we measure bandwidth in bits/sec
                                             ) extends NetworkModel[BlockchainNode, Brick] {
 
-  case class ConnectionParams(latencyGenerator: IntSequenceGenerator, bandwidth: Int)
+  case class ConnectionParams(latencyGenerator: LongSequenceGenerator, bandwidth: Long)
 
   private var networkGeometryTable: Array[Array[ConnectionParams]] = Array.ofDim[ConnectionParams](initialNumberOfNodes,initialNumberOfNodes)
   for {
@@ -57,10 +57,10 @@ class SymmetricLatencyBandwidthGraphNetwork(
   }
 
   private def initPair(sourceAddress: Int, targetAddress: Int): Unit = {
-    val lAverage = latencyAverageGen.next()
-    val lSpread = latencyMinMaxSpread.next()
-    val gen = new IntSequenceGenerator.PseudoGaussianGen(random, lAverage - lSpread/2, lAverage + lSpread/2)
-    val bandwidth = bandwidthGen.next()
+    val lAverage: Long = latencyAverageGen.next()
+    val lSpread: Long = latencyMinMaxSpread.next()
+    val gen = new LongSequenceGenerator.PseudoGaussianGen(random, lAverage - lSpread/2, lAverage + lSpread/2)
+    val bandwidth: Long = bandwidthGen.next()
     val connParams = new ConnectionParams(gen, bandwidth)
     networkGeometryTable(sourceAddress)(targetAddress) = connParams
     networkGeometryTable(targetAddress)(sourceAddress) = connParams

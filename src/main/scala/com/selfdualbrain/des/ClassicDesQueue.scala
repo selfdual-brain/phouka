@@ -33,6 +33,12 @@ class ClassicDesQueue[A,P](extStreams: IndexedSeq[Iterator[ExtEventIngredients[A
     return newEvent
   }
 
+  override def addEngineEvent(timepoint: SimTimepoint, agent: Option[A], payload: P): Event[A, P] = {
+    val newEvent = this addEvent {id => Event.Engine(id, timepoint, agent, payload)}
+    ensureExtEventsAreGeneratedUpToHorizon(timepoint)
+    return newEvent
+  }
+
   override def addOutputEvent(timepoint: SimTimepoint, source: A, payload: P): Event[A,P] =
     this addEvent {id => Event.Semantic(id, timepoint, source, payload)}
 

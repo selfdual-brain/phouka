@@ -1,16 +1,20 @@
 package com.selfdualbrain.disruption
 
-import com.selfdualbrain.simulator_engine.DisruptionModelConfig
+import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.des.ExtEventIngredients
+import com.selfdualbrain.simulator_engine.{DisruptionEventDesc, DisruptionModelConfig, EventPayload}
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.util.Random
 
 /**
-  * DisruptionModel encapsulates the idea of pluggable "blockchain operation disruptions", i.e. all phenomena that
-  * model "bad things" happening to blockchain network, i.e. things that interfere with consensus.
+  * DisruptionModel encapsulates the idea of pluggable "blockchain operation disruptions behaviour", i.e. all phenomena that
+  * model "bad things" happening to blockchain network (things that interfere with consensus).
   *
   * Currently we support the following phenomena:
-  * - node cloning (= spawning another blockchain node with the same validator id as the original,
-  *   which of course soon leads given validator to be seen by other as an equivocator) - we call this "bifurcation events"
+  * - node cloning (= spawning another blockchain node with the same validator id as the original),
+  *   which of course leads given validator to become an equivocator) - we call this "bifurcation events"
   * - node crashing - i.e. a node suddenly becomes completely "dead" (= detached from network)
   * - network outages - i.e. for some period of time a node is detached from network; however after the outage period all incoming messages
   *   will get delivered and all outgoing messages will get reach destinations
@@ -27,6 +31,42 @@ import scala.util.Random
   * the simulated behaviours. While defining a simulation experiment, a user can combine suitable network model with suitable disruption model.
   */
 trait DisruptionModel extends Iterator[Disruption] {
+}
+
+object DisruptionModel {
+
+  def fromConfig(
+                  config: DisruptionModelConfig,
+                  random: Random,
+                  absoluteFtt: Ether,
+                  weightsMap: ValidatorId => Ether,
+                  numberOfValidators: Int
+                ): DisruptionModel = config match {
+
+    case DisruptionModelConfig.VanillaBlockchain => new VanillaBlockchain
+
+    case DisruptionModelConfig.AsteroidImpact(disasterTimepoint, fttApproxMode) =>
+      new AsteroidImpact(random, absoluteFtt, weightsMap, numberOfValidators, disasterTimepoint, fttApproxMode)
+
+    case DisruptionModelConfig.BifurcationsRainfall(disasterTimepoint, fttApproxMode) =>
+      new BifurcationsRainfallCloseToAbsoluteFtt(random, absoluteFtt, weightsMap, numberOfValidators, disasterTimepoint, fttApproxMode)
+
+    case DisruptionModelConfig.ExplicitDisruptionsSchedule(events) =>
+      new ExplicitDisruptionsSchedule(events map disruptionEventDesc2ingredients)
+
+    case DisruptionModelConfig.FixedFrequencies() =>
+
+    case DisruptionModelConfig.SingleBifurcationBomb() => ???
+  }
+
+  private def disruptionEventDesc2ingredients(desc: DisruptionEventDesc): ExtEventIngredients[BlockchainNode, EventPayload] =
+    desc match {
+      case DisruptionEventDesc.Bifurcation(targetNode, timepoint, numberOfClones) => ExtEventIngredients(timepoint, targetNode, EventPayload.Bifurcation(numberOfClones))
+      case DisruptionEventDesc.NetworkOutage(targetNode, timepoint, outagePeriod) => ExtEventIngredients(timepoint, targetNode, EventPayload.NetworkDisruptionBegin(outagePeriod))
+      case DisruptionEventDesc.NodeCrash(targetNode, timepoint) => ExtEventIngredients(timepoint, targetNode, EventPayload.NodeCrash)
+    }
+
+
 }
 
 

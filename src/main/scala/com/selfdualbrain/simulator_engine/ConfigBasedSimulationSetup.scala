@@ -1,10 +1,10 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, BlockchainNode, Brick, NormalBlock, ValidatorId}
 import com.selfdualbrain.des.ObservableSimulationEngine
 import com.selfdualbrain.disruption.DisruptionModel
-import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelays, NetworkModel}
+import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelays, NetworkModel, SymmetricLatencyBandwidthGraphNetwork}
 import com.selfdualbrain.randomness.{IntSequenceGenerator, LongSequenceGenerator}
 import com.selfdualbrain.stats.BlockchainSimulationStats
 import com.selfdualbrain.transactions.{BlockPayloadBuilder, TransactionsStream}
@@ -31,7 +31,14 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   val transactionsStream: TransactionsStream = TransactionsStream.fromConfig(config.transactionsStreamModel, randomGenerator)
   val blockPayloadGenerator: BlockPayloadBuilder = BlockPayloadBuilder.fromConfig(config.blocksBuildingStrategy, transactionsStream)
   val msgValidationCostModel: LongSequenceGenerator = LongSequenceGenerator.fromConfig(config.brickValidationCostModel, randomGenerator)
-  val networkModel: NetworkModel[BlockchainNode, Brick] = ???
+  val brickSizeCalculator: Brick => Int = (b: Brick) => {
+    val headerSize = config.brickHeaderCoreSize + b.justifications.size * config.singleJustificationSize
+    b match {
+      case x: NormalBlock => headerSize + x.payloadSize
+      case x: Ballot => headerSize
+    }
+  }
+  val networkModel: NetworkModel[BlockchainNode, Brick] = buildNetworkModel()
   val disruptionModel: DisruptionModel = ???
   val validatorsFactory = ???
 
@@ -49,12 +56,16 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   //###################################################################################
 
-  private def buildNetworkModel(config: NetworkConfig, random: Random): NetworkModel[BlockchainNode, Brick] = config match {
+  private def buildNetworkModel(): NetworkModel[BlockchainNode, Brick] = config.networkModel match {
     case NetworkConfig.HomogenousNetworkWithRandomDelays(delaysConfig) =>
-      val delaysGenerator = LongSequenceGenerator.fromConfig(delaysConfig, random)
+      val delaysGenerator = LongSequenceGenerator.fromConfig(delaysConfig, randomGenerator)
       new HomogenousNetworkWithRandomDelays[BlockchainNode, Brick](delaysGenerator)
     case NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(latencyAverageCfg, latencyMinMaxSpreadCfg, bandwidthCfg) =>
-      val latencyAvera
-
+      val latencyAverageGen = LongSequenceGenerator.fromConfig(latencyAverageCfg, randomGenerator)
+      val latencyMinMaxSpreadGen = LongSequenceGenerator.fromConfig(latencyMinMaxSpreadCfg, randomGenerator)
+      val bandwidthGen = LongSequenceGenerator.fromConfig(bandwidthCfg, randomGenerator)
+      new SymmetricLatencyBandwidthGraphNetwork(randomGenerator, config.numberOfValidators, brickSizeCalculator, latencyAverageGen, latencyMinMaxSpreadGen, bandwidthGen)
   }
+
+
 }

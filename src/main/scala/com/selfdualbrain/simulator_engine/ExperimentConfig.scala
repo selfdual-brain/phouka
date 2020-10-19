@@ -28,6 +28,8 @@ case class ExperimentConfig(
                              blocksBuildingStrategy: BlocksBuildingStrategyModel,
                              brickCreationCostModel: LongSequenceConfig,
                              brickValidationCostModel: LongSequenceConfig,
+                             brickHeaderCoreSize: Int,//unit = bytes
+                             singleJustificationSize: Int,//unit = bytes
                              observers: Seq[ObserverConfig]
 )
 
