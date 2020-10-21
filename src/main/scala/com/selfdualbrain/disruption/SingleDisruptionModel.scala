@@ -5,7 +5,7 @@ import com.selfdualbrain.des.ExtEventIngredients
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.SimTimepoint
 
-abstract class SingleDisruptionModel(disasterTimepoint: SimTimepoint, targetNode: BlockchainNode) extends DisruptionModel {
+abstract class SingleDisruptionModel(disasterTimepoint: SimTimepoint, targetBlockchainNode: BlockchainNode) extends DisruptionModel {
 
   private var isBombAlreadyBlown: Boolean = false
 
@@ -14,7 +14,7 @@ abstract class SingleDisruptionModel(disasterTimepoint: SimTimepoint, targetNode
   override def next(): Disruption = {
     val payload = createPayload()
     isBombAlreadyBlown = true
-    return ExtEventIngredients(disasterTimepoint, targetNode, payload)
+    return ExtEventIngredients(disasterTimepoint, targetBlockchainNode, payload)
   }
 
   def createPayload(): EventPayload

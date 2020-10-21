@@ -1,13 +1,13 @@
 package com.selfdualbrain.simulator_engine
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
-import com.selfdualbrain.randomness.IntSequenceGenerator
+import com.selfdualbrain.randomness.{IntSequenceGenerator, LongSequenceGenerator}
 
 /**
-  * Most simplistic validators factory.
-  * Only honest validators are produced.
+  * Simplistic validators factory.
+  * Produces honest validators following "naive casper" brick propose strategy.
   */
-class NaiveValidatorsFactory(
+class NcbValidatorsFactory(
                               weightsOfValidators: ValidatorId => Ether,
                               totalWeight: Ether,
                               blocksFraction: Double,
@@ -19,6 +19,7 @@ class NaiveValidatorsFactory(
                               blockPayloadGenerator: IntSequenceGenerator,
                               msgValidationCostModel: IntSequenceGenerator,
                               msgCreationCostModel: IntSequenceGenerator,
+                              computingPowersGenerator: LongSequenceGenerator,
                               msgBufferSherlockMode: Boolean,
                             ) extends ValidatorsFactory {
 

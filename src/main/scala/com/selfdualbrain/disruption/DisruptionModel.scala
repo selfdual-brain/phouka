@@ -4,7 +4,7 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
 import com.selfdualbrain.des.ExtEventIngredients
 import com.selfdualbrain.simulator_engine.{DisruptionEventDesc, DisruptionModelConfig, EventPayload}
-import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.time.TimeDelta
 
 import scala.util.Random
 
@@ -54,9 +54,11 @@ object DisruptionModel {
     case DisruptionModelConfig.ExplicitDisruptionsSchedule(events) =>
       new ExplicitDisruptionsSchedule(events map disruptionEventDesc2ingredients)
 
-    case DisruptionModelConfig.FixedFrequencies() =>
+    case DisruptionModelConfig.FixedFrequencies(bifurcationsFreq, crashesFreq: Option[Double],outagesFreq: Option[Double], outageLengthMinMax: Option[(TimeDelta, TimeDelta)]) =>
+      new FixedFrequencies(random, bifurcationsFreq, crashesFreq, outagesFreq, outageLengthMinMax, numberOfValidators)
 
-    case DisruptionModelConfig.SingleBifurcationBomb() => ???
+    case DisruptionModelConfig.SingleBifurcationBomb(targetBlockchainNode, disasterTimepoint, numberOfClones) =>
+      new SingleBifurcationBomb(targetBlockchainNode, disasterTimepoint, numberOfClones)
   }
 
   private def disruptionEventDesc2ingredients(desc: DisruptionEventDesc): ExtEventIngredients[BlockchainNode, EventPayload] =

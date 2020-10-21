@@ -3,7 +3,7 @@ import com.selfdualbrain.gui._
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.randomness.IntSequenceConfig
-import com.selfdualbrain.simulator_engine.{ExperimentConfig, ExperimentSetup, NaiveValidatorsFactory, PhoukaEngine, StatsProcessorConfig}
+import com.selfdualbrain.simulator_engine.{ExperimentConfig, ExperimentSetup, NcbValidatorsFactory, PhoukaEngine, StatsProcessorConfig}
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.TimeUnit
@@ -38,7 +38,7 @@ object PresentersSandbox {
   )
 
   val expSetup = new ExperimentSetup(config)
-  val validatorsFactory = new NaiveValidatorsFactory(expSetup)
+  val validatorsFactory = new NcbValidatorsFactory(expSetup)
   val engine = new PhoukaEngine(expSetup, validatorsFactory)
   val genesis: Genesis = engine.genesis
 

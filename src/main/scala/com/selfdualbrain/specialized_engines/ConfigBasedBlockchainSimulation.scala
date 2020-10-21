@@ -11,7 +11,7 @@ import com.selfdualbrain.time.SimTimepoint
 
 class ConfigBasedBlockchainSimulation(config: ExperimentConfig) extends ObservableSimulationEngine[ValidatorId] {
   private val expSetup = new ExperimentSetup(config)
-  private val validatorsFactory = new NaiveValidatorsFactory(expSetup)
+  private val validatorsFactory = new NcbValidatorsFactory(expSetup)
   private val networkDelayGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.networkDelays, expSetup.random)
   private val coreEngine = new PhoukaEngine(expSetup.random, config.numberOfValidators, networkDelayGenerator, validatorsFactory)
   private val chassis = new SimulationEngineChassis(coreEngine)

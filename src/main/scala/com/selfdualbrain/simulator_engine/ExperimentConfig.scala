@@ -2,7 +2,7 @@ package com.selfdualbrain.simulator_engine
 
 import java.io.File
 
-import com.selfdualbrain.blockchain_structure.ValidatorId
+import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
 import com.selfdualbrain.config_files_support.ConfigParsingSupport
 import com.selfdualbrain.disruption.FttApproxMode
 import com.selfdualbrain.randomness.{IntSequenceConfig, LongSequenceConfig}
@@ -76,15 +76,15 @@ object DisruptionModelConfig {
   case class AsteroidImpact(disasterTimepoint: SimTimepoint, fttApproxMode: FttApproxMode) extends DisruptionModelConfig
   case class BifurcationsRainfall(disasterTimepoint: SimTimepoint, fttApproxMode: FttApproxMode) extends DisruptionModelConfig
   case class ExplicitDisruptionsSchedule(events: Seq[DisruptionEventDesc]) extends DisruptionModelConfig
-  case class FixedFrequencies() extends DisruptionModelConfig
-  case class SingleBifurcationBomb() extends DisruptionModelConfig
+  case class FixedFrequencies(bifurcationsFreq: Option[Double], crashesFreq: Option[Double],outagesFreq: Option[Double], outageLengthMinMax: Option[(TimeDelta, TimeDelta)]) extends DisruptionModelConfig
+  case class SingleBifurcationBomb(targetBlockchainNode: BlockchainNode, disasterTimepoint: SimTimepoint, numberOfClones: Int) extends DisruptionModelConfig
 }
 
 sealed abstract class DisruptionEventDesc
 object DisruptionEventDesc {
-  case class Bifurcation(targetNode: Int, timepoint: SimTimepoint, numberOfClones: Int) extends DisruptionEventDesc
-  case class NodeCrash(targetNode: Int, timepoint: SimTimepoint) extends DisruptionEventDesc
-  case class NetworkOutage(targetNode: Int, timepoint: SimTimepoint, outagePeriod: TimeDelta) extends DisruptionEventDesc
+  case class Bifurcation(targetBlockchainNode: BlockchainNode, timepoint: SimTimepoint, numberOfClones: Int) extends DisruptionEventDesc
+  case class NodeCrash(targetBlockchainNode: BlockchainNode, timepoint: SimTimepoint) extends DisruptionEventDesc
+  case class NetworkOutage(targetBlockchainNode: BlockchainNode, timepoint: SimTimepoint, outagePeriod: TimeDelta) extends DisruptionEventDesc
 }
 
 sealed abstract class ObserverConfig
@@ -94,11 +94,21 @@ object ObserverConfig {
                                    throughputMovingWindow: Int, //in seconds
                                    throughputCheckpointsDelta: Int //in seconds
                                  ) extends ObserverConfig
-  case class FileBasedRecorder(targetDir: File, validatorsToBeLogged: Seq[ValidatorId]) extends ObserverConfig
+  case class FileBasedRecorder(targetDir: File, agentsToBeLogged: Seq[BlockchainNode]) extends ObserverConfig
 
 }
 
 object ExperimentConfig {
+
+  private val headerSize: Int =
+    32 + //message id
+    32 + //creator
+    8 +  //round id
+    1 +  //ballot type
+    32 + //era id
+    32 + //prev msg
+    32 + //target block
+    32   //signature
 
   val default: ExperimentConfig = ExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
@@ -120,9 +130,11 @@ object ExperimentConfig {
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
     brickCreationCostModel = LongSequenceConfig.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
     brickValidationCostModel = LongSequenceConfig.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
+    brickHeaderCoreSize = headerSize,
+    singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     observers = Seq(
       DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
-      FileBasedRecorder(targetDir = new File("."), validatorsToBeLogged = Seq(0))
+      FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Seq(0))
     )
   )
 

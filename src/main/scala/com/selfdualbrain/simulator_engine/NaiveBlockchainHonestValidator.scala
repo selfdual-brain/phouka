@@ -5,7 +5,7 @@ import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{CloningSupport, _}
 import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness._
-import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.transactions.BlockPayloadBuilder
 
 import scala.annotation.tailrec
@@ -132,7 +132,6 @@ class NaiveBlockchainHonestValidator private (
   }
 
   //=========== state ==============
-//  private var localClock: SimTimepoint = state.localClock
   val messagesBuffer: MsgBuffer[Brick] = state.messagesBuffer
   val knownBricks: mutable.Set[Brick] = state.knownBricks
   var mySwimlaneLastMessageSequenceNumber: Int = state.mySwimlaneLastMessageSequenceNumber
