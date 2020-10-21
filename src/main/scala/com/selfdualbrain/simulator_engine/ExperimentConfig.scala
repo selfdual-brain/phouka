@@ -2,11 +2,10 @@ package com.selfdualbrain.simulator_engine
 
 import java.io.File
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.BlockchainNode
 import com.selfdualbrain.config_files_support.ConfigParsingSupport
 import com.selfdualbrain.disruption.FttApproxMode
 import com.selfdualbrain.randomness.{IntSequenceConfig, LongSequenceConfig}
-import com.selfdualbrain.simulator_engine.ObserverConfig.{DefaultStatsProcessor, FileBasedRecorder}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
 
 import scala.util.Random
@@ -30,6 +29,7 @@ case class ExperimentConfig(
                              brickValidationCostModel: LongSequenceConfig,
                              brickHeaderCoreSize: Int,//unit = bytes
                              singleJustificationSize: Int,//unit = bytes
+                             msgBufferSherlockMode: Boolean,
                              observers: Seq[ObserverConfig]
 )
 
@@ -94,7 +94,7 @@ object ObserverConfig {
                                    throughputMovingWindow: Int, //in seconds
                                    throughputCheckpointsDelta: Int //in seconds
                                  ) extends ObserverConfig
-  case class FileBasedRecorder(targetDir: File, agentsToBeLogged: Seq[BlockchainNode]) extends ObserverConfig
+  case class FileBasedRecorder(targetDir: File, agentsToBeLogged: Option[Seq[BlockchainNode]]) extends ObserverConfig
 
 }
 
@@ -132,9 +132,10 @@ object ExperimentConfig {
     brickValidationCostModel = LongSequenceConfig.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
+    msgBufferSherlockMode = true,
     observers = Seq(
-      DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
-      FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Seq(0))
+      ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
+      ObserverConfig.FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Some(Seq(BlockchainNode(0))))
     )
   )
 

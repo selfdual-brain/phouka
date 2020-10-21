@@ -17,7 +17,6 @@ abstract class SimulationSetup {
   def actualRandomSeed: Long
   def randomGenerator: Random
   def networkModel: NetworkModel[BlockchainNode, Brick]
-//  def nodeComputingPower(node: BlockchainNode): Long
   def weightOf(vid: ValidatorId): Ether
   def relativeWeightOf(vid: ValidatorId): Double
   def totalWeight: Ether

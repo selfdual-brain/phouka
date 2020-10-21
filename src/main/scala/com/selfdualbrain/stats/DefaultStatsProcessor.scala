@@ -1,7 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{Ballot, NormalBlock, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, BlockchainNode, NormalBlock, ValidatorId}
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
 import com.selfdualbrain.des.{Event, SimulationObserver}
 import com.selfdualbrain.simulator_engine.EventPayload
@@ -29,7 +29,7 @@ class DefaultStatsProcessor(
                              weightsMap: ValidatorId => Ether,
                              absoluteFTT: Ether,
                              totalWeightOfValidators: Ether
-                           ) extends SimulationObserver[ValidatorId, EventPayload] with BlockchainSimulationStats {
+                           ) extends SimulationObserver[BlockchainNode, EventPayload] with BlockchainSimulationStats {
 
   assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
 
@@ -76,7 +76,7 @@ class DefaultStatsProcessor(
     faultyFreezingPoints(i) = None
 
   for (i <- 0 until numberOfValidators)
-    vid2stats(i) = new PerValidatorCounters(i)
+    vid2stats(i) = new PerValidatorCounters(i, this)
 
   latencyMovingWindowAverage.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
   latencyMovingWindowStandardDeviation.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)

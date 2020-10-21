@@ -11,13 +11,13 @@ import com.selfdualbrain.des.{Event, SimulationObserver}
   * @param eagerFlush should the flush be done after every event ? (which decreases performance).
   * @tparam A type of agent ids
   */
-class TextFileSimulationRecorder[A,P](file: File, eagerFlush: Boolean, agentsToBeLogged: Option[Iterable[A]]) extends SimulationObserver[A,P] {
+class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeLogged: Option[Iterable[A]]) extends SimulationObserver[A,EventPayload] {
   private val BUFFER_SIZE: Int = 8192 * 16 //=16 times bigger than the default size hardcoded in JDK - this is important because usually we are going to write events with quite crazy speed
   private val fileWriter = new FileWriter(file)
   private val bufferedWriter = new BufferedWriter(fileWriter, BUFFER_SIZE)
   private val agentsSet: Option[Set[A]] = agentsToBeLogged.map(coll => coll.toSet)
 
-  override def onSimulationEvent(step: Long, event: Event[A,P]): Unit =
+  override def onSimulationEvent(step: Long, event: Event[A,EventPayload]): Unit =
     agentsSet match {
       case None =>
         recordEvent(step, event)
@@ -26,7 +26,7 @@ class TextFileSimulationRecorder[A,P](file: File, eagerFlush: Boolean, agentsToB
           recordEvent(step, event)
     }
 
-  private def recordEvent(step: Long, event: Event[A,P]): Unit = {
+  private def recordEvent(step: Long, event: Event[A,EventPayload]): Unit = {
     val loggingAgentId: String = event.loggingAgent match {
       case Some(id) => id.toString
       case None => "none"
@@ -59,8 +59,8 @@ class TextFileSimulationRecorder[A,P](file: File, eagerFlush: Boolean, agentsToB
 
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
-          case EventPayload.NewAgentSpawned =>
-            s"spawned new agent ${agent.get}"
+          case EventPayload.NewAgentSpawned(vid) =>
+            s"spawned new agent ${agent.get} using validator-id $vid"
           case EventPayload.BroadcastBrick(brick) =>
             s"published $brick"
           case EventPayload.NetworkDisruptionEnd(eventId) =>
