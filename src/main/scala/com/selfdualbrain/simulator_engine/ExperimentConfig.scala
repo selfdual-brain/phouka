@@ -66,7 +66,7 @@ object ForkChoiceStrategy {
 sealed abstract class ProposeStrategyConfig
 object ProposeStrategyConfig {
   case class NaiveCasper(brickProposeDelays: LongSequenceConfig, blocksFractionAsPercentage: Double) extends ProposeStrategyConfig
-  case class RoundRobin(roundLength: TimeDelta) extends ProposeStrategyConfig
+  case class RandomLeadersSequenceWithFixedRounds(roundLength: TimeDelta) extends ProposeStrategyConfig
   case class Highway(initialRoundExponent: Int, omegaDelay: Long, accelerationPeriod: Int, slowdownPeriod: Int) extends ProposeStrategyConfig
 }
 

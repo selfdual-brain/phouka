@@ -1,13 +1,13 @@
 package com.selfdualbrain.stats
 
-import com.selfdualbrain.blockchain_structure.{NormalBlock, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{AbstractNormalBlock, ValidatorId}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 /**
   * Data pack containing some stats and metainfo on one element of LFB chain
   * (as accumulated by default stats processor)
   */
-class LfbElementInfo(val block: NormalBlock, numberOfValidators: Int) {
+class LfbElementInfo(val block: AbstractNormalBlock, numberOfValidators: Int) {
   //how many validators already established finality of this block
   //caution: equivocators may signal finality of the same block more than once because every clone works independently
   //we calculate confirmations per-validator (as opposed to per-agent)

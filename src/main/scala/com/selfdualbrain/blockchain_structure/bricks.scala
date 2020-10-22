@@ -1,6 +1,5 @@
 package com.selfdualbrain.blockchain_structure
 
-import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.hashing.Hash
 import com.selfdualbrain.time.SimTimepoint
 
@@ -42,35 +41,32 @@ trait Block extends BlockchainVertex {
   def payloadSize: Int
 }
 
-case class Ballot(
-                   id: BlockdagVertexId,
-                   positionInSwimlane: Int,
-                   timepoint: SimTimepoint,
-                   justifications: Iterable[Brick],
-                   creator: ValidatorId,
-                   prevInSwimlane: Option[Brick],
-                   targetBlock: NormalBlock
- ) extends Brick {
+trait AbstractBallot extends Brick {
+  def id: BlockdagVertexId
+  def positionInSwimlane: Int
+  def timepoint: SimTimepoint
+  def justifications: Iterable[Brick]
+  def creator: ValidatorId
+  def prevInSwimlane: Option[Brick]
+  def targetBlock: AbstractNormalBlock
 
   override lazy val toString: String =
     s"Ballot-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,target=${targetBlock.id},j=[${justifications.map(_.id).mkString(",")}])"
-
 }
 
-case class NormalBlock(
-                        id: BlockdagVertexId,
-                        positionInSwimlane: Int,
-                        timepoint: SimTimepoint,
-                        justifications: Iterable[Brick],
-                        slashedInThisBlock: Iterable[ValidatorId],
-                        creator: ValidatorId,
-                        prevInSwimlane: Option[Brick],
-                        parent: Block,
-                        numberOfTransactions: Int,
-                        payloadSize: Int,
-                        totalGas: Long,
-                        hash: Hash
- ) extends Block with Brick {
+trait AbstractNormalBlock extends Block with Brick {
+  def id: BlockdagVertexId
+  def positionInSwimlane: Int
+  def timepoint: SimTimepoint
+  def justifications: Iterable[Brick]
+  def slashedInThisBlock: Iterable[ValidatorId]
+  def creator: ValidatorId
+  def prevInSwimlane: Option[Brick]
+  def parent: Block
+  def numberOfTransactions: Int
+  def payloadSize: Int
+  def totalGas: Long
+  def hash: Hash
 
   override val generation: ValidatorId = parent.generation + 1
 
@@ -78,7 +74,7 @@ case class NormalBlock(
     s"Block-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,parent=${parent.id},j=[${justifications.map(_.id).mkString(",")}])"
 }
 
-case class Genesis(id: BlockdagVertexId) extends Block {
+trait AbstractGenesis extends Block {
   override def timepoint: SimTimepoint = SimTimepoint.zero
   override def generation: Int = 0
   override def daglevel: Int = 0
@@ -86,3 +82,4 @@ case class Genesis(id: BlockdagVertexId) extends Block {
   override def payloadSize: Int = 0
   override def toString: String = "Genesis"
 }
+

@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{BlockdagVertexId, Brick, Genesis}
+import com.selfdualbrain.blockchain_structure.{BlockdagVertexId, Brick, AbstractGenesis}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.util.Random
@@ -28,7 +28,7 @@ trait ValidatorContext {
   /**
     * Genesis block (shared by all agents).
     */
-  def genesis: Genesis
+  def genesis: AbstractGenesis
 
   /**
     * Sends given brick to all agents (excluding the sender).

@@ -82,7 +82,7 @@ class SimulationDisplayModel(
                               val experimentConfig: ExperimentConfig,
                               val engine: SimulationEngine[BlockchainNode, EventPayload],
                               stats: BlockchainSimulationStats,
-                              genesis: Genesis,
+                              genesis: AbstractGenesis,
                               expectedNumberOfBricks: Int,
                               expectedNumberOfEvents: Int,
                               maxNumberOfAgents: Int

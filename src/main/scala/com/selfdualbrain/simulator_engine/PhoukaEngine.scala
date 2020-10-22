@@ -37,7 +37,7 @@ class PhoukaEngine(
   engine =>
 
   private val log = LoggerFactory.getLogger("** sim-engine")
-  val genesis: Genesis = Genesis(0)
+  val genesis: AbstractGenesis = Genesis(0)
   val desQueue: SimEventsQueue[BlockchainNode, EventPayload] =
     new ClassicDesQueue[BlockchainNode, EventPayload](
       extStreams = ArraySeq(disruptionModel),
@@ -263,7 +263,7 @@ class PhoukaEngine(
 
     override def generateBrickId(): BlockdagVertexId = engine.nextBrickId()
 
-    override def genesis: Genesis = engine.genesis
+    override def genesis: AbstractGenesis = engine.genesis
 
     override def random: Random = engine.random
 

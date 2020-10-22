@@ -1,7 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{Ballot, BlockchainNode, NormalBlock, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{AbstractBallot, BlockchainNode, AbstractNormalBlock, ValidatorId}
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
 import com.selfdualbrain.des.{Event, SimulationObserver}
 import com.selfdualbrain.simulator_engine.EventPayload
@@ -86,7 +86,7 @@ class DefaultStatsProcessor(
     * Caution: the complexity of updating stats is O(1) with respect to stepId and O(n) with respect to number of validators.
     * Several optimizations are applied to ensure that all calculations are incremental.
     */
-  def onSimulationEvent(stepId: Long, event: Event[ValidatorId, EventPayload]): Unit = {
+  def onSimulationEvent(stepId: Long, event: Event[BlockchainNode, EventPayload]): Unit = {
     assert (stepId == lastStepId + 1, s"stepId=$stepId, lastStepId=$lastStepId")
     lastStepId = stepId
     lastStepTimepoint = event.timepoint
@@ -96,19 +96,19 @@ class DefaultStatsProcessor(
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
           case EventPayload.NewAgentSpawned(vid) =>
-            agentId2validatorId(agent.get) = vid
+            agentId2validatorId(agent.get.address) = vid
 
           case EventPayload.BroadcastBrick(brick) =>
-            val vid = agentId2validatorId(agent.get)
+            val vid = agentId2validatorId(agent.get.address)
             if (! faultyValidatorsMap(vid)) {
-              val vStats = vid2stats(agent.get)
+              val vStats = vid2stats(agent.get.address)
               brick match {
-                case block: NormalBlock =>
+                case block: AbstractNormalBlock =>
                   publishedBlocksCounter += 1
                   vStats.myBlocksCounter += 1
                   blocksByGenerationCounters.nodeAdded(block.generation)
                   vStats.myBlocksByGenerationCounters.nodeAdded(block.generation)
-                case ballot: Ballot =>
+                case ballot: AbstractBallot =>
                   publishedBallotsCounter += 1
                   vStats.myBallotsCounter += 1
               }
@@ -120,7 +120,7 @@ class DefaultStatsProcessor(
       case Event.External(id, timepoint, destination, payload) =>
         payload match {
           case EventPayload.Bifurcation(numberOfClones) =>
-            val vid = agentId2validatorId(destination)
+            val vid = agentId2validatorId(destination.address)
             if (! faultyValidatorsMap(vid)) {
               faultyValidatorsMap(vid) = true
               //todo
@@ -128,7 +128,7 @@ class DefaultStatsProcessor(
 
 
           case EventPayload.NodeCrash =>
-            val vid = agentId2validatorId(destination)
+            val vid = agentId2validatorId(destination.address)
             faultyValidatorsMap(vid) = true
         }
 
@@ -136,21 +136,21 @@ class DefaultStatsProcessor(
         //ignored
 
       case Event.Transport(id, timepoint, source, destination, payload) =>
-        val vid = agentId2validatorId(destination)
+        val vid = agentId2validatorId(destination.address)
         if (! faultyValidatorsMap(vid)) {
           payload match {
             case EventPayload.BrickDelivered(brick) =>
-              if (brick.isInstanceOf[NormalBlock])
-                vid2stats(destination).receivedBlocksCounter += 1
+              if (brick.isInstanceOf[AbstractNormalBlock])
+                vid2stats(destination.address).receivedBlocksCounter += 1
               else
-                vid2stats(destination).receivedBallotsCounter += 1
+                vid2stats(destination.address).receivedBallotsCounter += 1
           }
         }
 
       case Event.Semantic(id, eventTimepoint, source, eventPayload) =>
-        val vid = agentId2validatorId(source)
+        val vid = agentId2validatorId(source.address)
         if (! faultyValidatorsMap(vid)) {
-          val vStats = vid2stats(source)
+          val vStats = vid2stats(source.address)
           handleSemanticEvent(vid, eventTimepoint, eventPayload, vStats)
           visiblyFinalizedBlocksMovingWindowCounter.silence(eventTimepoint.micros)
           assert (
@@ -178,7 +178,7 @@ class DefaultStatsProcessor(
         //ignore
 
       case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
-        if (brick.isInstanceOf[NormalBlock])
+        if (brick.isInstanceOf[AbstractNormalBlock])
           vStats.acceptedBlocksCounter += 1
         else
           vStats.acceptedBallotsCounter += 1
@@ -193,7 +193,7 @@ class DefaultStatsProcessor(
 
       case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) =>
         vStats.numberOfBricksThatLeftMsgBuffer += 1
-        if (brick.isInstanceOf[NormalBlock])
+        if (brick.isInstanceOf[AbstractNormalBlock])
           vStats.acceptedBlocksCounter += 1
         else
           vStats.acceptedBallotsCounter += 1

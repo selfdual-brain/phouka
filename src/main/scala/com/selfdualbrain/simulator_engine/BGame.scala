@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, NormalBlock, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, AbstractNormalBlock, ValidatorId}
 import com.selfdualbrain.data_structures.CloningSupport
 import com.selfdualbrain.simulator_engine.BGame.IndexedArrayOfAccumulators
 
@@ -29,9 +29,9 @@ class BGame private (
                       anchor: Block,
                       weight: ValidatorId => Ether,
                       equivocatorsRegistry: EquivocatorsRegistry,
-                      pBrick2con: mutable.Map[Brick, NormalBlock],
-                      pCon2sum: IndexedArrayOfAccumulators[NormalBlock],
-                      pValidator2con: mutable.HashMap[ValidatorId, NormalBlock],
+                      pBrick2con: mutable.Map[Brick, AbstractNormalBlock],
+                      pCon2sum: IndexedArrayOfAccumulators[AbstractNormalBlock],
+                      pValidator2con: mutable.HashMap[ValidatorId, AbstractNormalBlock],
                       pLastKnownEquivocator: Int
                     ) extends ACC.Estimator {
 
@@ -39,22 +39,22 @@ class BGame private (
     anchor,
     weight,
     equivocatorsRegistry,
-    pBrick2con = new mutable.HashMap[Brick, NormalBlock],
-    pCon2sum = new IndexedArrayOfAccumulators[NormalBlock],
-    pValidator2con = new mutable.HashMap[ValidatorId, NormalBlock],
+    pBrick2con = new mutable.HashMap[Brick, AbstractNormalBlock],
+    pCon2sum = new IndexedArrayOfAccumulators[AbstractNormalBlock],
+    pValidator2con = new mutable.HashMap[ValidatorId, AbstractNormalBlock],
     pLastKnownEquivocator = -1
   )
 
   //brick -> consensus value
-  val brick2con: mutable.Map[Brick, NormalBlock] = pBrick2con
+  val brick2con: mutable.Map[Brick, AbstractNormalBlock] = pBrick2con
   //consensus value -> sum of votes
-  val con2sum: IndexedArrayOfAccumulators[NormalBlock] = pCon2sum
+  val con2sum: IndexedArrayOfAccumulators[AbstractNormalBlock] = pCon2sum
   //last votes
-  val validator2con: mutable.HashMap[ValidatorId, NormalBlock] = pValidator2con
+  val validator2con: mutable.HashMap[ValidatorId, AbstractNormalBlock] = pValidator2con
   //references the stream of equivocators published by the registry
   var lastKnownEquivocator: Int = pLastKnownEquivocator
   //current fork choice winner
-  var forkChoiceWinnerMemoized: Option[NormalBlock] = None
+  var forkChoiceWinnerMemoized: Option[AbstractNormalBlock] = None
   var isFcMemoValid: Boolean = false
 
   def createDetachedCopy(anotherRegistry: EquivocatorsRegistry): BGame = new BGame(
@@ -69,7 +69,7 @@ class BGame private (
 
   override def toString: String = s"BGame-${anchor.id}"
 
-  def addVote(votingBrick: Brick, consensusValue: NormalBlock): Unit = {
+  def addVote(votingBrick: Brick, consensusValue: AbstractNormalBlock): Unit = {
     brick2con += votingBrick -> consensusValue
     val validator = votingBrick.creator
 
@@ -95,7 +95,7 @@ class BGame private (
 
   }
 
-  override def winnerConsensusValue: Option[NormalBlock] =
+  override def winnerConsensusValue: Option[AbstractNormalBlock] =
     if (con2sum.isEmpty)
       None
     else {
@@ -114,7 +114,7 @@ class BGame private (
     }
 
 
-  def decodeVote(votingBrick: Brick): Option[NormalBlock] = brick2con.get(votingBrick)
+  def decodeVote(votingBrick: Brick): Option[AbstractNormalBlock] = brick2con.get(votingBrick)
 
   private def syncWithEquivocatorsRegistry(): Unit = {
     if (lastKnownEquivocator == equivocatorsRegistry.lastSeqNumber)
@@ -135,8 +135,8 @@ class BGame private (
     }
   }
 
-  private def findForkChoiceWinner: NormalBlock = {
-    val (winnerConsensusValue: NormalBlock, winnerTotalWeight: Ether) = con2sum.iteratorOfPairs maxBy { case (c,w) => (w, c.hash) }
+  private def findForkChoiceWinner: AbstractNormalBlock = {
+    val (winnerConsensusValue: AbstractNormalBlock, winnerTotalWeight: Ether) = con2sum.iteratorOfPairs maxBy { case (c,w) => (w, c.hash) }
     return winnerConsensusValue
   }
 }

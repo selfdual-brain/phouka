@@ -23,7 +23,7 @@ object EventPayload {
   case class AddedIncomingBrickToMsgBuffer(bufferedBrick: Brick, missingDependencies: Iterable[Brick], bufTransition: MsgBufferTransition)  extends EventPayload(EventTag.ADDED_ENTRY_TO_BUF)
   case class AcceptedIncomingBrickAfterBuffering(bufferedBrick: Brick, bufTransition: MsgBufferTransition) extends EventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
   case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends EventPayload(EventTag.PRE_FINALITY)
-  case class BlockFinalized(bGameAnchor: Block, finalizedBlock: NormalBlock, summit: ACC.Summit) extends EventPayload(EventTag.FINALITY)
+  case class BlockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit) extends EventPayload(EventTag.FINALITY)
   case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends EventPayload(EventTag.EQUIVOCATION)
   case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends EventPayload(EventTag.CATASTROPHE)
   case class ConsumedBrickDelivery(consumedEventId: Long, consumptionDelay: TimeDelta, brick: Brick) extends EventPayload(EventTag.CONSUMED_BRICK_DELIVERY)

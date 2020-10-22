@@ -1,7 +1,9 @@
-package com.selfdualbrain.simulator_engine
+package com.selfdualbrain.simulator_engine.ncb
+
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
 import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator}
+import com.selfdualbrain.simulator_engine.{Validator, ValidatorContext, ValidatorsFactory}
 import com.selfdualbrain.transactions.BlockPayloadBuilder
 
 /**

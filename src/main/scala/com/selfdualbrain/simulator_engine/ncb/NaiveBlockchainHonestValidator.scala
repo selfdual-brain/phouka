@@ -1,10 +1,11 @@
-package com.selfdualbrain.simulator_engine
+package com.selfdualbrain.simulator_engine.ncb
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{CloningSupport, _}
 import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness._
+import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.transactions.BlockPayloadBuilder
 
@@ -104,6 +105,7 @@ object NaiveBlockchainHonestValidator {
   *
   * @param context encapsulates features to be provided by hosting simulation engine
   */
+@deprecated
 class NaiveBlockchainHonestValidator private (
                               blockchainNode: BlockchainNode,
                               context: ValidatorContext,
@@ -191,8 +193,8 @@ class NaiveBlockchainHonestValidator private (
 
     //simulation of incoming message processing time
     val payloadValidationTime: TimeDelta = msg match {
-      case x: NormalBlock => (x.totalGas.toDouble * 1000000 / config.computingPower).toLong
-      case x: Ballot => 0L
+      case x: AbstractNormalBlock => (x.totalGas.toDouble * 1000000 / config.computingPower).toLong
+      case x: AbstractBallot => 0L
     }
     context.registerProcessingTime(msgValidationCostGenerator.next())
 
@@ -285,7 +287,7 @@ class NaiveBlockchainHonestValidator private (
     //we use "toSet" conversion in the middle to leave only distinct elements
     //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
     val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](globalPanorama.honestSwimlanesTips.values.toSet.toArray)
-
+    val timeNow = context.time()
     val brick =
       if (shouldBeBlock || forkChoiceWinner == context.genesis) {
         val currentlyVisibleEquivocators: Set[ValidatorId] = globalPanorama.equivocators
@@ -295,12 +297,14 @@ class NaiveBlockchainHonestValidator private (
           else
             panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
-
         val payload = config.blockPayloadBuilder.next()
         NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
-          timepoint = context.time(),
+          round = timeNow.micros,
+          roundExponent = 0,
+          roleInProtocol = MessageRole.LAMBDA,
+          timepoint = timeNow,
           justifications,
           toBeSlashedInThisBlock,
           creator,
@@ -315,11 +319,14 @@ class NaiveBlockchainHonestValidator private (
         Ballot(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
+          round = timeNow.micros,
+          roundExponent = 0,
+          roleInProtocol = MessageRole.OMEGA,
           timepoint = context.time(),
           justifications,
           creator,
           prevInSwimlane = myLastMessagePublished,
-          targetBlock = forkChoiceWinner.asInstanceOf[NormalBlock]
+          targetBlock = forkChoiceWinner.asInstanceOf[AbstractNormalBlock]
         )
 
     mySwimlane.append(brick)
@@ -356,11 +363,11 @@ class NaiveBlockchainHonestValidator private (
     }
 
     brick match {
-      case x: NormalBlock =>
+      case x: AbstractNormalBlock =>
         val newBGame = new BGame(x, config.weightsOfValidators, equivocatorsRegistry)
         block2bgame += x -> newBGame
         applyNewVoteToBGamesChain(brick, x)
-      case x: Ballot =>
+      case x: AbstractBallot =>
         applyNewVoteToBGamesChain(brick, x.targetBlock)
     }
 
@@ -415,9 +422,9 @@ class NaiveBlockchainHonestValidator private (
   @tailrec
   private def applyNewVoteToBGamesChain(vote: Brick, tipOfTheChain: Block): Unit = {
     tipOfTheChain match {
-      case g: Genesis =>
+      case g: AbstractGenesis =>
         return
-      case b: NormalBlock =>
+      case b: AbstractNormalBlock =>
         val p = b.parent
         val bgame: BGame = block2bgame(p)
         bgame.addVote(vote, b)

@@ -8,6 +8,7 @@ import com.selfdualbrain.des.{ObservableSimulationEngine, SimulationEngineChassi
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelays, NetworkModel, SymmetricLatencyBandwidthGraphNetwork}
 import com.selfdualbrain.randomness.{IntSequenceGenerator, LongSequenceGenerator}
+import com.selfdualbrain.simulator_engine.ncb.NcbValidatorsFactory
 import com.selfdualbrain.stats.{BlockchainSimulationStats, DefaultStatsProcessor}
 import com.selfdualbrain.transactions.{BlockPayloadBuilder, TransactionsStream}
 
@@ -36,8 +37,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   private val brickSizeCalculator: Brick => Int = (b: Brick) => {
     val headerSize = config.brickHeaderCoreSize + b.justifications.size * config.singleJustificationSize
     b match {
-      case x: NormalBlock => headerSize + x.payloadSize
-      case x: Ballot => headerSize
+      case x: AbstractNormalBlock => headerSize + x.payloadSize
+      case x: AbstractBallot => headerSize
     }
   }
   val networkModel: NetworkModel[BlockchainNode, Brick] = buildNetworkModel()
