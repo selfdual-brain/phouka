@@ -28,10 +28,10 @@ class NcbValidatorsFactory(
                             ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator =
-    new NaiveBlockchainHonestValidator(
+    new NcbValidator(
       node,
       context,
-      NaiveBlockchainHonestValidator.Config(
+      NcbValidator.Config(
         vid,
         numberOfValidators,
         weightsOfValidators,

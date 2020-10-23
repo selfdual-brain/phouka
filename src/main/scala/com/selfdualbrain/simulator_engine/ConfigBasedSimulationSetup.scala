@@ -8,7 +8,7 @@ import com.selfdualbrain.des.{ObservableSimulationEngine, SimulationEngineChassi
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelays, NetworkModel, SymmetricLatencyBandwidthGraphNetwork}
 import com.selfdualbrain.randomness.{IntSequenceGenerator, LongSequenceGenerator}
-import com.selfdualbrain.simulator_engine.ncb.NcbValidatorsFactory
+import com.selfdualbrain.simulator_engine.ncb.{Ncb, NcbValidatorsFactory}
 import com.selfdualbrain.stats.{BlockchainSimulationStats, DefaultStatsProcessor}
 import com.selfdualbrain.transactions.{BlockPayloadBuilder, TransactionsStream}
 
@@ -67,9 +67,15 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.msgBufferSherlockMode
       )
 
-    case ProposeStrategyConfig.RoundRobin(roundLength) => ??? //todo
+    case ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds(roundLength) => ??? //todo
 
     case ProposeStrategyConfig.Highway(initialRoundExponent, omegaDelay, accelerationPeriod, slowdownPeriod) => ??? //todo
+  }
+
+  val genesis: AbstractGenesis = config.bricksProposeStrategy match {
+    case x: ProposeStrategyConfig.NaiveCasper => Ncb.Genesis(0)
+    case x: ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds => ???
+    case x: ProposeStrategyConfig.Highway => ???
   }
 
   private val coreEngine = new PhoukaEngine(
@@ -77,7 +83,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
     config.numberOfValidators,
     validatorsFactory,
     disruptionModel,
-    networkModel
+    networkModel,
+    genesis
   )
 
   private val chassis = new SimulationEngineChassis(coreEngine)

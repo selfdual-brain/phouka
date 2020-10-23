@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{AbstractGenesis, BlockchainNode, Brick, ValidatorId}
 import com.selfdualbrain.des.ObservableSimulationEngine
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.NetworkModel
@@ -25,6 +25,7 @@ abstract class SimulationSetup {
   def validatorsFactory: ValidatorsFactory
   def engine: ObservableSimulationEngine[BlockchainNode, EventPayload]
   def guiCompatibleStats: Option[BlockchainSimulationStats]
+  def genesis: AbstractGenesis
 }
 
 

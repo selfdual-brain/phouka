@@ -298,12 +298,9 @@ class NaiveBlockchainHonestValidator private (
             panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
         val payload = config.blockPayloadBuilder.next()
-        NormalBlock(
+        Ncb.NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
-          round = timeNow.micros,
-          roundExponent = 0,
-          roleInProtocol = MessageRole.LAMBDA,
           timepoint = timeNow,
           justifications,
           toBeSlashedInThisBlock,
@@ -316,17 +313,14 @@ class NaiveBlockchainHonestValidator private (
           hash = brickHashGenerator.generateHash()
         )
       } else
-        Ballot(
+        Ncb.Ballot(
           id = context.generateBrickId(),
           positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
-          round = timeNow.micros,
-          roundExponent = 0,
-          roleInProtocol = MessageRole.OMEGA,
           timepoint = context.time(),
           justifications,
           creator,
           prevInSwimlane = myLastMessagePublished,
-          targetBlock = forkChoiceWinner.asInstanceOf[AbstractNormalBlock]
+          targetBlock = forkChoiceWinner.asInstanceOf[Ncb.NormalBlock]
         )
 
     mySwimlane.append(brick)

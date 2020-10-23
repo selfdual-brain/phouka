@@ -32,12 +32,12 @@ class PhoukaEngine(
                     validatorsFactory: ValidatorsFactory,
                     disruptionModel: DisruptionModel,
                     networkModel: NetworkModel[BlockchainNode,Brick],
+                    genesis: AbstractGenesis
                 ) extends SimulationEngine[BlockchainNode,EventPayload] {
 
   engine =>
 
   private val log = LoggerFactory.getLogger("** sim-engine")
-  val genesis: AbstractGenesis = Genesis(0)
   val desQueue: SimEventsQueue[BlockchainNode, EventPayload] =
     new ClassicDesQueue[BlockchainNode, EventPayload](
       extStreams = ArraySeq(disruptionModel),

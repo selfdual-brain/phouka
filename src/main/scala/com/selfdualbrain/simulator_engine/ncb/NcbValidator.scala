@@ -2,10 +2,10 @@ package com.selfdualbrain.simulator_engine.ncb
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.data_structures.{CloningSupport, MsgBuffer}
-import com.selfdualbrain.hashing.CryptographicDigester
+import com.selfdualbrain.data_structures.{CloningSupport, MsgBuffer, MsgBufferImpl}
+import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator, Picker}
-import com.selfdualbrain.simulator_engine._
+import com.selfdualbrain.simulator_engine.{ncb, _}
 import com.selfdualbrain.transactions.{BlockPayload, BlockPayloadBuilder}
 
 import scala.collection.immutable.ArraySeq
@@ -75,6 +75,23 @@ object NcbValidator {
 
 }
 
+/**
+  * Implementation of a naive blockchain validator.
+  *
+  * "Naive" corresponds to the bricks propose schedule, which is just "produce bricks at random points in time", with:
+  * - declared ad hoc probabilistic distribution of delays between subsequent "propose wake-ups"
+  * - declared average fraction of blocks along the published sequence of bricks
+  *
+  * "Honest" corresponds to this validator never producing equivocations.
+  *
+  * Caution 1: Technically, a validator is an "agent" within enclosing simulation engine.
+  * Caution 2: Primary constructor is private on purpose - this is our approach to cloning.
+  *
+  * @param blockchainNode blockchain node id
+  * @param context validator context
+  * @param config config
+  * @param state state snapshot
+  */
 class NcbValidator private (
                              blockchainNode: BlockchainNode,
                              context: ValidatorContext,
@@ -82,6 +99,25 @@ class NcbValidator private (
                              state: NcbValidator.StateSnapshot
                            ) extends ValidatorBaseImpl[NcbValidator.Config, NcbValidator.StateSnapshot](blockchainNode, context, config, state) {
 
+  def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: ncb.NcbValidator.Config) = {
+    this(blockchainNode, context, config, NcbValidator.StateSnapshot(
+      messagesBuffer = new MsgBufferImpl[Brick],
+      knownBricks = new mutable.HashSet[Brick](1000, 0.75),
+      mySwimlaneLastMessageSequenceNumber = -1,
+      mySwimlane = new ArrayBuffer[Brick](10000),
+      myLastMessagePublished = None,
+      block2bgame = new mutable.HashMap[Block, BGame],
+      lastFinalizedBlock = context.genesis,
+      globalPanorama = ACC.Panorama.empty,
+      panoramasBuilder = new ACC.PanoramaBuilder,
+      equivocatorsRegistry = new EquivocatorsRegistry(config.numberOfValidators, config.weightsOfValidators, config.absoluteFTT),
+      blockVsBallot = new Picker[String](context.random, Map("block" -> config.blocksFraction, "ballot" -> (1 - config.blocksFraction))),
+      brickHashGenerator = new FakeSha256Digester(context.random, 8),
+      brickProposeDelaysGenerator = LongSequenceGenerator.fromConfig(config.brickProposeDelaysGeneratorConfig, context.random),
+      msgValidationCostGenerator = LongSequenceGenerator.fromConfig(config.msgValidationCostModel, context.random),
+      msgCreationCostGenerator = LongSequenceGenerator.fromConfig(config.msgCreationCostModel, context.random)
+    ))
+  }
 
   override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
     val validatorInstance = new NcbValidator(bNode, vContext, config, this.generateStateSnapshot().createDetachedCopy())
@@ -116,7 +152,13 @@ class NcbValidator private (
     scheduleNextWakeup()
   }
 
-  override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = ???
+  override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
+    blockVsBallot.select() match {
+      case "block" => publishNewBrick(true)
+      case "ballot" => publishNewBrick(false)
+    }
+    scheduleNextWakeup()
+  }
 
   //################## PUBLISHING OF NEW MESSAGES ############################
 
