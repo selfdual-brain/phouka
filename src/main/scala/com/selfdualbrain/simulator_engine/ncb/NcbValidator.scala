@@ -1,76 +1,40 @@
 package com.selfdualbrain.simulator_engine.ncb
 
-import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.data_structures.{CloningSupport, MsgBuffer, MsgBufferImpl}
-import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator, Picker}
-import com.selfdualbrain.simulator_engine.{ncb, _}
-import com.selfdualbrain.transactions.{BlockPayload, BlockPayloadBuilder}
+import com.selfdualbrain.simulator_engine._
+import com.selfdualbrain.transactions.BlockPayload
 
 import scala.collection.immutable.ArraySeq
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 object NcbValidator {
-  case class Config(
-              validatorId: ValidatorId,
-              numberOfValidators: Int,
-              weightsOfValidators: ValidatorId => Ether,
-              totalWeight: Ether,
-              blocksFraction: Double,
-              runForkChoiceFromGenesis: Boolean,
-              relativeFTT: Double,
-              absoluteFTT: Ether,
-              ackLevel: Int,
-              brickProposeDelaysGeneratorConfig: LongSequenceConfig,
-              blockPayloadBuilder: BlockPayloadBuilder,
-              computingPower: Long, //using [gas/second] units
-              msgValidationCostModel: LongSequenceConfig,
-              msgCreationCostModel: LongSequenceConfig,
-              msgBufferSherlockMode: Boolean
-         ) extends Validator.Config
+  class Config extends ValidatorBaseImpl.Config {
+    var blocksFraction: Double = _
+    var brickProposeDelaysConfig: LongSequenceConfig = _
+  }
 
-  case class StateSnapshot(
-              messagesBuffer: MsgBuffer[Brick],
-              knownBricks: mutable.Set[Brick],
-              mySwimlaneLastMessageSequenceNumber: Int,
-              mySwimlane: ArrayBuffer[Brick],
-              myLastMessagePublished: Option[Brick],
-              block2bgame: mutable.Map[Block, BGame],
-              lastFinalizedBlock: Block,
-              globalPanorama: ACC.Panorama,
-              panoramasBuilder: ACC.PanoramaBuilder,
-              equivocatorsRegistry: EquivocatorsRegistry,
-              blockVsBallot: Picker[String],
-              brickHashGenerator: CryptographicDigester,
-              brickProposeDelaysGenerator: LongSequenceGenerator,
-              msgValidationCostGenerator: LongSequenceGenerator,
-              msgCreationCostGenerator: LongSequenceGenerator
-          ) extends Validator.StateSnapshot with CloningSupport[StateSnapshot] {
+  class State extends ValidatorBaseImpl.State {
+    var blockVsBallot: Picker[String] = _
+    var brickProposeDelaysGenerator: LongSequenceGenerator = _
 
-    override def createDetachedCopy(): StateSnapshot ={
-      val clonedEquivocatorsRegistry = this.equivocatorsRegistry.createDetachedCopy()
+    override def createEmpty() = new State
 
-      StateSnapshot(
-        messagesBuffer = this.messagesBuffer.createDetachedCopy(),
-        knownBricks = this.knownBricks.clone(),
-        mySwimlaneLastMessageSequenceNumber = this.mySwimlaneLastMessageSequenceNumber,
-        mySwimlane = this.mySwimlane.clone(),
-        myLastMessagePublished = this.myLastMessagePublished,
-        block2bgame = this.block2bgame map { case (block,bGame) => (block, bGame.createDetachedCopy(clonedEquivocatorsRegistry))},
-        lastFinalizedBlock = this.lastFinalizedBlock,
-        globalPanorama = this.globalPanorama,
-        panoramasBuilder = new ACC.PanoramaBuilder,
-        equivocatorsRegistry = clonedEquivocatorsRegistry,
-        blockVsBallot = this.blockVsBallot,
-        brickHashGenerator = this.brickHashGenerator,
-        brickProposeDelaysGenerator = this.brickProposeDelaysGenerator.createDetachedCopy(),
-        msgValidationCostGenerator = this.msgValidationCostGenerator.createDetachedCopy(),
-        msgCreationCostGenerator = this.msgCreationCostGenerator.createDetachedCopy()
-      )
-
+    override def copyTo(state: ValidatorBaseImpl.State): Unit = {
+      super.copyTo(state)
+      val st = state.asInstanceOf[NcbValidator.State]
+      st.blockVsBallot = blockVsBallot
+      st.brickProposeDelaysGenerator = brickProposeDelaysGenerator.createDetachedCopy()
     }
+
+    override def initialize(nodeId: BlockchainNode, context: ValidatorContext, config: ValidatorBaseImpl.Config): Unit = {
+      super.initialize(nodeId, context, config)
+      val cf = config.asInstanceOf[NcbValidator.Config]
+      blockVsBallot = new Picker[String](context.random, Map("block" -> cf.blocksFraction, "ballot" -> (1 - cf.blocksFraction)))
+      brickProposeDelaysGenerator = LongSequenceGenerator.fromConfig(cf.brickProposeDelaysConfig, context.random)
+    }
+
+    override def createDetachedCopy(): NcbValidator.State = super.createDetachedCopy().asInstanceOf[NcbValidator.State]
+
   }
 
 }
@@ -96,64 +60,37 @@ class NcbValidator private (
                              blockchainNode: BlockchainNode,
                              context: ValidatorContext,
                              config: NcbValidator.Config,
-                             state: NcbValidator.StateSnapshot
-                           ) extends ValidatorBaseImpl[NcbValidator.Config, NcbValidator.StateSnapshot](blockchainNode, context, config, state) {
+                             state: NcbValidator.State
+                           ) extends ValidatorBaseImpl[NcbValidator.Config, NcbValidator.State](blockchainNode, context, config, state) {
 
-  def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: ncb.NcbValidator.Config) = {
-    this(blockchainNode, context, config, NcbValidator.StateSnapshot(
-      messagesBuffer = new MsgBufferImpl[Brick],
-      knownBricks = new mutable.HashSet[Brick](1000, 0.75),
-      mySwimlaneLastMessageSequenceNumber = -1,
-      mySwimlane = new ArrayBuffer[Brick](10000),
-      myLastMessagePublished = None,
-      block2bgame = new mutable.HashMap[Block, BGame],
-      lastFinalizedBlock = context.genesis,
-      globalPanorama = ACC.Panorama.empty,
-      panoramasBuilder = new ACC.PanoramaBuilder,
-      equivocatorsRegistry = new EquivocatorsRegistry(config.numberOfValidators, config.weightsOfValidators, config.absoluteFTT),
-      blockVsBallot = new Picker[String](context.random, Map("block" -> config.blocksFraction, "ballot" -> (1 - config.blocksFraction))),
-      brickHashGenerator = new FakeSha256Digester(context.random, 8),
-      brickProposeDelaysGenerator = LongSequenceGenerator.fromConfig(config.brickProposeDelaysGeneratorConfig, context.random),
-      msgValidationCostGenerator = LongSequenceGenerator.fromConfig(config.msgValidationCostModel, context.random),
-      msgCreationCostGenerator = LongSequenceGenerator.fromConfig(config.msgCreationCostModel, context.random)
-    ))
-  }
+  def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: NcbValidator.Config) =
+    this(
+      blockchainNode,
+      context,
+      config,
+      {
+        val s = new NcbValidator.State
+        s.initialize(blockchainNode, context, config)
+        s
+      }
+    )
 
   override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
-    val validatorInstance = new NcbValidator(bNode, vContext, config, this.generateStateSnapshot().createDetachedCopy())
+    val validatorInstance = new NcbValidator(bNode, vContext, config, state.createDetachedCopy())
     validatorInstance.scheduleNextWakeup()
     return validatorInstance
   }
 
-  private def generateStateSnapshot(): NcbValidator.StateSnapshot =
-    NcbValidator.StateSnapshot(
-      messagesBuffer = messagesBuffer,
-      knownBricks = knownBricks,
-      mySwimlaneLastMessageSequenceNumber = mySwimlaneLastMessageSequenceNumber,
-      mySwimlane = mySwimlane,
-      myLastMessagePublished = myLastMessagePublished,
-      block2bgame = block2bgame,
-      lastFinalizedBlock = lastFinalizedBlock,
-      globalPanorama = globalPanorama,
-      panoramasBuilder = panoramasBuilder,
-      equivocatorsRegistry = equivocatorsRegistry,
-      blockVsBallot = blockVsBallot,
-      brickHashGenerator = brickHashGenerator,
-      brickProposeDelaysGenerator = brickProposeDelaysGenerator,
-      msgValidationCostGenerator = msgValidationCostGenerator,
-      msgCreationCostGenerator = msgCreationCostGenerator
-    )
-
   //#################### PUBLIC API ############################
 
   override def startup(): Unit = {
-    val newBGame = new BGame(context.genesis, config.weightsOfValidators, equivocatorsRegistry)
-    block2bgame += context.genesis -> newBGame
+    val newBGame = new BGame(context.genesis, config.weightsOfValidators, state.equivocatorsRegistry)
+    state.block2bgame += context.genesis -> newBGame
     scheduleNextWakeup()
   }
 
   override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
-    blockVsBallot.select() match {
+    state.blockVsBallot.select() match {
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)
     }
@@ -164,64 +101,64 @@ class NcbValidator private (
 
   protected def publishNewBrick(shouldBeBlock: Boolean): Unit = {
     val brick = createNewBrick(shouldBeBlock)
-    globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(brick))
+    state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
     addToLocalJdag(brick)
     context.broadcast(context.time(), brick)
-    myLastMessagePublished = Some(brick)
+    state.myLastMessagePublished = Some(brick)
   }
 
   protected def createNewBrick(shouldBeBlock: Boolean): Brick = {
     //simulation of "create new message" processing time
-    context.registerProcessingTime(msgCreationCostGenerator.next())
+    context.registerProcessingTime(state.msgCreationCostGenerator.next())
 
     val creator: ValidatorId = config.validatorId
-    mySwimlaneLastMessageSequenceNumber += 1
+    state.mySwimlaneLastMessageSequenceNumber += 1
     val forkChoiceWinner: Block = this.calculateCurrentForkChoiceWinner()
 
     //we use "toSet" conversion in the middle to leave only distinct elements
     //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
-    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](globalPanorama.honestSwimlanesTips.values.toSet.toArray)
+    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](state.globalPanorama.honestSwimlanesTips.values.toSet.toArray)
     val timeNow = context.time()
     val brick =
       if (shouldBeBlock || forkChoiceWinner == context.genesis) {
-        val currentlyVisibleEquivocators: Set[ValidatorId] = globalPanorama.equivocators
+        val currentlyVisibleEquivocators: Set[ValidatorId] = state.globalPanorama.equivocators
         val parentBlockEquivocators: Set[ValidatorId] =
           if (forkChoiceWinner == context.genesis)
             Set.empty
           else
-            panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
+            state.panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
         val payload: BlockPayload = config.blockPayloadBuilder.next()
         Ncb.NormalBlock(
           id = context.generateBrickId(),
-          positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
+          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
           timepoint = timeNow,
           justifications,
           toBeSlashedInThisBlock,
           creator,
-          prevInSwimlane = myLastMessagePublished,
+          prevInSwimlane = state.myLastMessagePublished,
           parent = forkChoiceWinner,
           numberOfTransactions = payload.numberOfTransactions,
           payloadSize = payload.transactionsBinarySize,
           totalGas = payload.totalGasNeededForExecutingTransactions,
-          hash = brickHashGenerator.generateHash()
+          hash = state.brickHashGenerator.generateHash()
         )
       } else
         Ncb.Ballot(
           id = context.generateBrickId(),
-          positionInSwimlane = mySwimlaneLastMessageSequenceNumber,
+          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
           timepoint = context.time(),
           justifications,
           creator,
-          prevInSwimlane = myLastMessagePublished,
+          prevInSwimlane = state.myLastMessagePublished,
           targetBlock = forkChoiceWinner.asInstanceOf[Ncb.NormalBlock]
         )
 
-    mySwimlane.append(brick)
+    state.mySwimlane.append(brick)
     return brick
   }
 
   protected def scheduleNextWakeup(): Unit = {
-    context.scheduleNextBrickPropose(context.time() + brickProposeDelaysGenerator.next(), Unit)
+    context.scheduleNextBrickPropose(context.time() + state.brickProposeDelaysGenerator.next(), Unit)
   }
 }

@@ -2,14 +2,117 @@ package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.data_structures.MsgBuffer
-import com.selfdualbrain.hashing.CryptographicDigester
-import com.selfdualbrain.randomness.{LongSequenceGenerator, Picker}
+import com.selfdualbrain.data_structures.{CloningSupport, MsgBuffer, MsgBufferImpl}
+import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
+import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator}
 import com.selfdualbrain.time.TimeDelta
+import com.selfdualbrain.transactions.BlockPayloadBuilder
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+
+object ValidatorBaseImpl {
+
+  class Config {
+    //integer id of a validator; simulation engine allocates these ids from 0,...,n-1 interval
+    var validatorId: ValidatorId = _
+
+    //number of validators (not to be mistaken with number of active nodes)
+    var numberOfValidators: Int = _
+
+    //absolute weights of validators
+    var weightsOfValidators: ValidatorId => Ether = _
+
+    //total weight of validators
+    var totalWeight: Ether = _
+
+    //todo: doc
+    var runForkChoiceFromGenesis: Boolean = _
+
+    //todo: doc
+    var relativeFTT: Double = _
+
+    //todo: doc
+    var absoluteFTT: Ether = _
+
+    //todo: doc
+    var ackLevel: Int = _
+
+    //todo: doc
+    var blockPayloadBuilder: BlockPayloadBuilder = _
+
+    //using [gas/second] units
+    var computingPower: Long = _
+
+    //todo: doc
+    var msgValidationCostModel: LongSequenceConfig = _
+
+    //todo: doc
+    var msgCreationCostModel: LongSequenceConfig = _
+
+    //flag that enables emitting semantic events around msg buffer operations
+    var msgBufferSherlockMode: Boolean = _
+  }
+
+  class State extends CloningSupport[State] {
+    var messagesBuffer: MsgBuffer[Brick] = _
+    var knownBricks: mutable.Set[Brick] = _
+    var mySwimlaneLastMessageSequenceNumber: Int = _
+    var mySwimlane: ArrayBuffer[Brick] = _
+    var myLastMessagePublished: Option[Brick] = _
+    var block2bgame: mutable.Map[Block, BGame] = _
+    var lastFinalizedBlock: Block = _
+    var globalPanorama: ACC.Panorama = _
+    var panoramasBuilder: ACC.PanoramaBuilder = _
+    var equivocatorsRegistry: EquivocatorsRegistry = _
+    var brickHashGenerator: CryptographicDigester = _
+    var msgValidationCostGenerator: LongSequenceGenerator = _
+    var msgCreationCostGenerator: LongSequenceGenerator = _
+
+    def copyTo(state: State): Unit = {
+      val clonedEquivocatorsRegistry = this.equivocatorsRegistry.createDetachedCopy()
+      state.messagesBuffer = this.messagesBuffer.createDetachedCopy()
+      state.knownBricks = this.knownBricks.clone()
+      state.mySwimlaneLastMessageSequenceNumber = this.mySwimlaneLastMessageSequenceNumber
+      state.mySwimlane = this.mySwimlane.clone()
+      state.myLastMessagePublished = this.myLastMessagePublished
+      state.block2bgame = this.block2bgame map { case (block, bGame) => (block, bGame.createDetachedCopy(clonedEquivocatorsRegistry)) }
+      state.lastFinalizedBlock = this.lastFinalizedBlock
+      state.globalPanorama = this.globalPanorama
+      state.panoramasBuilder = new ACC.PanoramaBuilder
+      state.equivocatorsRegistry = clonedEquivocatorsRegistry
+      state.brickHashGenerator = this.brickHashGenerator
+      state.msgValidationCostGenerator = this.msgValidationCostGenerator.createDetachedCopy()
+      state.msgCreationCostGenerator = this.msgCreationCostGenerator.createDetachedCopy()
+    }
+
+    override def createDetachedCopy(): State = {
+      val result = createEmpty()
+      this.copyTo(result)
+      return result
+    }
+
+    def createEmpty() = new State
+
+    def initialize(nodeId: BlockchainNode, context: ValidatorContext, config: Config): Unit = {
+      messagesBuffer = new MsgBufferImpl[Brick]
+      knownBricks = new mutable.HashSet[Brick](1000, 0.75)
+      mySwimlaneLastMessageSequenceNumber = -1
+      mySwimlane = new ArrayBuffer[Brick](10000)
+      myLastMessagePublished = None
+      block2bgame = new mutable.HashMap[Block, BGame]
+      lastFinalizedBlock = context.genesis
+      globalPanorama = ACC.Panorama.empty
+      panoramasBuilder = new ACC.PanoramaBuilder
+      equivocatorsRegistry = new EquivocatorsRegistry(config.numberOfValidators, config.weightsOfValidators, config.absoluteFTT)
+      brickHashGenerator = new FakeSha256Digester(context.random, 8)
+      msgValidationCostGenerator = LongSequenceGenerator.fromConfig(config.msgValidationCostModel, context.random)
+      msgCreationCostGenerator = LongSequenceGenerator.fromConfig(config.msgCreationCostModel, context.random)
+    }
+  }
+
+}
 
 /**
   * Base class for validator implementations.
@@ -18,26 +121,8 @@ import scala.collection.mutable.ArrayBuffer
   * @tparam CF config type
   * @tparam ST state snapshot type
   */
-abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSnapshot](blockchainNode: BlockchainNode, context: ValidatorContext, config: CF, state: ST) extends Validator {
+abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorBaseImpl.State](blockchainNode: BlockchainNode, context: ValidatorContext, config: CF, state: ST) extends Validator {
 
-  //=========== state ==============
-  val messagesBuffer: MsgBuffer[Brick] = state.messagesBuffer
-  val knownBricks: mutable.Set[Brick] = state.knownBricks
-  var mySwimlaneLastMessageSequenceNumber: Int = state.mySwimlaneLastMessageSequenceNumber
-  val mySwimlane: ArrayBuffer[Brick] = state.mySwimlane
-  var myLastMessagePublished: Option[Brick] = state.myLastMessagePublished
-  val block2bgame: mutable.Map[Block, BGame] = state.block2bgame
-  var lastFinalizedBlock: Block = state.lastFinalizedBlock
-  var globalPanorama: ACC.Panorama = state.globalPanorama
-  val equivocatorsRegistry: EquivocatorsRegistry = state.equivocatorsRegistry
-  val blockVsBallot: Picker[String] = state.blockVsBallot
-  val brickHashGenerator: CryptographicDigester = state.brickHashGenerator
-  val brickProposeDelaysGenerator: LongSequenceGenerator = state.brickProposeDelaysGenerator
-  val msgValidationCostGenerator: LongSequenceGenerator = state.msgValidationCostGenerator
-  val msgCreationCostGenerator: LongSequenceGenerator = state.msgCreationCostGenerator
-
-  //========== stateless ===========
-  val panoramasBuilder: ACC.PanoramaBuilder = state.panoramasBuilder
   var currentFinalityDetector: Option[ACC.FinalityDetector] = None
 
   override def toString: String = s"Validator-${config.validatorId}"
@@ -45,14 +130,14 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
   //#################### PUBLIC API ############################
 
   def onNewBrickArrived(msg: Brick): Unit = {
-    val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! knownBricks.contains(j))
+    val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! state.knownBricks.contains(j))
 
     //simulation of incoming message processing time
     val payloadValidationTime: TimeDelta = msg match {
       case x: AbstractNormalBlock => (x.totalGas.toDouble * 1000000 / config.computingPower).toLong
       case x: AbstractBallot => 0L
     }
-    context.registerProcessingTime(msgValidationCostGenerator.next())
+    context.registerProcessingTime(state.msgValidationCostGenerator.next())
 
     if (missingDependencies.isEmpty) {
       context.addOutputEvent(context.time(), EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
@@ -60,11 +145,11 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
     } else {
       if (config.msgBufferSherlockMode) {
         val bufferTransition = doBufferOp {
-          messagesBuffer.addMessage(msg, missingDependencies)
+          state.messagesBuffer.addMessage(msg, missingDependencies)
         }
         context.addOutputEvent(context.time(), EventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferTransition))
       } else {
-        messagesBuffer.addMessage(msg, missingDependencies)
+        state.messagesBuffer.addMessage(msg, missingDependencies)
       }
     }
   }
@@ -77,19 +162,19 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
 
     while (queue.nonEmpty) {
       val nextBrick = queue.dequeue()
-      if (! knownBricks.contains(nextBrick)) {
-        globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, panoramasBuilder.panoramaOf(nextBrick))
-        globalPanorama = panoramasBuilder.mergePanoramas(globalPanorama, ACC.Panorama.atomic(nextBrick))
+      if (! state.knownBricks.contains(nextBrick)) {
+        state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, state.panoramasBuilder.panoramaOf(nextBrick))
+        state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(nextBrick))
         addToLocalJdag(nextBrick)
-        val waitingForThisOne = messagesBuffer.findMessagesWaitingFor(nextBrick)
+        val waitingForThisOne = state.messagesBuffer.findMessagesWaitingFor(nextBrick)
         if (config.msgBufferSherlockMode) {
-          val bufferTransition = doBufferOp {messagesBuffer.fulfillDependency(nextBrick)}
+          val bufferTransition = doBufferOp {state.messagesBuffer.fulfillDependency(nextBrick)}
           if (nextBrick != msg)
             context.addOutputEvent(context.time(), EventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
         } else {
-          messagesBuffer.fulfillDependency(nextBrick)
+          state.messagesBuffer.fulfillDependency(nextBrick)
         }
-        val unblockedMessages = waitingForThisOne.filterNot(b => messagesBuffer.contains(b))
+        val unblockedMessages = waitingForThisOne.filterNot(b => state.messagesBuffer.contains(b))
         queue enqueueAll unblockedMessages
       }
     }
@@ -99,9 +184,9 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
 
   protected def doBufferOp(operation: => Unit): MsgBufferTransition = {
     if (config.msgBufferSherlockMode) {
-      val snapshotBefore = messagesBuffer.snapshot
+      val snapshotBefore = state.messagesBuffer.snapshot
       operation
-      val snapshotAfter = messagesBuffer.snapshot
+      val snapshotAfter = state.messagesBuffer.snapshot
       return MsgBufferTransition(snapshotBefore, snapshotAfter)
     } else {
       operation
@@ -117,18 +202,18 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
     //which makes the whole simulation looking more realistic
     context.registerProcessingTime(1L)
 
-    knownBricks += brick
-    val oldLastEq = equivocatorsRegistry.lastSeqNumber
-    equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(globalPanorama.equivocators)
-    val newLastEq = equivocatorsRegistry.lastSeqNumber
+    state.knownBricks += brick
+    val oldLastEq = state.equivocatorsRegistry.lastSeqNumber
+    state.equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(state.globalPanorama.equivocators)
+    val newLastEq = state.equivocatorsRegistry.lastSeqNumber
     if (newLastEq > oldLastEq) {
-      for (vid <- equivocatorsRegistry.getNewEquivocators(oldLastEq)) {
-        val (m1,m2) = globalPanorama.evidences(vid)
+      for (vid <- state.equivocatorsRegistry.getNewEquivocators(oldLastEq)) {
+        val (m1,m2) = state.globalPanorama.evidences(vid)
         context.addOutputEvent(context.time(), EventPayload.EquivocationDetected(vid, m1, m2))
-        if (equivocatorsRegistry.areWeAtEquivocationCatastropheSituation) {
-          val equivocators = equivocatorsRegistry.allKnownEquivocators
-          val absoluteFttOverrun: Ether = equivocatorsRegistry.totalWeightOfEquivocators - config.absoluteFTT
-          val relativeFttOverrun: Double = equivocatorsRegistry.totalWeightOfEquivocators.toDouble / config.totalWeight - config.relativeFTT
+        if (state.equivocatorsRegistry.areWeAtEquivocationCatastropheSituation) {
+          val equivocators = state.equivocatorsRegistry.allKnownEquivocators
+          val absoluteFttOverrun: Ether = state.equivocatorsRegistry.totalWeightOfEquivocators - config.absoluteFTT
+          val relativeFttOverrun: Double = state.equivocatorsRegistry.totalWeightOfEquivocators.toDouble / config.totalWeight - config.relativeFTT
           context.addOutputEvent(context.time(), EventPayload.EquivocationCatastrophe(equivocators, absoluteFttOverrun, relativeFttOverrun))
         }
       }
@@ -136,8 +221,8 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
 
     brick match {
       case x: AbstractNormalBlock =>
-        val newBGame = new BGame(x, config.weightsOfValidators, equivocatorsRegistry)
-        block2bgame += x -> newBGame
+        val newBGame = new BGame(x, config.weightsOfValidators, state.equivocatorsRegistry)
+        state.block2bgame += x -> newBGame
         applyNewVoteToBGamesChain(brick, x)
       case x: AbstractBallot =>
         applyNewVoteToBGamesChain(brick, x.targetBlock)
@@ -153,13 +238,13 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
     //which makes the whole simulation looking more realistic
     context.registerProcessingTime(1L)
 
-    finalityDetector.onLocalJDagUpdated(globalPanorama) match {
+    finalityDetector.onLocalJDagUpdated(state.globalPanorama) match {
       case Some(summit) =>
         if (config.msgBufferSherlockMode && ! summit.isFinalized)
-          context.addOutputEvent(context.time(), EventPayload.PreFinality(lastFinalizedBlock, summit))
+          context.addOutputEvent(context.time(), EventPayload.PreFinality(state.lastFinalizedBlock, summit))
         if (summit.isFinalized) {
-          context.addOutputEvent(context.time(), EventPayload.BlockFinalized(lastFinalizedBlock, summit.consensusValue, summit))
-          lastFinalizedBlock = summit.consensusValue
+          context.addOutputEvent(context.time(), EventPayload.BlockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit))
+          state.lastFinalizedBlock = summit.consensusValue
           currentFinalityDetector = None
           advanceLfbChainAsManyStepsAsPossible()
         }
@@ -172,13 +257,13 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
   protected def finalityDetector: ACC.FinalityDetector = currentFinalityDetector match {
     case Some(fd) => fd
     case None =>
-      val fd = this.createFinalityDetector(lastFinalizedBlock)
+      val fd = this.createFinalityDetector(state.lastFinalizedBlock)
       currentFinalityDetector = Some(fd)
       fd
   }
 
   protected def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
-    val bgame: BGame = block2bgame(bGameAnchor)
+    val bgame: BGame = state.block2bgame(bGameAnchor)
     return new ACC.ReferenceFinalityDetector(
       config.relativeFTT,
       config.absoluteFTT,
@@ -187,7 +272,7 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
       config.totalWeight,
       nextInSwimlane,
       vote = brick => bgame.decodeVote(brick),
-      message2panorama = panoramasBuilder.panoramaOf,
+      message2panorama = state.panoramasBuilder.panoramaOf,
       estimator = bgame)
   }
 
@@ -198,7 +283,7 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
         return
       case b: AbstractNormalBlock =>
         val p = b.parent
-        val bgame: BGame = block2bgame(p)
+        val bgame: BGame = state.block2bgame(p)
         bgame.addVote(vote, b)
         applyNewVoteToBGamesChain(vote, p)
     }
@@ -210,7 +295,7 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
       if (config.runForkChoiceFromGenesis)
         forkChoice(context.genesis)
       else
-        forkChoice(lastFinalizedBlock)
+        forkChoice(state.lastFinalizedBlock)
 
   /**
     * Straightforward implementation of fork choice, directly using the mathematical definition.
@@ -226,7 +311,7 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
     */
   @tailrec
   private def forkChoice(startingBlock: Block): Block =
-    block2bgame(startingBlock).winnerConsensusValue match {
+    state.block2bgame(startingBlock).winnerConsensusValue match {
       case Some(child) => forkChoice(child)
       case None => startingBlock
     }
@@ -238,7 +323,7 @@ abstract class ValidatorBaseImpl[CF <: Validator.Config,ST <: Validator.StateSna
     */
   protected def nextInSwimlane(brick: Brick): Option[Brick] = {
     val pos = brick.positionInSwimlane
-    return mySwimlane.lift(pos + 1)
+    return state.mySwimlane.lift(pos + 1)
   }
 
 }

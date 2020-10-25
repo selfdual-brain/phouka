@@ -27,27 +27,24 @@ class NcbValidatorsFactory(
                             msgBufferSherlockMode: Boolean,
                             ) extends ValidatorsFactory {
 
-  override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator =
-    new NcbValidator(
-      node,
-      context,
-      NcbValidator.Config(
-        vid,
-        numberOfValidators,
-        weightsOfValidators,
-        totalWeight,
-        blocksFraction,
-        runForkChoiceFromGenesis,
-        relativeFTT,
-        absoluteFTT,
-        ackLevel,
-        brickProposeDelaysGeneratorConfig,
-        blockPayloadBuilder,
-        computingPowersGenerator.next(),
-        msgValidationCostModel,
-        msgCreationCostModel,
-        msgBufferSherlockMode
-      )
-    )
+  override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator = {
+    val conf = new NcbValidator.Config
+    conf.validatorId = vid
+    conf.numberOfValidators = numberOfValidators
+    conf.weightsOfValidators = weightsOfValidators
+    conf.totalWeight = totalWeight
+    conf.runForkChoiceFromGenesis = runForkChoiceFromGenesis
+    conf.relativeFTT = relativeFTT
+    conf.absoluteFTT = absoluteFTT
+    conf.ackLevel = ackLevel
+    conf.blockPayloadBuilder = blockPayloadBuilder
+    conf.computingPower = computingPowersGenerator.next()
+    conf.msgValidationCostModel = msgValidationCostModel
+    conf.msgCreationCostModel = msgCreationCostModel
+    conf.msgBufferSherlockMode = msgBufferSherlockMode
+    conf.blocksFraction = blocksFraction
+    conf.brickProposeDelaysConfig = brickProposeDelaysGeneratorConfig
+    return new NcbValidator(node, context, conf)
+  }
 
 }
