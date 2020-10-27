@@ -1,6 +1,7 @@
 package com.selfdualbrain.simulator_engine.ncb
 
 import com.selfdualbrain.blockchain_structure._
+import com.selfdualbrain.data_structures.CloningSupport
 import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator, Picker}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.transactions.BlockPayload
@@ -13,7 +14,7 @@ object NcbValidator {
     var brickProposeDelaysConfig: LongSequenceConfig = _
   }
 
-  class State extends ValidatorBaseImpl.State {
+  class State extends ValidatorBaseImpl.State with CloningSupport[State] {
     var blockVsBallot: Picker[String] = _
     var brickProposeDelaysGenerator: LongSequenceGenerator = _
 
@@ -34,7 +35,6 @@ object NcbValidator {
     }
 
     override def createDetachedCopy(): NcbValidator.State = super.createDetachedCopy().asInstanceOf[NcbValidator.State]
-
   }
 
 }
@@ -104,13 +104,13 @@ class NcbValidator private (
     state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
     addToLocalJdag(brick)
     context.broadcast(context.time(), brick)
+    state.mySwimlane.append(brick)
     state.myLastMessagePublished = Some(brick)
   }
 
   protected def createNewBrick(shouldBeBlock: Boolean): Brick = {
     //simulation of "create new message" processing time
     context.registerProcessingTime(state.msgCreationCostGenerator.next())
-
     val creator: ValidatorId = config.validatorId
     state.mySwimlaneLastMessageSequenceNumber += 1
     val forkChoiceWinner: Block = this.calculateCurrentForkChoiceWinner()
@@ -153,8 +153,6 @@ class NcbValidator private (
           prevInSwimlane = state.myLastMessagePublished,
           targetBlock = forkChoiceWinner.asInstanceOf[Ncb.NormalBlock]
         )
-
-    state.mySwimlane.append(brick)
     return brick
   }
 
