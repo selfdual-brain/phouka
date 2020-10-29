@@ -19,13 +19,15 @@ object LeadersSeqValidator {
 /**
   * Implementation of leaders-sequence based validator.
   *
-  * Time is divided to intervals with fixed length, which we call "rounds". Every round has a number, with initial round having number zero.
+  * Time is divided into intervals with fixed length, which we call "rounds". Every round has a number, with initial round having number zero.
   * There is a pseudorandom leaders sequence that is used by all validators. This sequence picks a leader for every round.
   * Frequency of a validator to become a leader is proportional to its weight.
   * During a round the following rules of bricks production are applied:
   * 1. The leader of the round N is expected to produce a block belonging to N.
   * 2. Every other validator is expected to produce a ballot (using latest knowledge).
   * 3. A brick declares the round it belongs to; creation timestamp of a brick must be within boundaries of corresponding round.
+  *
+  * Implementation remark: we schedule brick creation wake-ups for random timepoints in the first half of every round.
   *
   * If follows from rule (3) that a validator which missed the boundary of round N before producing a brick for round N just gives up with this brick.
   *
@@ -54,7 +56,7 @@ class LeadersSeqValidator private (
 
   override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
     val validatorInstance = new LeadersSeqValidator(bNode, vContext, config, state.createDetachedCopy())
-    validatorInstance.scheduleNextWakeup()
+    validatorInstance.scheduleNextWakeup(beAggressive = false)
     return validatorInstance
   }
 
@@ -63,7 +65,7 @@ class LeadersSeqValidator private (
   override def startup(): Unit = {
     val newBGame = new BGame(context.genesis, config.weightsOfValidators, state.equivocatorsRegistry)
     state.block2bgame += context.genesis -> newBGame
-    scheduleNextWakeup()
+    scheduleNextWakeup(beAggressive = true)
   }
 
   override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
@@ -73,9 +75,8 @@ class LeadersSeqValidator private (
       val leaderForThisRound = config.leadersSequencer.findLeaderForRound(round)
       publishNewBrick(leaderForThisRound == config.validatorId, round, roundStop)
     }
-    val earliestRoundWeStillHaveChancesToCatch: Long = context.time().micros / config.roundLength + 1
-    var wakeupTime = roundBoundary(earliestRoundWeStillHaveChancesToCatch)._1
-    context.scheduleNextBrickPropose(wakeupTime, earliestRoundWeStillHaveChancesToCatch)
+    scheduleNextWakeup(beAggressive = false)
+
   }
 
   private def roundBoundary(round: Long): (SimTimepoint, SimTimepoint) = {
@@ -147,6 +148,20 @@ class LeadersSeqValidator private (
 
 
     return brick
+  }
+
+  private def scheduleNextWakeup(beAggressive: Boolean): Unit = {
+    val timeNow = context.time()
+    val earliestRoundWeStillHaveChancesToCatch: Long = timeNow.micros / config.roundLength
+    if (beAggressive) {
+      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch)
+      val wakeUpPoint: Long = timeNow.micros + (context.random.nextDouble() * (stop - timeNow) / 2).toLong
+      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
+    } else {
+      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch + 1)
+      val wakeUpPoint: Long = start.micros + (context.random.nextDouble() * (stop - start) / 2).toLong
+      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
+    }
   }
 
 }
