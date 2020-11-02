@@ -67,7 +67,15 @@ sealed abstract class ProposeStrategyConfig
 object ProposeStrategyConfig {
   case class NaiveCasper(brickProposeDelays: LongSequenceConfig, blocksFractionAsPercentage: Double) extends ProposeStrategyConfig
   case class RandomLeadersSequenceWithFixedRounds(roundLength: TimeDelta) extends ProposeStrategyConfig
-  case class Highway(initialRoundExponent: Int, omegaDelay: Long, accelerationPeriod: Int, slowdownPeriod: Int) extends ProposeStrategyConfig
+  case class Highway(
+                      initialRoundExponent: Int,
+                      omegaWaitingMargin: TimeDelta,
+                      exponentAccelerationPeriod: Int,
+                      exponentSlowdownPeriod: Int,
+                      droppedBricksMovingAverageRange: Int,
+                      droppedBricksAlarmLevel: Double,
+                      droppedBricksAlarmSuppressionPeriod: Int
+                    ) extends ProposeStrategyConfig
 }
 
 sealed abstract class DisruptionModelConfig

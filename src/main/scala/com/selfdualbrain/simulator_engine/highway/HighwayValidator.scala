@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.highway
 
-import com.selfdualbrain.blockchain_structure.BlockchainNode
+import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick}
 import com.selfdualbrain.data_structures.CloningSupport
 import com.selfdualbrain.simulator_engine.{BGame, LeaderSequencer, Validator, ValidatorBaseImpl, ValidatorContext}
 import com.selfdualbrain.time.TimeDelta
@@ -24,9 +24,11 @@ object HighwayValidator {
     var exponentSlowdownPeriod: Int = _
 
     /**
+      * Omega waiting margin for a node with performance 1 sprocket.
       * Omega message creation will be scheduled before the margin.
       * For example, for a round length 16 seconds and typical ballot creation time around 50 milliseconds,
       * the margin could be set to 200 milliseconds.
+      * Caution: the value of margin is scaled with node performance (inverse-proportionally).
       */
     var omegaWaitingMargin: TimeDelta = _
 
@@ -75,25 +77,29 @@ object HighwayValidator {
   * Time continuum is seen as a sequence of millisecond-long ticks. Leader sequencer pseudo-randomly assigns a leader to every tick
   * (in a way that frequency of being a leader is proportional to relative weight).
   * Every validator V follows rounds-based behaviour The length of a round is 2^^E, where E is the current "round exponent" used by V.
-  * Every validator individually picks its round exponent. Currently used round exponent is announced in every brick created.
+  * Every validator independently picks its round exponent and constantly adjusts it (the exact auto-adjustment algorithm is explained below).
+  * Currently used round exponent is announced in every brick created.
   *
   * A round is identified by the starting tick. This starting tick determines the leader to be used in this round.
   * Caution: please observe that a round with given id (= tick) has common starting timepoint but different ending timepoints, because
-  * usually a diversity of round exponents is used across validators.
+  * usually a diversity of round exponents is used across validators. We think of validators as cars on a highway (hence the name), where
+  * every lane corresponds to different round exponent. Bigger round exponent means slower operation.
   *
   * During a round a validator operates differently, depending on who is the leader.
   *
   * A leader scenario during round R is:
-  * (1) create and publish a new block as soon as R starts (this is called "the lambda message of round R")
-  * (2) pick a random timepoint T in the last 1/3 time of R
-  * (3) create and publish a new ballot (omega message) at T
+  * (1) Create and publish a new block as soon as R starts (this is called "the lambda message of round R").
+  * (2) Pick a random timepoint T in the last 1/3 time of R.
+  * (3) Create and publish a new ballot (omega message) at T.
   *
   * A non-leader scenario during round R is:
-  * (1) wait for the lambda message od round R
-  * (2) as soon as the lambda message is received, create and publish a new ballot ("lambda response") which is using as justifications
-  * only the lambda message and my last message (if I have one)
-  * (3) pick a random timepoint T between lambda response timestamp and the end of R
-  * (4) create and publish a new ballot (omega message) at T
+  * (1) Wait for the lambda message of round R.
+  * (2) As soon as the lambda message is received and integrated in the local blockdag (what implies waiting for all the dependencies),
+  * create and publish a new ballot ("lambda response") which is using as justifications only the lambda message itself and my last message (if I have one).
+  * (3) Pick a random timepoint T between lambda response timestamp and the end of R.
+  * (4) Create and publish a new ballot (omega message) at T.
+  * (2') If lambda message has not arrived by the end of R (or some dependencies were still missing), create and publish a new ballot (omega message)
+  * at the end of R
   *
   * On top of this we apply a round exponent auto-adjustment behaviour:
   *
@@ -112,7 +118,8 @@ object HighwayValidator {
   * 200 milliseconds of a round. This way, the creation of omega message is scheduled at least 200 milliseconds before round end.
   * This way we give chance to account for processing delays and network delays and have the omega message published "on time", i.e.
   * before the actual end of the round. Bear in mind that of course all the processing delays and network delays are SIMULATED, not real.
-  * We simulate both delays and efforts to counter-act against these delays.
+  * We simulate both delays and efforts to counter-act against these delays. Technically, omegaWaitingMargin is amount of time used for
+  * a blockchain node with performance 1 sprocket. The margin is scaled with performance.
   *
   * Implementation remark 2: The simulation of nodes and network performance is flexible enough to create "heavy conditions" in the blockchain
   * i.e. when a validator has troubles trying to produce bricks on time. The rules of handling "oops, I am late" situations we implement here are:
@@ -148,12 +155,10 @@ class HighwayValidator private (
     )
 
   override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
-    val validatorInstance = new LeadersSeqValidator(bNode, vContext, config, state.createDetachedCopy())
+    val validatorInstance = new HighwayValidator(bNode, vContext, config, state.createDetachedCopy())
     validatorInstance.scheduleNextWakeup(beAggressive = false)
     return validatorInstance
   }
-
-  //#################### PUBLIC API ############################
 
   override def startup(): Unit = {
     val newBGame = new BGame(context.genesis, config.weightsOfValidators, state.equivocatorsRegistry)
@@ -164,6 +169,11 @@ class HighwayValidator private (
   override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
     val (round, marker) = strategySpecificMarker.asInstanceOf[(Tick, WakeupMarker)]
 
+    marker match {
+      case WakeupMarker.Lambda(roundId, roundEnd) => lambdaProcessing()
+      case WakeupMarker.Omega(roundId, roundEnd) => omegaProcessing()
+      case WakeupMarker.RoundWrapUp(roundId, roundEnd) => roundWrapUpProcessing()
+    }
 
     val (roundStart, roundStop) = roundBoundary(round)
     if (context.time() <= roundStop) {
@@ -171,6 +181,27 @@ class HighwayValidator private (
       publishNewBrick(leaderForThisRound == config.validatorId, round, roundStop)
     }
     scheduleNextWakeup(beAggressive = false)
+
+  }
+
+  override protected def addToLocalJdag(brick: Brick): Unit = {
+    super.addToLocalJdag(brick)
+
+  }
+
+  def lambdaProcessing(): Unit = {
+
+  }
+
+  def lambdaResponseProcessing(): Unit = {
+
+  }
+
+  def omegaProcessing(): Unit = {
+
+  }
+
+  def roundWrapUpProcessing(): Unit = {
 
   }
 
