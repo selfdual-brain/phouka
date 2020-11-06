@@ -1,9 +1,10 @@
 package com.selfdualbrain.simulator_engine.highway
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick}
+import com.selfdualbrain.blockchain_structure.{ACC, BlockchainNode, Brick, ValidatorId}
 import com.selfdualbrain.data_structures.CloningSupport
-import com.selfdualbrain.simulator_engine.{BGame, LeaderSequencer, Validator, ValidatorBaseImpl, ValidatorContext}
-import com.selfdualbrain.time.TimeDelta
+import com.selfdualbrain.simulator_engine._
+import com.selfdualbrain.stats.MovingWindowBeepsCounter
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 object HighwayValidator {
 
@@ -44,10 +45,15 @@ object HighwayValidator {
   }
 
   class State extends ValidatorBaseImpl.State with CloningSupport[State] {
-    var roundExponent: Int = _
+    var currentRound: Tick = _
+    var roundWrapUpTimepoint: SimTimepoint = _
+    var currentRoundLeader: ValidatorId = _
+    var currentRoundExponent: Int = _
     var speedUpCounter: Int = _
-    var slowdownSync: Boolean = _
+    var targetRoundExponent: Int = _
     var droppedBricksAlarmSuppressionCounter: Int = _
+    var panoramaSeenFromMyLastBrick: ACC.Panorama = _
+    var lateBricksCounter: MovingWindowBeepsCounter = _
 
     override def createEmpty() = new State
 
@@ -101,6 +107,12 @@ object HighwayValidator {
   * (2') If lambda message has not arrived by the end of R (or some dependencies were still missing), create and publish a new ballot (omega message)
   * at the end of R
   *
+  * Both leader and non-leader accepts any late blocks and ballots (late = belonging to rounds older than the current one).
+  * The processing of arriving ballots is not depending on whether it belongs to current round or previous round.
+  * The processing of arriving blocks (= lambda messages) is dependent:
+  *   - for an arriving-on-time block, a lambda-response ballot is produced.
+  *   - for a late block, lambda-response ballot is NOT produced
+  *
   * On top of this we apply a round exponent auto-adjustment behaviour:
   *
   * (1) Every time after creating an omega message M, a validator checks the time L (timestamps difference) between M and the last finalized block.
@@ -139,7 +151,7 @@ class HighwayValidator private (
                                  blockchainNode: BlockchainNode,
                                  context: ValidatorContext,
                                  config: HighwayValidator.Config,
-                                 state: ValidatorBaseImpl.State
+                                 state: HighwayValidator.State
                                ) extends ValidatorBaseImpl[HighwayValidator.Config, ValidatorBaseImpl.State](blockchainNode, context, config, state) {
 
   def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: HighwayValidator.Config) =
@@ -167,30 +179,32 @@ class HighwayValidator private (
   }
 
   override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
-    val (round, marker) = strategySpecificMarker.asInstanceOf[(Tick, WakeupMarker)]
+    val marker = strategySpecificMarker.asInstanceOf[WakeupMarker]
 
     marker match {
-      case WakeupMarker.Lambda(roundId, roundEnd) => lambdaProcessing()
-      case WakeupMarker.Omega(roundId, roundEnd) => omegaProcessing()
-      case WakeupMarker.RoundWrapUp(roundId, roundEnd) => roundWrapUpProcessing()
+      case WakeupMarker.Lambda(roundId) => publishNewBrick(shouldBeBlock = true, roundId, state.roundWrapUpTimepoint)
+      case WakeupMarker.Omega(roundId) => omegaProcessing()
+      case WakeupMarker.RoundWrapUp(roundId) => roundWrapUpProcessing()
     }
-
-    val (roundStart, roundStop) = roundBoundary(round)
-    if (context.time() <= roundStop) {
-      val leaderForThisRound = config.leadersSequencer.findLeaderForRound(round)
-      publishNewBrick(leaderForThisRound == config.validatorId, round, roundStop)
-    }
-    scheduleNextWakeup(beAggressive = false)
-
   }
 
-  override protected def addToLocalJdag(brick: Brick): Unit = {
-    super.addToLocalJdag(brick)
 
-  }
-
-  def lambdaProcessing(): Unit = {
-
+  override protected def onBrickAddedToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit = {
+    if (isLocallyCreated)
+      state.panoramaSeenFromMyLastBrick = state.globalPanorama
+    else {
+      //we hunt for the case of lambda message just being received i.e. when lambda-response creation should be triggered
+      brick match {
+        case x: Highway.NormalBlock =>
+          if (x.round == state.currentRound && x.creator == state.currentRoundLeader && x.creator != config.validatorId) {
+            //if round leader is a cloned copy of myself (i.e. an equivocator-via-bifurcation) I deliberately avoid sending the lambda-response
+            //this way number of lambda responses given leader receives is at most n-1, where n is number of validators
+            lambdaResponseProcessing()
+          }
+        case x: Highway.Ballot =>
+          //ignore
+      }
+    }
   }
 
   def lambdaResponseProcessing(): Unit = {
@@ -217,10 +231,12 @@ class HighwayValidator private (
     val brick = createNewBrick(shouldBeBlock, round)
     if (context.time() <= deadline) {
       state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
-      addToLocalJdag(brick)
+      addToLocalJdag(brick, isLocallyCreated = true)
       context.broadcast(context.time(), brick)
       state.mySwimlane.append(brick)
       state.myLastMessagePublished = Some(brick)
+    } else {
+      state.lateBricksCounter.beep(brick.id, context.time().micros)
     }
   }
 

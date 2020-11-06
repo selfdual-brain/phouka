@@ -165,7 +165,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
       if (! state.knownBricks.contains(nextBrick)) {
         state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, state.panoramasBuilder.panoramaOf(nextBrick))
         state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(nextBrick))
-        addToLocalJdag(nextBrick)
+        addToLocalJdag(nextBrick, isLocallyCreated = false)
         val waitingForThisOne = state.messagesBuffer.findMessagesWaitingFor(nextBrick)
         if (config.msgBufferSherlockMode) {
           val bufferTransition = doBufferOp {state.messagesBuffer.fulfillDependency(nextBrick)}
@@ -196,7 +196,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
 
   //########################## J-DAG ##########################################
 
-  protected def addToLocalJdag(brick: Brick): Unit = {
+  protected def addToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit = {
     //adding one microsecond of simulated processing time here so that during buffer pruning cascade subsequent
     //add-to-jdag events have different timepoints
     //which makes the whole simulation looking more realistic
@@ -229,6 +229,12 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     }
 
     advanceLfbChainAsManyStepsAsPossible()
+    onBrickAddedToLocalJdag(brick, isLocallyCreated)
+  }
+
+  //subclasses can override this method to introduce special processing every time local jdag is updated
+  protected def onBrickAddedToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit = {
+    //by default - do nothing
   }
 
   @tailrec

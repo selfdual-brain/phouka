@@ -102,7 +102,7 @@ class NcbValidator private (
   protected def publishNewBrick(shouldBeBlock: Boolean): Unit = {
     val brick = createNewBrick(shouldBeBlock)
     state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
-    addToLocalJdag(brick)
+    addToLocalJdag(brick, isLocallyCreated = true)
     context.broadcast(context.time(), brick)
     state.mySwimlane.append(brick)
     state.myLastMessagePublished = Some(brick)
