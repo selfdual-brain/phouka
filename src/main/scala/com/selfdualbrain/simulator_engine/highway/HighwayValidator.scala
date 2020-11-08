@@ -220,9 +220,10 @@ class HighwayValidator private (
   }
 
   private def roundBoundary(round: Long): (SimTimepoint, SimTimepoint) = {
-    val start: SimTimepoint = SimTimepoint(round * config.roundLength)
-    val stop: SimTimepoint = start + config.roundLength
-    return (start, stop)
+//    val start: SimTimepoint = SimTimepoint(round * config.roundLength)
+//    val stop: SimTimepoint = start + config.roundLength
+//    return (start, stop)
+    ???
   }
 
   //################## PUBLISHING OF NEW MESSAGES ############################
@@ -240,70 +241,69 @@ class HighwayValidator private (
     }
   }
 
-  protected def createNewBrick(shouldBeBlock: Boolean, round: Long): Brick = {
-    //simulation of "create new message" processing time
-    context.registerProcessingTime(state.msgCreationCostGenerator.next())
-    val creator: ValidatorId = config.validatorId
-    state.mySwimlaneLastMessageSequenceNumber += 1
-    val forkChoiceWinner: Block = this.calculateCurrentForkChoiceWinner()
-
-    //we use "toSet" conversion in the middle to leave only distinct elements
-    //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
-    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](state.globalPanorama.honestSwimlanesTips.values.toSet.toArray)
-    val timeNow = context.time()
-    val brick =
-      if (shouldBeBlock || forkChoiceWinner == context.genesis) {
-        val currentlyVisibleEquivocators: Set[ValidatorId] = state.globalPanorama.equivocators
-        val parentBlockEquivocators: Set[ValidatorId] =
-          if (forkChoiceWinner == context.genesis)
-            Set.empty
-          else
-            state.panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
-        val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
-        val payload: BlockPayload = config.blockPayloadBuilder.next()
-        LeadersSeq.NormalBlock(
-          id = context.generateBrickId(),
-          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
-          timepoint = timeNow,
-          round,
-          justifications,
-          toBeSlashedInThisBlock,
-          creator,
-          prevInSwimlane = state.myLastMessagePublished,
-          parent = forkChoiceWinner,
-          numberOfTransactions = payload.numberOfTransactions,
-          payloadSize = payload.transactionsBinarySize,
-          totalGas = payload.totalGasNeededForExecutingTransactions,
-          hash = state.brickHashGenerator.generateHash()
-        )
-      } else
-        LeadersSeq.Ballot(
-          id = context.generateBrickId(),
-          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
-          timepoint = context.time(),
-          round,
-          justifications,
-          creator,
-          prevInSwimlane = state.myLastMessagePublished,
-          targetBlock = forkChoiceWinner.asInstanceOf[LeadersSeq.NormalBlock]
-        )
+  protected def createNewBrick(shouldBeBlock: Boolean, round: Long): Brick = ???
 
 
-    return brick
-  }
+//    //simulation of "create new message" processing time
+//    context.registerProcessingTime(state.msgCreationCostGenerator.next())
+//    val creator: ValidatorId = config.validatorId
+//    state.mySwimlaneLastMessageSequenceNumber += 1
+//    val forkChoiceWinner: Block = this.calculateCurrentForkChoiceWinner()
+//
+//    //we use "toSet" conversion in the middle to leave only distinct elements
+//    //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
+//    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](state.globalPanorama.honestSwimlanesTips.values.toSet.toArray)
+//    val timeNow = context.time()
+//    val brick =
+//      if (shouldBeBlock || forkChoiceWinner == context.genesis) {
+//        val currentlyVisibleEquivocators: Set[ValidatorId] = state.globalPanorama.equivocators
+//        val parentBlockEquivocators: Set[ValidatorId] =
+//          if (forkChoiceWinner == context.genesis)
+//            Set.empty
+//          else
+//            state.panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
+//        val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
+//        val payload: BlockPayload = config.blockPayloadBuilder.next()
+//        LeadersSeq.NormalBlock(
+//          id = context.generateBrickId(),
+//          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
+//          timepoint = timeNow,
+//          round,
+//          justifications,
+//          toBeSlashedInThisBlock,
+//          creator,
+//          prevInSwimlane = state.myLastMessagePublished,
+//          parent = forkChoiceWinner,
+//          numberOfTransactions = payload.numberOfTransactions,
+//          payloadSize = payload.transactionsBinarySize,
+//          totalGas = payload.totalGasNeededForExecutingTransactions,
+//          hash = state.brickHashGenerator.generateHash()
+//        )
+//      } else
+//        LeadersSeq.Ballot(
+//          id = context.generateBrickId(),
+//          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
+//          timepoint = context.time(),
+//          round,
+//          justifications,
+//          creator,
+//          prevInSwimlane = state.myLastMessagePublished,
+//          targetBlock = forkChoiceWinner.asInstanceOf[LeadersSeq.NormalBlock]
+//        )
+//    return brick
 
   private def scheduleNextWakeup(beAggressive: Boolean): Unit = {
-    val timeNow = context.time()
-    val earliestRoundWeStillHaveChancesToCatch: Long = timeNow.micros / config.roundLength
-    if (beAggressive) {
-      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch)
-      val wakeUpPoint: Long = timeNow.micros + (context.random.nextDouble() * (stop - timeNow) / 2).toLong
-      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
-    } else {
-      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch + 1)
-      val wakeUpPoint: Long = start.micros + (context.random.nextDouble() * (stop - start) / 2).toLong
-      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
-    }
+//    val timeNow = context.time()
+//    val earliestRoundWeStillHaveChancesToCatch: Long = timeNow.micros / config.roundLength
+//    if (beAggressive) {
+//      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch)
+//      val wakeUpPoint: Long = timeNow.micros + (context.random.nextDouble() * (stop - timeNow) / 2).toLong
+//      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
+//    } else {
+//      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch + 1)
+//      val wakeUpPoint: Long = start.micros + (context.random.nextDouble() * (stop - start) / 2).toLong
+//      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
+//    }
   }
 
 

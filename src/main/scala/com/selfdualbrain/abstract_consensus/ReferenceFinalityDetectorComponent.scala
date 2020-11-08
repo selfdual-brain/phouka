@@ -30,7 +30,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
           return None
         case Some(winnerConsensusValue) =>
           val validatorsVotingForThisValue: Iterable[ValidatorId] = estimator.supportersOfTheWinnerValue
-          val baseTrimmer: Trimmer = findBaseTrimmer(winnerConsensusValue,validatorsVotingForThisValue, latestPanorama)
+          val baseTrimmer: Trimmer = findBaseTrimmer(winnerConsensusValue, validatorsVotingForThisValue, latestPanorama)
 
           if (sumOfWeights(baseTrimmer.validators) < quorum)
             return None
