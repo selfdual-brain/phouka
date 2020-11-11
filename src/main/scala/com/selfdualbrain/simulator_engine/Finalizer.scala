@@ -2,6 +2,9 @@ package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{ACC, AbstractNormalBlock, Block, Brick, ValidatorId}
+import com.selfdualbrain.data_structures.CloningSupport
+
+import scala.collection.immutable.ArraySeq
 
 /**
   * Encapsulates core logic of blockchain consensus: fork choice calculation, finality and equivocations detection.
@@ -10,9 +13,13 @@ import com.selfdualbrain.blockchain_structure.{ACC, AbstractNormalBlock, Block, 
   * Typically, while core consensus mechanics is the same, validator implementations differ in bricks proposing strategy, which leads to quite
   * different blockchains.
   */
-trait Finalizer {
+trait Finalizer extends CloningSupport[Finalizer]{
   def addToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit
   def calculateCurrentForkChoiceWinner(): Block
+  def equivocatorsRegistry: EquivocatorsRegistry
+  def panoramaOfWholeJdag: ACC.Panorama
+  def panoramaOfWholeJdagAsJustificationsList: IndexedSeq[Brick] = new ArraySeq.ofRef[Brick](panoramaOfWholeJdag.honestSwimlanesTips.values.toSet.toArray)
+  def connectOutput(listener: Finalizer.Listener): Unit
 }
 
 object Finalizer {

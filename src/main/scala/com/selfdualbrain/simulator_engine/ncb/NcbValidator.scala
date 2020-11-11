@@ -6,8 +6,6 @@ import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator, 
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.transactions.BlockPayload
 
-import scala.collection.immutable.ArraySeq
-
 object NcbValidator {
   class Config extends ValidatorBaseImpl.Config {
     var blocksFraction: Double = _
@@ -84,8 +82,6 @@ class NcbValidator private (
   //#################### PUBLIC API ############################
 
   override def startup(): Unit = {
-    val newBGame = new BGame(context.genesis, config.weightsOfValidators, state.equivocatorsRegistry)
-    state.block2bgame += context.genesis -> newBGame
     scheduleNextWakeup()
   }
 
@@ -101,8 +97,8 @@ class NcbValidator private (
 
   protected def publishNewBrick(shouldBeBlock: Boolean): Unit = {
     val brick = createNewBrick(shouldBeBlock)
-    state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
-    addToLocalJdag(brick, isLocallyCreated = true)
+    state.finalizer.addToLocalJdag(brick, isLocallyCreated = true)
+    onBrickAddedToLocalJdag(brick, isLocallyCreated = true)
     context.broadcast(context.time(), brick)
     state.mySwimlane.append(brick)
     state.myLastMessagePublished = Some(brick)
@@ -113,11 +109,11 @@ class NcbValidator private (
     context.registerProcessingTime(state.msgCreationCostGenerator.next())
     val creator: ValidatorId = config.validatorId
     state.mySwimlaneLastMessageSequenceNumber += 1
-    val forkChoiceWinner: Block = this.calculateCurrentForkChoiceWinner()
+    val forkChoiceWinner: Block = state.finalizer.calculateCurrentForkChoiceWinner()
 
     //we use "toSet" conversion in the middle to leave only distinct elements
     //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
-    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](state.globalPanorama.honestSwimlanesTips.values.toSet.toArray)
+    val justifications: IndexedSeq[Brick] = state.finalizer.panoramaOfWholeJdagAsJustificationsList
     val timeNow = context.time()
     val brick =
       if (shouldBeBlock || forkChoiceWinner == context.genesis) {

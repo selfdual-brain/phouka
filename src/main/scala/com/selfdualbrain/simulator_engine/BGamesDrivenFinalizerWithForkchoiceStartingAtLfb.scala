@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure._
+import com.selfdualbrain.blockchain_structure.{ACC, _}
 import com.selfdualbrain.data_structures.{CloningSupport, LayeredMap}
 import com.selfdualbrain.simulator_engine.BGamesDrivenFinalizerWithForkchoiceStartingAtLfb._
 
@@ -13,7 +13,6 @@ object BGamesDrivenFinalizerWithForkchoiceStartingAtLfb {
                      numberOfValidators: Int,
                      weightsOfValidators: ValidatorId => Ether,
                      totalWeight: Ether,
-                     output: Finalizer.Listener,
                      absoluteFTT: Ether,
                      relativeFTT: Double,
                      ackLevel: Int,
@@ -57,7 +56,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
                            ) extends Finalizer with CloningSupport[BGamesDrivenFinalizerWithForkchoiceStartingAtLfb] {
 
   var currentFinalityDetector: Option[ACC.FinalityDetector] = None
-
+  var output: Option[Finalizer.Listener] = None
 
   //################################################## PUBLIC ###########################################################
 
@@ -69,6 +68,8 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
         s.globalPanorama = ACC.Panorama.empty
         s.panoramasBuilder = new ACC.PanoramaBuilder
         s.equivocatorsRegistry = new EquivocatorsRegistry(config.numberOfValidators, config.weightsOfValidators, config.absoluteFTT)
+        val newBGame = new BGame(config.genesis, config.weightsOfValidators, s.equivocatorsRegistry)
+        s.block2bgame += config.genesis -> newBGame
         s.brick2nextBrickInTheSwimlane = new LayeredMap[Brick,Brick](brick => brick.daglevel)
         s
       }
@@ -90,19 +91,27 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
     return new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb(config, clonedState)
   }
 
+  override def connectOutput(listener: Finalizer.Listener): Unit = {
+    output = Some(listener)
+  }
+
   def addToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit = {
+    state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, state.panoramasBuilder.panoramaOf(brick))
+    state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
     val oldLastEq = state.equivocatorsRegistry.lastSeqNumber
     state.equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(state.globalPanorama.equivocators)
     val newLastEq = state.equivocatorsRegistry.lastSeqNumber
     if (newLastEq > oldLastEq) {
       for (vid <- state.equivocatorsRegistry.getNewEquivocators(oldLastEq)) {
         val (m1,m2) = state.globalPanorama.evidences(vid)
-        config.output.equivocationDetected(vid, m1, m2)
+        if (output.isDefined)
+          output.get.equivocationDetected(vid, m1, m2)
         if (state.equivocatorsRegistry.areWeAtEquivocationCatastropheSituation) {
           val equivocators = state.equivocatorsRegistry.allKnownEquivocators
           val absoluteFttOverrun: Ether = state.equivocatorsRegistry.totalWeightOfEquivocators - config.absoluteFTT
           val relativeFttOverrun: Double = state.equivocatorsRegistry.totalWeightOfEquivocators.toDouble / config.totalWeight - config.relativeFTT
-          config.output.equivocationCatastrophe(equivocators, absoluteFttOverrun, relativeFttOverrun)
+          if (output.isDefined)
+            output.get.equivocationCatastrophe(equivocators, absoluteFttOverrun, relativeFttOverrun)
         }
       }
     }
@@ -123,6 +132,10 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
 
     advanceLfbChainAsManyStepsAsPossible()
   }
+
+  override def equivocatorsRegistry: EquivocatorsRegistry = state.equivocatorsRegistry
+
+  override def panoramaOfWholeJdag: ACC.Panorama = state.globalPanorama
 
   def calculateCurrentForkChoiceWinner(): Block = forkChoice(state.lastFinalizedBlock)
 
@@ -145,10 +158,10 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
   private def advanceLfbChainAsManyStepsAsPossible(): Unit = {
     finalityDetector.onLocalJDagUpdated(state.globalPanorama) match {
       case Some(summit) =>
-        if (! summit.isFinalized)
-          config.output.preFinality(state.lastFinalizedBlock, summit)
-        if (summit.isFinalized) {
-          config.output.blockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit)
+        if (! summit.isFinalized && output.isDefined)
+          output.get.preFinality(state.lastFinalizedBlock, summit)
+        if (summit.isFinalized && output.isDefined) {
+          output.get.blockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit)
           state.lastFinalizedBlock = summit.consensusValue
           state.block2bgame.pruneLevelsBelow(state.lastFinalizedBlock.generation)
           state.brick2nextBrickInTheSwimlane.pruneLevelsBelow(state.lastFinalizedBlock.daglevel)

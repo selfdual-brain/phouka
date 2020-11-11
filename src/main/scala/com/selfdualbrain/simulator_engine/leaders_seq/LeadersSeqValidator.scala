@@ -90,8 +90,7 @@ class LeadersSeqValidator private (
   protected def publishNewBrick(shouldBeBlock: Boolean, round: Long, deadline: SimTimepoint): Unit = {
     val brick = createNewBrick(shouldBeBlock, round)
     if (context.time() <= deadline) {
-      state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
-      addToLocalJdag(brick, isLocallyCreated = true)
+      state.finalizer.addToLocalJdag(brick, isLocallyCreated = true)
       context.broadcast(context.time(), brick)
       state.mySwimlane.append(brick)
       state.myLastMessagePublished = Some(brick)
