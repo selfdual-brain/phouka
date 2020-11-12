@@ -110,19 +110,16 @@ class NcbValidator private (
     val creator: ValidatorId = config.validatorId
     state.mySwimlaneLastMessageSequenceNumber += 1
     val forkChoiceWinner: Block = state.finalizer.calculateCurrentForkChoiceWinner()
-
-    //we use "toSet" conversion in the middle to leave only distinct elements
-    //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
     val justifications: IndexedSeq[Brick] = state.finalizer.panoramaOfWholeJdagAsJustificationsList
     val timeNow = context.time()
     val brick =
       if (shouldBeBlock || forkChoiceWinner == context.genesis) {
-        val currentlyVisibleEquivocators: Set[ValidatorId] = state.globalPanorama.equivocators
+        val currentlyVisibleEquivocators: Set[ValidatorId] = state.finalizer.currentlyVisibleEquivocators
         val parentBlockEquivocators: Set[ValidatorId] =
           if (forkChoiceWinner == context.genesis)
             Set.empty
           else
-            state.panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
+            state.finalizer.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
         val payload: BlockPayload = config.blockPayloadBuilder.next()
         Ncb.NormalBlock(

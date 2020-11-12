@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine.leaders_seq
 
-import com.selfdualbrain.blockchain_structure.{ACC, Block, BlockchainNode, Brick, ValidatorId}
-import com.selfdualbrain.simulator_engine.{BGame, LeaderSequencer, Validator, ValidatorBaseImpl, ValidatorContext}
+import com.selfdualbrain.blockchain_structure.{Block, BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.transactions.BlockPayload
 
@@ -63,8 +63,6 @@ class LeadersSeqValidator private (
   //#################### PUBLIC API ############################
 
   override def startup(): Unit = {
-    val newBGame = new BGame(context.genesis, config.weightsOfValidators, state.equivocatorsRegistry)
-    state.block2bgame += context.genesis -> newBGame
     scheduleNextWakeup(beAggressive = true)
   }
 
@@ -102,20 +100,17 @@ class LeadersSeqValidator private (
     context.registerProcessingTime(state.msgCreationCostGenerator.next())
     val creator: ValidatorId = config.validatorId
     state.mySwimlaneLastMessageSequenceNumber += 1
-    val forkChoiceWinner: Block = this.calculateCurrentForkChoiceWinner()
-
-    //we use "toSet" conversion in the middle to leave only distinct elements
-    //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
-    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](state.globalPanorama.honestSwimlanesTips.values.toSet.toArray)
+    val forkChoiceWinner: Block = state.finalizer.calculateCurrentForkChoiceWinner()
+    val justifications: IndexedSeq[Brick] = state.finalizer.panoramaOfWholeJdagAsJustificationsList
     val timeNow = context.time()
     val brick =
       if (shouldBeBlock || forkChoiceWinner == context.genesis) {
-        val currentlyVisibleEquivocators: Set[ValidatorId] = state.globalPanorama.equivocators
+        val currentlyVisibleEquivocators: Set[ValidatorId] = state.finalizer.currentlyVisibleEquivocators
         val parentBlockEquivocators: Set[ValidatorId] =
           if (forkChoiceWinner == context.genesis)
             Set.empty
           else
-            state.panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
+            state.finalizer.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
         val payload: BlockPayload = config.blockPayloadBuilder.next()
         LeadersSeq.NormalBlock(

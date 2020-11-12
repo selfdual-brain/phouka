@@ -45,6 +45,7 @@ object HighwayValidator {
   }
 
   class State extends ValidatorBaseImpl.State with CloningSupport[State] {
+    var secondaryFinalizer: Finalizer = _
     var currentRound: Tick = _
     var roundWrapUpTimepoint: SimTimepoint = _
     var currentRoundLeader: ValidatorId = _
@@ -80,72 +81,103 @@ object HighwayValidator {
 /**
   * Implementation of Highway Protocol validator.
   *
+  * ============= TIME CONTINUUM AND ROUNDS =============
   * Time continuum is seen as a sequence of millisecond-long ticks. Leader sequencer pseudo-randomly assigns a leader to every tick
-  * (in a way that frequency of being a leader is proportional to relative weight).
-  * Every validator V follows rounds-based behaviour The length of a round is 2^^E, where E is the current "round exponent" used by V.
-  * Every validator independently picks its round exponent and constantly adjusts it (the exact auto-adjustment algorithm is explained below).
-  * Currently used round exponent is announced in every brick created.
-  *
+  * (in a way that frequency of becoming a leader is proportional to relative weight).
   * A round is identified by the starting tick. This starting tick determines the leader to be used in this round.
-  * Caution: please observe that a round with given id (= tick) has common starting timepoint but different ending timepoints, because
+  * The length of a round is 2^^E, where E is the current "round exponent" used by validator V. So, a round - seen as ticks interval - is [a, a+2^^E].
+  *
+  * Every validator V follows rounds-based behaviour. V picks its round exponent (independently from exponents used by other validators)
+  * and constantly adjusts it.  The exact auto-adjustment algorithm is explained below. The round exponent currently used by V is announced in every
+  * brick created.
+  *
+  * Caution: please observe that all rounds with given id have common starting timepoint but different ending timepoints, because
   * usually a diversity of round exponents is used across validators. We think of validators as cars on a highway (hence the name), where
   * every lane corresponds to different round exponent. Bigger round exponent means slower operation.
   *
-  * During a round a validator operates differently, depending on who is the leader.
+  * ============= SCENARIO OF A SINGLE ROUND =============
+  * The behaviour of a validator during any round R depends on who is the leader of this round.
   *
-  * A leader scenario during round R is:
-  * (1) Create and publish a new block as soon as R starts (this is called "the lambda message of round R").
-  * (2) Pick a random timepoint T in the last 1/3 time of R.
-  * (3) Create and publish a new ballot (omega message) at T.
+  * When I am the leader of round R:
+  * (1) I create and publish a new block as soon as R starts (this is called "the lambda message of round R").
+  * (2) I create and publish a new ballot (omega message) at the end of round R.
   *
-  * A non-leader scenario during round R is:
-  * (1) Wait for the lambda message of round R.
-  * (2) As soon as the lambda message is received and integrated in the local blockdag (what implies waiting for all the dependencies),
-  * create and publish a new ballot ("lambda response") which is using as justifications only the lambda message itself and my last message (if I have one).
-  * (3) Pick a random timepoint T between lambda response timestamp and the end of R.
-  * (4) Create and publish a new ballot (omega message) at T.
-  * (2') If lambda message has not arrived by the end of R (or some dependencies were still missing), create and publish a new ballot (omega message)
+  * When I am not the leader of round R:
+  * (1) I wait for the lambda message of round R.
+  * (2) As soon as the lambda message is received and integrated in my local blockdag (what implies waiting for all the dependencies),
+  * I create and publish a new ballot ("lambda response") using as justifications only the lambda message itself and my last message (if I have one).
+  * (3) I pick a random timepoint T between lambda response timestamp and the end of round R.
+  * (4) I create and publish a new ballot (omega message) at T.
+  * (2') If lambda message has not arrived by the end of R (or some dependencies were still missing), I create and publish a new ballot (omega message)
   * at the end of R
   *
   * Both leader and non-leader accepts any late blocks and ballots (late = belonging to rounds older than the current one).
-  * The processing of arriving ballots is not depending on whether it belongs to current round or previous round.
-  * The processing of arriving blocks (= lambda messages) is dependent:
+  * The processing of arriving ballots does not depend on whether a ballot belongs to current round or previous round.
+  * For blocks (= lambda messages) the handling is as follows:
   *   - for an arriving-on-time block, a lambda-response ballot is produced.
-  *   - for a late block, lambda-response ballot is NOT produced
+  *   - for a arriving-late block, lambda-response ballot is NOT produced
   *
+  * ============= AUTO-ADJUSTMENT OF ROUND EXPONENTS =============
   * On top of this we apply a round exponent auto-adjustment behaviour:
   *
-  * (1) Every time after creating an omega message M, a validator checks the time L (timestamps difference) between M and the last finalized block.
-  * (2) If L > esp * 2^^cre then the validator slows down bricks production by increasing its round exponent by 1.
-  *   esp - exponent slowdown period
-  *   cre - current round exponent
-  *   ^^ - raise to the power
+  * Every time after creating an omega message M, a validator does the following:
+  *   - let L = time distance between the creation of the last finalized block and the creation of M
+  *   - if L > esp * 2^^cre then the validator slows down bricks production by increasing its round exponent by 1.
+  *        esp - exponent slowdown period
+  *        cre - current round exponent
+  *        ^^ - raise to the power
   *
   * Intuitively, if my exponent slowdown period is 5, I am going to tolerate finality latency up to 5 times my current round length.
   * If finality latency goes higher, I am slowing down myself.
   * Caution: the slowdown is not happening immediately. I need to align my rounds so that they coincide with others using the same exponent.
   *
-  * Implementation remark 1: Given that creation of a ballot takes some time, we use "omegaWaitingMargin" parameter in the following way:
-  * if the margin is set to, say, 200 milliseconds, then the random selection of omega message creation timepoint will not use the last
-  * 200 milliseconds of a round. This way, the creation of omega message is scheduled at least 200 milliseconds before round end.
-  * This way we give chance to account for processing delays and network delays and have the omega message published "on time", i.e.
-  * before the actual end of the round. Bear in mind that of course all the processing delays and network delays are SIMULATED, not real.
-  * We simulate both delays and efforts to counter-act against these delays. Technically, omegaWaitingMargin is amount of time used for
-  * a blockchain node with performance 1 sprocket. The margin is scaled with performance.
+  * ============= OMEGA WAITING MARGIN =============
+  * Given that creation of a ballot takes some time, we use "omegaWaitingMargin" parameter in the following way:
+  * if the margin is set to, say, 200 milliseconds, then the last 200 milliseconds of every round is "reserved" for the omega-message creation effort,
+  * hence the timepoint selection for omega message is done in a way to never hit this reserved interval. In other words, the creation of an omega message
+  * is scheduled at least 200 milliseconds before round's end. This way we give chance to account for computation delays and network delays. The ultimate
+  * goal here is to have the omega message published "on time", i.e. before the actual end of the round. Of course all the processing delays and network
+  * delays are SIMULATED, not real. This can be rephrased by saying that we simulate delays and also efforts to counter-act against these delays.
+  * The actual implementation of omegaWaitingMargin is a bit more subtle, however. We do not express the margin as "absolute time value" but instead
+  * we scale the margin using (simulated) node performance. So, technically, omegaWaitingMargin value stands as amount of time used as the margin
+  * by a blockchain node with performance 1 sprocket. The we apply linear scaling of the margin: effectiveMargin = declaredMargin / nodePerformance.
   *
-  * Implementation remark 2: The simulation of nodes and network performance is flexible enough to create "heavy conditions" in the blockchain
-  * i.e. when a validator has troubles trying to produce bricks on time. The rules of handling "oops, I am late" situations we implement here are:
+  * ============= DEALING WITH NODE PERFORMANCE STRESS =============
+  * The simulation of nodes and network performance is flexible enough to create "node performance stress" conditions in the blockchain
+  * i.e. when a validator has troubles trying to produce bricks according to the round's schedule. We expect nodes being pushed to the limits of performance
+  * as "typical situation" in simulation experiments, and so we apply precise rules of handling node performance stress situations by a validator.
   *
-  * (1) A brick created in round R must have a timestamp within the boundaries of round R. If a validator is not able to meet this condition,
+  * The rules implemented are:
+  * (1) A brick created in round R must have the creation timestamp within the boundaries of round R. If a validator is not able to meet this condition,
   * it drops (= skips) given brick.
   * (2) A validator monitors the moving average of bricks dropped for being too late. If this average exceeds certain fraction (see the config),
-  * "dropped bricks alarm" is raised and round exponent is increased by 1. The  "dropped bricks alarm" condition is checked after every dropped brick.
+  * "dropped bricks alarm" is raised and this alarm is handled later by increasing round exponent by 1. The  "dropped bricks alarm" condition is checked
+  * after every dropped brick.
   * (3) After an activation of "dropped bricks alarm", the alarm is suppressed for specified amount of published bricks.
   *
-  * @param blockchainNode
-  * @param context
-  * @param config
-  * @param state
+  * ============= SECONDARY FINALIZER INSTANCE =============
+  * In our implementation of blockchain consensus, 5 aspects are entangled:
+  * - local j-dag representation
+  * - panoramas calculation
+  * - fork-choice calculation
+  * - summits detection
+  * - equivocators detection
+  *
+  * This entanglement is reflected by the Finalizer component. An instance of Finalizer is plugged-in at ValidatorBaseImpl level
+  * and is generally used for the creation of new blocks and ballots.
+  * Here in Highway there is however a small twist: lambda-response ballot is it be created NOT with the complete knowledge of a validator
+  * (i.e. latest j-dag), but with a subset obtained as justifications-closure of 2-elements set: {my-last-brick, lambda-message-at-hand}.
+  *
+  * In production code, the right way to go would be using fork-choice implementation that is not based on last-finalized-block and takes
+  * as input any panorama. Such a fork-choice implementation is needed anyway because of required fork-choice validation of incoming bricks.
+  * However, such an implementation is very complex and performance-expensive. Here in the simulator we utilize a completely different approach,
+  * where fork-choice algorithm is way faster, but the price to pay is it not being applicable to any panorama at hand. Instead, we need
+  * a complete instance of Finalized to be able to calculate fork-choice (fork choice depends on stateful caching of b-games, and the cache
+  * is maintained by the finalizer).
+  *
+  * Given the "twist" with lambda-responses and the limitations of our fork-choice implementation, we need to equip every blockchain node with two
+  * independent finalizers: the "primary finalizer" is used for the creation of lambda messages and omega messages, while the "secondary finalizer"
+  * is used for lambda-responses only.
   */
 class HighwayValidator private (
                                  blockchainNode: BlockchainNode,
@@ -173,8 +205,6 @@ class HighwayValidator private (
   }
 
   override def startup(): Unit = {
-    val newBGame = new BGame(context.genesis, config.weightsOfValidators, state.equivocatorsRegistry)
-    state.block2bgame += context.genesis -> newBGame
     scheduleNextWakeup(beAggressive = true)
   }
 

@@ -19,6 +19,11 @@ trait Finalizer extends CloningSupport[Finalizer]{
   def equivocatorsRegistry: EquivocatorsRegistry
   def panoramaOfWholeJdag: ACC.Panorama
   def panoramaOfWholeJdagAsJustificationsList: IndexedSeq[Brick] = new ArraySeq.ofRef[Brick](panoramaOfWholeJdag.honestSwimlanesTips.values.toSet.toArray)
+  def panoramaOf(brick: Brick): ACC.Panorama
+  def currentlyVisibleEquivocators: Set[ValidatorId] = {
+    assert (panoramaOfWholeJdag.equivocators == equivocatorsRegistry.allKnownEquivocators) //todo: remove this check before release
+    panoramaOfWholeJdag.equivocators
+  }
   def connectOutput(listener: Finalizer.Listener): Unit
 }
 

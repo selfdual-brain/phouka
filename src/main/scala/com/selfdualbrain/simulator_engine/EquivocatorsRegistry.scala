@@ -40,8 +40,8 @@ class EquivocatorsRegistry private (
       pCatastropheFlag = false
     )
 
-  private var set: Set[ValidatorId] = pSet
-  private val array: Array[ValidatorId] = pArray
+  private var equivocatorsCollectionAsSet: Set[ValidatorId] = pSet
+  private val equivocatorsCollectionAsArray: Array[ValidatorId] = pArray
   private var last: Int = pLast
   private var totalWeightOfEquivocatorsX: Ether = pTotalWeightOfEquivocators
   private var catastropheFlag: Boolean = pCatastropheFlag
@@ -51,14 +51,14 @@ class EquivocatorsRegistry private (
     numberOfValidators,
     weightsOfValidators,
     absoluteFTT,
-    set,
-    array.clone().asInstanceOf[Array[ValidatorId]],
+    equivocatorsCollectionAsSet,
+    equivocatorsCollectionAsArray.clone().asInstanceOf[Array[ValidatorId]],
     last,
     totalWeightOfEquivocatorsX,
     catastropheFlag
   )
 
-  def isKnownEquivocator(vid: ValidatorId): Boolean = set.contains(vid)
+  def isKnownEquivocator(vid: ValidatorId): Boolean = equivocatorsCollectionAsSet.contains(vid)
 
   def lastSeqNumber: Int = last
 
@@ -66,25 +66,25 @@ class EquivocatorsRegistry private (
     if (lastAlreadyKnown == last)
       Iterator.empty[ValidatorId]
     else
-      sliceAsIterator(array, lastAlreadyKnown + 1, array.length)
+      sliceAsIterator(equivocatorsCollectionAsArray, lastAlreadyKnown + 1, equivocatorsCollectionAsArray.length)
   }
 
-  def allKnownEquivocators: Iterable[ValidatorId] = set
+  def allKnownEquivocators: Set[ValidatorId] = equivocatorsCollectionAsSet
 
   def totalWeightOfEquivocators: Ether = totalWeightOfEquivocatorsX
 
   def atomicallyReplaceEquivocatorsCollection(updatedEquivocatorsCollection: Set[ValidatorId]): Unit = {
     //aggressive performance optimization - we assume here that equivocators collection can only grow !
     //hence - same size implies we have the same elements
-    if (set.size == updatedEquivocatorsCollection.size)
+    if (equivocatorsCollectionAsSet.size == updatedEquivocatorsCollection.size)
       return
 
-    val diff: Seq[ValidatorId] = updatedEquivocatorsCollection.diff(set).toSeq
+    val diff: Seq[ValidatorId] = updatedEquivocatorsCollection.diff(equivocatorsCollectionAsSet).toSeq
     if (diff.nonEmpty) {
-      set = updatedEquivocatorsCollection
+      equivocatorsCollectionAsSet = updatedEquivocatorsCollection
       for (i <- diff.indices) {
         val evilValidator: ValidatorId = diff(i)
-        array(last + 1 + i) = evilValidator
+        equivocatorsCollectionAsArray(last + 1 + i) = evilValidator
         totalWeightOfEquivocatorsX += weightsOfValidators(evilValidator)
       }
       last += diff.size
