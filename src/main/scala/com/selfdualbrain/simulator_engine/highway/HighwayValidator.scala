@@ -19,10 +19,11 @@ object HighwayValidator {
     /** Every that many rounds, the validator automatically speeds up bricks production by decreasing its round exponent by 1.*/
     var exponentAccelerationPeriod: Int = _
 
-    /**
-      * Maximum finality latency the validator should tolerate as "normal".
-      */
-    var exponentSlowdownPeriod: Int = _
+    /** Maximum runahead the validator should tolerate as "normal" (expressed as number of rounds). */
+    var runaheadTolerance: Int = _
+
+    /** For that many number of rounds after last slowdown, speedup signals will be suppressed.*/
+    var slowdownInertia: Int =_
 
     /**
       * Omega waiting margin for a node with performance 1 sprocket.
@@ -33,13 +34,13 @@ object HighwayValidator {
       */
     var omegaWaitingMargin: TimeDelta = _
 
-    /** Number of latest bricks published that is taken into account when calculating the "dropping for being too late" factor. */
-    var droppedBricksMovingAverageRange: Int = _
+    /** WindowSize for dropped bricks moving average counter. */
+    var droppedBricksMovingAverageWindow: TimeDelta = _
 
     /** Fraction of dropped bricks that, when exceeded, raises the alarm. */
     var droppedBricksAlarmLevel: Double = _
 
-    /** For that many subsequent bricks published after last "dropped bricks" alarm, the alarm will be suppressed. */
+    /** For that many subsequent rounds after last "dropped bricks" alarm, the alarm will be suppressed. */
     var droppedBricksAlarmSuppressionPeriod: Int = _
 
   }
@@ -51,25 +52,40 @@ object HighwayValidator {
     var currentRoundLeader: ValidatorId = _
     var currentRoundExponent: Int = _
     var speedUpCounter: Int = _
+    var roundsSinceLastSlowdown: Int = _
     var targetRoundExponent: Int = _
     var droppedBricksAlarmSuppressionCounter: Int = _
-    var panoramaSeenFromMyLastBrick: ACC.Panorama = _
-    var lateBricksCounter: MovingWindowBeepsCounter = _
+    var effectiveOmegaMargin: TimeDelta = _
 
     override def createEmpty() = new State
 
     override def copyTo(state: ValidatorBaseImpl.State): Unit = {
       super.copyTo(state)
       val st = state.asInstanceOf[HighwayValidator.State]
-//      st.blockVsBallot = blockVsBallot
-//      st.brickProposeDelaysGenerator = brickProposeDelaysGenerator.createDetachedCopy()
     }
 
     override def initialize(nodeId: BlockchainNode, context: ValidatorContext, config: ValidatorBaseImpl.Config): Unit = {
       super.initialize(nodeId, context, config)
       val cf = config.asInstanceOf[HighwayValidator.Config]
-//      blockVsBallot = new Picker[String](context.random, Map("block" -> cf.blocksFraction, "ballot" -> (1 - cf.blocksFraction)))
-//      brickProposeDelaysGenerator = LongSequenceGenerator.fromConfig(cf.brickProposeDelaysConfig, context.random)
+      val secondaryFinalizerCfg = new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb.Config(
+        config.numberOfValidators,
+        config.weightsOfValidators,
+        config.totalWeight,
+        config.absoluteFTT,
+        config.relativeFTT,
+        config.ackLevel,
+        context.genesis
+      )
+      secondaryFinalizer = new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb(secondaryFinalizerCfg)
+      currentRound = 0L
+      roundWrapUpTimepoint = SimTimepoint.zero
+      currentRoundLeader = 0
+      currentRoundExponent = cf.bootstrapRoundExponent
+      speedUpCounter = 0
+      roundsSinceLastSlowdown = 0
+      targetRoundExponent = cf.bootstrapRoundExponent
+      droppedBricksAlarmSuppressionCounter = 0
+      effectiveOmegaMargin = cf.omegaWaitingMargin * 1000000 / cf.computingPower
     }
 
     override def createDetachedCopy(): HighwayValidator.State = super.createDetachedCopy().asInstanceOf[HighwayValidator.State]
@@ -82,10 +98,11 @@ object HighwayValidator {
   * Implementation of Highway Protocol validator.
   *
   * ============= TIME CONTINUUM AND ROUNDS =============
+  *
   * Time continuum is seen as a sequence of millisecond-long ticks. Leader sequencer pseudo-randomly assigns a leader to every tick
-  * (in a way that frequency of becoming a leader is proportional to relative weight).
+  * (in a way that the frequency of becoming a leader is proportional to the relative weight).
   * A round is identified by the starting tick. This starting tick determines the leader to be used in this round.
-  * The length of a round is 2^^E, where E is the current "round exponent" used by validator V. So, a round - seen as ticks interval - is [a, a+2^^E].
+  * The length of a round is 2^^E, where E is the current "round exponent" used by validator V. So, round R - seen as ticks interval - is [R, R+2^^E].
   *
   * Every validator V follows rounds-based behaviour. V picks its round exponent (independently from exponents used by other validators)
   * and constantly adjusts it.  The exact auto-adjustment algorithm is explained below. The round exponent currently used by V is announced in every
@@ -93,7 +110,7 @@ object HighwayValidator {
   *
   * Caution: please observe that all rounds with given id have common starting timepoint but different ending timepoints, because
   * usually a diversity of round exponents is used across validators. We think of validators as cars on a highway (hence the name), where
-  * every lane corresponds to different round exponent. Bigger round exponent means slower operation.
+  * every lane corresponds to different round exponent. Bigger round exponent means slower operation of a validator.
   *
   * ============= SCENARIO OF A SINGLE ROUND =============
   * The behaviour of a validator during any round R depends on who is the leader of this round.
@@ -117,32 +134,28 @@ object HighwayValidator {
   *   - for an arriving-on-time block, a lambda-response ballot is produced.
   *   - for a arriving-late block, lambda-response ballot is NOT produced
   *
-  * ============= AUTO-ADJUSTMENT OF ROUND EXPONENTS =============
-  * On top of this we apply a round exponent auto-adjustment behaviour:
+  * ============= AUTO-ADJUSTMENT OF ROUND EXPONENT =============
   *
+  * On top of this we apply the following round exponent auto-adjustment behaviour:
+  *
+  * ### RUNAHEAD SLOWDOWN ###
   * Every time after creating an omega message M, a validator does the following:
-  *   - let L = time distance between the creation of the last finalized block and the creation of M
-  *   - if L > esp * 2^^cre then the validator slows down bricks production by increasing its round exponent by 1.
-  *        esp - exponent slowdown period
-  *        cre - current round exponent
+  *   - let R = time distance between the creation of the last finalized block and the creation of M
+  *   - if R > rt * 2^^e then the validator slows down bricks production by increasing its round exponent by 1.
+  *        rt - runahead tolerance
+  *        e - current round exponent
   *        ^^ - raise to the power
   *
-  * Intuitively, if my exponent slowdown period is 5, I am going to tolerate finality latency up to 5 times my current round length.
-  * If finality latency goes higher, I am slowing down myself.
-  * Caution: the slowdown is not happening immediately. I need to align my rounds so that they coincide with others using the same exponent.
+  * Intuitively, if my runahead tolerance is 5, I am going to tolerate runahead up to 5 times my current round length. If runahead goes higher,
+  * I will slow down myself.
   *
-  * ============= OMEGA WAITING MARGIN =============
-  * Given that creation of a ballot takes some time, we use "omegaWaitingMargin" parameter in the following way:
-  * if the margin is set to, say, 200 milliseconds, then the last 200 milliseconds of every round is "reserved" for the omega-message creation effort,
-  * hence the timepoint selection for omega message is done in a way to never hit this reserved interval. In other words, the creation of an omega message
-  * is scheduled at least 200 milliseconds before round's end. This way we give chance to account for computation delays and network delays. The ultimate
-  * goal here is to have the omega message published "on time", i.e. before the actual end of the round. Of course all the processing delays and network
-  * delays are SIMULATED, not real. This can be rephrased by saying that we simulate delays and also efforts to counter-act against these delays.
-  * The actual implementation of omegaWaitingMargin is a bit more subtle, however. We do not express the margin as "absolute time value" but instead
-  * we scale the margin using (simulated) node performance. So, technically, omegaWaitingMargin value stands as amount of time used as the margin
-  * by a blockchain node with performance 1 sprocket. The we apply linear scaling of the margin: effectiveMargin = declaredMargin / nodePerformance.
+  * Caution 1: the slowdown is not happening immediately. I need to align my rounds so that they coincide with others using the same exponent.
   *
-  * ============= DEALING WITH NODE PERFORMANCE STRESS =============
+  * Caution 2: please notice the difference between 'runahead' and 'latency'. But 'runahead' we mean the time distance between last message produced
+  * and last finalized block. But 'latency' we mean the distance between creation and finalization for a given block. Conceptually these correspond
+  * to two different ways of measuring how much finality is delayed behind the "nose" of the blockchain.
+  *
+  * ### PERFORMANCE STRESS SLOWDOWN ###
   * The simulation of nodes and network performance is flexible enough to create "node performance stress" conditions in the blockchain
   * i.e. when a validator has troubles trying to produce bricks according to the round's schedule. We expect nodes being pushed to the limits of performance
   * as "typical situation" in simulation experiments, and so we apply precise rules of handling node performance stress situations by a validator.
@@ -153,9 +166,28 @@ object HighwayValidator {
   * (2) A validator monitors the moving average of bricks dropped for being too late. If this average exceeds certain fraction (see the config),
   * "dropped bricks alarm" is raised and this alarm is handled later by increasing round exponent by 1. The  "dropped bricks alarm" condition is checked
   * after every dropped brick.
-  * (3) After an activation of "dropped bricks alarm", the alarm is suppressed for specified amount of published bricks.
+  * (3) After an activation of "dropped bricks alarm", the alarm is suppressed for specified amount of rounds.
+  *
+  * ### SPEEDUP ###
+  * Every 'exponentAccelerationPeriod' rounds a validator decreases the round exponent by 1, unless at least one of the following conditions is true:
+  * 1. After decreasing, the finality latency would immediately fire slowdown condition.
+  * 2. There is decided but not yet executed round exponent increase.
+  * 3. The number of rounds passed since last round exponent adjustment is less than 'slowdownInertia'.
+  *
+  * ============= OMEGA WAITING MARGIN =============
+  *
+  * Given that creation of a ballot takes some time, we use "omegaWaitingMargin" parameter in the following way:
+  * if the margin is set to, say, 200 milliseconds, then the last 200 milliseconds of every round is "reserved" for the omega-message creation effort,
+  * hence the timepoint selection for omega message is done in a way to never hit this reserved interval. In other words, the creation of an omega message
+  * is scheduled at least 200 milliseconds before round's end. This way we give chance to account for computation delays and network delays. The ultimate
+  * goal here is to have the omega message published "on time", i.e. before the actual end of the round. Of course all the processing delays and network
+  * delays are SIMULATED, not real. This can be rephrased by saying that we simulate delays and also efforts to counter-act against these delays.
+  * The actual implementation of omegaWaitingMargin is a bit more subtle, however. We do not express the margin as "absolute time value" but instead
+  * we scale the margin using (simulated) node performance. So, technically, omegaWaitingMargin value stands as amount of time used as the margin
+  * by a blockchain node with performance 1 sprocket. The we apply linear scaling of the margin: effectiveMargin = declaredMargin / nodePerformance.
   *
   * ============= SECONDARY FINALIZER INSTANCE =============
+  *
   * In our implementation of blockchain consensus, 5 aspects are entangled:
   * - local j-dag representation
   * - panoramas calculation
@@ -198,6 +230,10 @@ class HighwayValidator private (
       }
     )
 
+  //========= transient state (= outside cloning) ====================
+
+  private var lateBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
+
   override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
     val validatorInstance = new HighwayValidator(bNode, vContext, config, state.createDetachedCopy())
     validatorInstance.scheduleNextWakeup(beAggressive = false)
@@ -217,7 +253,6 @@ class HighwayValidator private (
       case WakeupMarker.RoundWrapUp(roundId) => roundWrapUpProcessing()
     }
   }
-
 
   override protected def onBrickAddedToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit = {
     if (isLocallyCreated)
@@ -249,6 +284,79 @@ class HighwayValidator private (
 
   }
 
+  /**
+    * This is to be executed at round wrap-up.
+    * We update "current round" and "current round leader" variables accordingly.
+    * We also handle round exponent auto-adjustment.
+    */
+  def prepareForNextRound(): Unit = {
+    //find the id of next round
+    state.currentRound = state.currentRound + roundLength(state.currentRoundExponent)
+
+    //check who will be the leader of next round
+    state.currentRoundLeader = config.leadersSequencer.findLeaderForRound(state.currentRound)
+
+    //auto-adjustment of the round exponent
+    autoAdjustmentOfRoundExponent()
+
+    //calculate round wrap-up timepoint
+    val endOfRoundAsTick = state.currentRound + roundLength(state.currentRoundExponent)
+    state.roundWrapUpTimepoint = SimTimepoint(endOfRoundAsTick * 1000) - state.effectiveOmegaMargin
+  }
+
+  def autoAdjustmentOfRoundExponent(): Unit = {
+    //update counters
+    state.speedUpCounter += 1
+    state.roundsSinceLastSlowdown += 1
+    state.droppedBricksAlarmSuppressionCounter += 1
+
+    //if round exponent change is already decided, we attempt to apply this change now
+    //for this to be possible we must however check if the beginning of new round is coherent with the new exponent
+    //if exponent change cannot be applied now, we skip any other checks
+    if (state.targetRoundExponent != state.currentRoundExponent)
+      if (state.currentRound % roundLength(state.targetRoundExponent) == 0)
+        state.currentRoundExponent = state.targetRoundExponent
+      else
+        return
+
+
+    //runahead slowdown check
+    if (state.myLastMessagePublished.isDefined) {
+      val currentLatency: TimeDelta = state.myLastMessagePublished.get.timepoint - state.finalizer.lastFinalizedBlock.timepoint
+      val tolerance: TimeDelta = config.runaheadTolerance * roundLength(state.currentRoundExponent)
+
+    }
+
+
+    //performance-stress slowdown
+
+    //speedup check
+
+  }
+
+  //  //Integer exponentiation
+//  def exp(x: Int, n: Int): Int = {
+//    if(n == 0) 1
+//    else if(n == 1) x
+//    else if(n%2 == 0) exp(x*x, n/2)
+//    else x * exp(x*x, (n-1)/2)
+//  }
+
+  /**
+    * Calculates the length of a round for a given round exponent.
+    * Returns round length as number of ticks.
+    * Internally we just do integer exponentiation with base 2, implemented with bitwise shift.
+    *
+    * @param exponent must be within 0..62 interval
+    * @return 2 ^^ exponent (as Long value)
+    */
+  def roundLength(exponent: Int): Long = {
+    assert (exponent >= 0)
+    assert (exponent <= 62)
+    return 1L << exponent
+  }
+
+
   private def roundBoundary(round: Long): (SimTimepoint, SimTimepoint) = {
 //    val start: SimTimepoint = SimTimepoint(round * config.roundLength)
 //    val stop: SimTimepoint = start + config.roundLength
@@ -271,71 +379,68 @@ class HighwayValidator private (
     }
   }
 
-  protected def createNewBrick(shouldBeBlock: Boolean, round: Long): Brick = ???
+  protected def createNewBrick(shouldBeBlock: Boolean, round: Long): Brick = {
+    //simulation of "create new message" processing time
+    context.registerProcessingTime(state.msgCreationCostGenerator.next())
+    val creator: ValidatorId = config.validatorId
+    state.mySwimlaneLastMessageSequenceNumber += 1
+    val forkChoiceWinner: Block = this.calculateCurrentForkChoiceWinner()
 
-
-//    //simulation of "create new message" processing time
-//    context.registerProcessingTime(state.msgCreationCostGenerator.next())
-//    val creator: ValidatorId = config.validatorId
-//    state.mySwimlaneLastMessageSequenceNumber += 1
-//    val forkChoiceWinner: Block = this.calculateCurrentForkChoiceWinner()
-//
-//    //we use "toSet" conversion in the middle to leave only distinct elements
-//    //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
-//    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](state.globalPanorama.honestSwimlanesTips.values.toSet.toArray)
-//    val timeNow = context.time()
-//    val brick =
-//      if (shouldBeBlock || forkChoiceWinner == context.genesis) {
-//        val currentlyVisibleEquivocators: Set[ValidatorId] = state.globalPanorama.equivocators
-//        val parentBlockEquivocators: Set[ValidatorId] =
-//          if (forkChoiceWinner == context.genesis)
-//            Set.empty
-//          else
-//            state.panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
-//        val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
-//        val payload: BlockPayload = config.blockPayloadBuilder.next()
-//        LeadersSeq.NormalBlock(
-//          id = context.generateBrickId(),
-//          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
-//          timepoint = timeNow,
-//          round,
-//          justifications,
-//          toBeSlashedInThisBlock,
-//          creator,
-//          prevInSwimlane = state.myLastMessagePublished,
-//          parent = forkChoiceWinner,
-//          numberOfTransactions = payload.numberOfTransactions,
-//          payloadSize = payload.transactionsBinarySize,
-//          totalGas = payload.totalGasNeededForExecutingTransactions,
-//          hash = state.brickHashGenerator.generateHash()
-//        )
-//      } else
-//        LeadersSeq.Ballot(
-//          id = context.generateBrickId(),
-//          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
-//          timepoint = context.time(),
-//          round,
-//          justifications,
-//          creator,
-//          prevInSwimlane = state.myLastMessagePublished,
-//          targetBlock = forkChoiceWinner.asInstanceOf[LeadersSeq.NormalBlock]
-//        )
-//    return brick
-
-  private def scheduleNextWakeup(beAggressive: Boolean): Unit = {
-//    val timeNow = context.time()
-//    val earliestRoundWeStillHaveChancesToCatch: Long = timeNow.micros / config.roundLength
-//    if (beAggressive) {
-//      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch)
-//      val wakeUpPoint: Long = timeNow.micros + (context.random.nextDouble() * (stop - timeNow) / 2).toLong
-//      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
-//    } else {
-//      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch + 1)
-//      val wakeUpPoint: Long = start.micros + (context.random.nextDouble() * (stop - start) / 2).toLong
-//      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
-//    }
+    //we use "toSet" conversion in the middle to leave only distinct elements
+    //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
+    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](state.globalPanorama.honestSwimlanesTips.values.toSet.toArray)
+    val timeNow = context.time()
+    val brick =
+      if (shouldBeBlock || forkChoiceWinner == context.genesis) {
+        val currentlyVisibleEquivocators: Set[ValidatorId] = state.globalPanorama.equivocators
+        val parentBlockEquivocators: Set[ValidatorId] =
+          if (forkChoiceWinner == context.genesis)
+            Set.empty
+          else
+            state.panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
+        val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
+        val payload: BlockPayload = config.blockPayloadBuilder.next()
+        LeadersSeq.NormalBlock(
+          id = context.generateBrickId(),
+          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
+          timepoint = timeNow,
+          round,
+          justifications,
+          toBeSlashedInThisBlock,
+          creator,
+          prevInSwimlane = state.myLastMessagePublished,
+          parent = forkChoiceWinner,
+          numberOfTransactions = payload.numberOfTransactions,
+          payloadSize = payload.transactionsBinarySize,
+          totalGas = payload.totalGasNeededForExecutingTransactions,
+          hash = state.brickHashGenerator.generateHash()
+        )
+      } else
+        LeadersSeq.Ballot(
+          id = context.generateBrickId(),
+          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
+          timepoint = context.time(),
+          round,
+          justifications,
+          creator,
+          prevInSwimlane = state.myLastMessagePublished,
+          targetBlock = forkChoiceWinner.asInstanceOf[LeadersSeq.NormalBlock]
+        )
+    return brick
   }
 
-
+  private def scheduleNextWakeup(beAggressive: Boolean): Unit = {
+    val timeNow = context.time()
+    val earliestRoundWeStillHaveChancesToCatch: Long = timeNow.micros / config.roundLength
+    if (beAggressive) {
+      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch)
+      val wakeUpPoint: Long = timeNow.micros + (context.random.nextDouble() * (stop - timeNow) / 2).toLong
+      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
+    } else {
+      val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch + 1)
+      val wakeUpPoint: Long = start.micros + (context.random.nextDouble() * (stop - start) / 2).toLong
+      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
+    }
+  }
 
 }

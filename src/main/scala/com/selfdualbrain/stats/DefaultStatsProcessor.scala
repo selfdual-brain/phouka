@@ -67,7 +67,7 @@ class DefaultStatsProcessor(
   //per-validator statistics (array seen as a map ValidatorId -----> ValidatorStats)
   private var vid2stats = new Array[PerValidatorCounters](numberOfValidators)
   //counter of visibly finalized blocks; this counter is used for blockchain throughput calculation
-  private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounter(throughputMovingWindow, throughputCheckpointsDelta)
+  private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounterWithHistory(throughputMovingWindow, throughputCheckpointsDelta)
   //flags marking faulty validators
   private val faultyValidatorsMap = new Array[Boolean](numberOfValidators)
   //when a validator goes faulty, we free per-validator stats for this one

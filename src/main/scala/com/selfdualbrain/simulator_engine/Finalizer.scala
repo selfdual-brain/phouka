@@ -15,7 +15,8 @@ import scala.collection.immutable.ArraySeq
   */
 trait Finalizer extends CloningSupport[Finalizer]{
   def addToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit
-  def calculateCurrentForkChoiceWinner(): Block
+  def currentForkChoiceWinner(): Block
+  def lastFinalizedBlock: Block
   def equivocatorsRegistry: EquivocatorsRegistry
   def panoramaOfWholeJdag: ACC.Panorama
   def panoramaOfWholeJdagAsJustificationsList: IndexedSeq[Brick] = new ArraySeq.ofRef[Brick](panoramaOfWholeJdag.honestSwimlanesTips.values.toSet.toArray)

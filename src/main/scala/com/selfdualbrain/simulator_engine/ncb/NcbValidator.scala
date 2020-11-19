@@ -109,7 +109,7 @@ class NcbValidator private (
     context.registerProcessingTime(state.msgCreationCostGenerator.next())
     val creator: ValidatorId = config.validatorId
     state.mySwimlaneLastMessageSequenceNumber += 1
-    val forkChoiceWinner: Block = state.finalizer.calculateCurrentForkChoiceWinner()
+    val forkChoiceWinner: Block = state.finalizer.currentForkChoiceWinner()
     val justifications: IndexedSeq[Brick] = state.finalizer.panoramaOfWholeJdagAsJustificationsList
     val timeNow = context.time()
     val brick =

@@ -1,6 +1,6 @@
 package com.selfdualbrain
 
-import com.selfdualbrain.stats.MovingWindowBeepsCounter
+import com.selfdualbrain.stats.MovingWindowBeepsCounterWithHistory
 import com.selfdualbrain.time.TimeDelta
 
 import scala.util.Random
@@ -21,7 +21,7 @@ class MovingWindowBeepsCounterSpec extends BaseSpec {
     val sortedBeeps = beeps.sorted
 
     //feeding test data into beeps counter
-    val beepsCounter = new MovingWindowBeepsCounter(movingWindowLength, checkpointsResolution)
+    val beepsCounter = new MovingWindowBeepsCounterWithHistory(movingWindowLength, checkpointsResolution)
     for (i <- 0 until numberOfTestBeeps)
       beepsCounter.beep(i+1, sortedBeeps(i))
     beepsCounter.silence(testIntervalLength)

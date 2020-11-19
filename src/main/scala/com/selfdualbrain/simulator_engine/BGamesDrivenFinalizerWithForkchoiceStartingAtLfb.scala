@@ -139,7 +139,9 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
 
   override def panoramaOf(brick: Brick): ACC.Panorama = state.panoramasBuilder.panoramaOf(brick)
 
-  def calculateCurrentForkChoiceWinner(): Block = forkChoice(state.lastFinalizedBlock)
+  def currentForkChoiceWinner(): Block = forkChoice(state.lastFinalizedBlock)
+
+  override def lastFinalizedBlock: Block = state.lastFinalizedBlock
 
   //############################################### PRIVATE ######################################################
 

@@ -10,6 +10,8 @@ case class SimTimepoint(micros: Long) extends AnyVal with Ordered[SimTimepoint] 
 
   def +(delta: TimeDelta): SimTimepoint = SimTimepoint(micros + delta)
 
+  def -(delta: TimeDelta): SimTimepoint = SimTimepoint(micros - delta)
+
   def -(other: SimTimepoint): TimeDelta = this.micros - other.micros
 
   override def toString: String = SimTimepoint.render(micros)
