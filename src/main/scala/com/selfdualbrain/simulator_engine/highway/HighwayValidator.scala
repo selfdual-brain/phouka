@@ -22,8 +22,8 @@ object HighwayValidator {
     /** Maximum runahead the validator should tolerate as "normal" (expressed as number of rounds). */
     var runaheadTolerance: Int = _
 
-    /** For that many number of rounds after last slowdown, speedup signals will be suppressed.*/
-    var slowdownInertia: Int =_
+    /** For that many number of rounds after last exponent change, exponent is frozen.*/
+    var exponentInertia: Int =_
 
     /**
       * Omega waiting margin for a node with performance 1 sprocket.
@@ -52,7 +52,7 @@ object HighwayValidator {
     var currentRoundLeader: ValidatorId = _
     var currentRoundExponent: Int = _
     var speedUpCounter: Int = _
-    var roundsSinceLastSlowdown: Int = _
+    var exponentInertiaCounter: Int = _
     var targetRoundExponent: Int = _
     var droppedBricksAlarmSuppressionCounter: Int = _
     var effectiveOmegaMargin: TimeDelta = _
@@ -82,7 +82,7 @@ object HighwayValidator {
       currentRoundLeader = 0
       currentRoundExponent = cf.bootstrapRoundExponent
       speedUpCounter = 0
-      roundsSinceLastSlowdown = 0
+      exponentInertiaCounter = 0
       targetRoundExponent = cf.bootstrapRoundExponent
       droppedBricksAlarmSuppressionCounter = 0
       effectiveOmegaMargin = cf.omegaWaitingMargin * 1000000 / cf.computingPower
@@ -170,7 +170,7 @@ object HighwayValidator {
   *
   * ### SPEEDUP ###
   * Every 'exponentAccelerationPeriod' rounds a validator decreases the round exponent by 1, unless at least one of the following conditions is true:
-  * 1. After decreasing, the finality latency would immediately fire slowdown condition.
+  * 1. After decreasing, the runahead slowdown condition would be immediately triggered.
   * 2. There is decided but not yet executed round exponent increase.
   * 3. The number of rounds passed since last round exponent adjustment is less than 'slowdownInertia'.
   *
@@ -232,7 +232,8 @@ class HighwayValidator private (
 
   //========= transient state (= outside cloning) ====================
 
-  private var lateBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
+  private var tooLateBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
+  private var onTimeBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
 
   override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
     val validatorInstance = new HighwayValidator(bNode, vContext, config, state.createDetachedCopy())
@@ -289,7 +290,7 @@ class HighwayValidator private (
     * We update "current round" and "current round leader" variables accordingly.
     * We also handle round exponent auto-adjustment.
     */
-  def prepareForNextRound(): Unit = {
+  private def prepareForNextRound(): Unit = {
     //find the id of next round
     state.currentRound = state.currentRound + roundLength(state.currentRoundExponent)
 
@@ -304,11 +305,24 @@ class HighwayValidator private (
     state.roundWrapUpTimepoint = SimTimepoint(endOfRoundAsTick * 1000) - state.effectiveOmegaMargin
   }
 
-  def autoAdjustmentOfRoundExponent(): Unit = {
+  private def autoAdjustmentOfRoundExponent(): Unit = {
+
+    //for a given round exponent we check 'runahead slowdown condition'
+    //result = true means that LFB chain is too far behind the front of the blockchain (i.e. slowdown is needed)
+    def runaheadSlowdownConditionCheck(exponent: Int): Boolean = state.myLastMessagePublished match {
+      case Some(msg) =>
+        val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint - state.finalizer.lastFinalizedBlock.timepoint
+        val tolerance: TimeDelta = config.runaheadTolerance * roundLength(exponent)
+        currentRunahead > tolerance
+      case None =>
+        false
+    }
+
     //update counters
     state.speedUpCounter += 1
-    state.roundsSinceLastSlowdown += 1
-    state.droppedBricksAlarmSuppressionCounter += 1
+    state.exponentInertiaCounter += 1
+    if (state.droppedBricksAlarmSuppressionCounter > 0)
+      state.droppedBricksAlarmSuppressionCounter -= 1
 
     //if round exponent change is already decided, we attempt to apply this change now
     //for this to be possible we must however check if the beginning of new round is coherent with the new exponent
@@ -320,18 +334,52 @@ class HighwayValidator private (
         return
 
 
+    //if we are within exponent inertia period after last exponent change, we skip any further checks
+    if (state.exponentInertiaCounter <= config.exponentInertia)
+      return
+
     //runahead slowdown check
-    if (state.myLastMessagePublished.isDefined) {
-      val currentLatency: TimeDelta = state.myLastMessagePublished.get.timepoint - state.finalizer.lastFinalizedBlock.timepoint
-      val tolerance: TimeDelta = config.runaheadTolerance * roundLength(state.currentRoundExponent)
+    val runaheadSlowdownDecision: Boolean = runaheadSlowdownConditionCheck(state.currentRoundExponent)
 
+    //performance-stress slowdown check
+    val performanceStressSlowdownDecision: Boolean =
+      if (state.droppedBricksAlarmSuppressionCounter > 0)
+        false
+      else {
+        val bricksPublished = onTimeBricksCounter.numberOfBeepsInTheWindow(context.time().micros)
+        val bricksDropped = tooLateBricksCounter.numberOfBeepsInTheWindow(context.time().micros)
+        if (bricksPublished + bricksDropped == 0)
+          false
+        else {
+          val movingWindowDropRate: Double = bricksDropped.toDouble / (bricksPublished + bricksDropped)
+          movingWindowDropRate > config.droppedBricksAlarmLevel
+        }
+      }
+
+    //restarting 'dropped bricks alarm suppression' counter
+    if (performanceStressSlowdownDecision)
+      state.droppedBricksAlarmSuppressionCounter = config.droppedBricksAlarmSuppressionPeriod
+
+    //combined decision on potential slowdown
+    val weWantToSlowDown: Boolean = runaheadSlowdownDecision || performanceStressSlowdownDecision
+
+    //apply slowdown or - if no slowdown is decided at this point - consider speedup
+    if (weWantToSlowDown) {
+      state.targetRoundExponent += 1
+      state.exponentInertiaCounter = 0
+      if (state.currentRound % roundLength(state.targetRoundExponent) == 0)
+        state.currentRoundExponent = state.targetRoundExponent
+    } else {
+      if (state.speedUpCounter >= config.exponentAccelerationPeriod && state.currentRoundExponent > 0) {
+        //we are about to consider speed-up now, unless such a speed up would immediately trigger runahead slowdown condition
+        if (runaheadSlowdownConditionCheck(state.currentRoundExponent - 1))
+          return //speed-up makes no sense at this point; we are just at the optimal round length now
+        state.targetRoundExponent -= 1
+        state.currentRoundExponent = state.targetRoundExponent
+        state.speedUpCounter = 0
+        state.exponentInertiaCounter = 0
+      }
     }
-
-
-    //performance-stress slowdown
-
-    //speedup check
-
   }
 
   //  //Integer exponentiation
