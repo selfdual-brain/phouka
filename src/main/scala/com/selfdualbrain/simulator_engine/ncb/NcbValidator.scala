@@ -97,7 +97,7 @@ class NcbValidator private (
 
   protected def publishNewBrick(shouldBeBlock: Boolean): Unit = {
     val brick = createNewBrick(shouldBeBlock)
-    state.finalizer.addToLocalJdag(brick, isLocallyCreated = true)
+    state.finalizer.addToLocalJdag(brick)
     onBrickAddedToLocalJdag(brick, isLocallyCreated = true)
     context.broadcast(context.time(), brick)
     state.mySwimlane.append(brick)

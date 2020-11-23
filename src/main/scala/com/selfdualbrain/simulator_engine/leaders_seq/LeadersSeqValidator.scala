@@ -88,7 +88,7 @@ class LeadersSeqValidator private (
   protected def publishNewBrick(shouldBeBlock: Boolean, round: Long, deadline: SimTimepoint): Unit = {
     val brick = createNewBrick(shouldBeBlock, round)
     if (context.time() <= deadline) {
-      state.finalizer.addToLocalJdag(brick, isLocallyCreated = true)
+      state.finalizer.addToLocalJdag(brick)
       context.broadcast(context.time(), brick)
       state.mySwimlane.append(brick)
       state.myLastMessagePublished = Some(brick)

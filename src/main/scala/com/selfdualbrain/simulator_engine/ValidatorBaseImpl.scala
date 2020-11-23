@@ -56,7 +56,6 @@ object ValidatorBaseImpl {
 
   class State extends CloningSupport[State] {
     var messagesBuffer: MsgBuffer[Brick] = _
-    var knownBricks: mutable.Set[Brick] = _
     var mySwimlaneLastMessageSequenceNumber: Int = _
     var mySwimlane: ArrayBuffer[Brick] = _
     var myLastMessagePublished: Option[Brick] = _
@@ -67,7 +66,6 @@ object ValidatorBaseImpl {
 
     def copyTo(state: State): Unit = {
       state.messagesBuffer = this.messagesBuffer.createDetachedCopy()
-      state.knownBricks = this.knownBricks.clone()
       state.mySwimlaneLastMessageSequenceNumber = this.mySwimlaneLastMessageSequenceNumber
       state.mySwimlane = this.mySwimlane.clone()
       state.myLastMessagePublished = this.myLastMessagePublished
@@ -87,7 +85,6 @@ object ValidatorBaseImpl {
 
     def initialize(nodeId: BlockchainNode, context: ValidatorContext, config: Config): Unit = {
       messagesBuffer = new MsgBufferImpl[Brick]
-      knownBricks = new mutable.HashSet[Brick](1000, 0.75)
       mySwimlaneLastMessageSequenceNumber = -1
       mySwimlane = new ArrayBuffer[Brick](10000)
       myLastMessagePublished = None
@@ -125,7 +122,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
   //#################### PUBLIC API ############################
 
   def onNewBrickArrived(msg: Brick): Unit = {
-    val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! state.knownBricks.contains(j))
+    val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! state.finalizer.knowsAbout(j))
 
     //simulation of incoming message processing time
     val payloadValidationTime: TimeDelta = msg match {
@@ -157,8 +154,8 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
 
     while (queue.nonEmpty) {
       val nextBrick = queue.dequeue()
-      if (! state.knownBricks.contains(nextBrick)) {
-        state.finalizer.addToLocalJdag(nextBrick, isLocallyCreated = false)
+      if (! state.finalizer.knowsAbout(nextBrick)) {
+        state.finalizer.addToLocalJdag(nextBrick)
         this.onBrickAddedToLocalJdag(nextBrick, isLocallyCreated = false)
         val waitingForThisOne = state.messagesBuffer.findMessagesWaitingFor(nextBrick)
         if (config.msgBufferSherlockMode) {

@@ -14,7 +14,8 @@ import scala.collection.immutable.ArraySeq
   * different blockchains.
   */
 trait Finalizer extends CloningSupport[Finalizer]{
-  def addToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit
+  def addToLocalJdag(brick: Brick): Unit
+  def knowsAbout(brick: Brick): Boolean
   def currentForkChoiceWinner(): Block
   def lastFinalizedBlock: Block
   def equivocatorsRegistry: EquivocatorsRegistry

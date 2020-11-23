@@ -6,6 +6,7 @@ import com.selfdualbrain.data_structures.{CloningSupport, LayeredMap}
 import com.selfdualbrain.simulator_engine.BGamesDrivenFinalizerWithForkchoiceStartingAtLfb._
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 object BGamesDrivenFinalizerWithForkchoiceStartingAtLfb {
 
@@ -20,6 +21,7 @@ object BGamesDrivenFinalizerWithForkchoiceStartingAtLfb {
                    )
 
   class State {
+    var knownBricks: mutable.Set[Brick] = _
     var block2bgame: LayeredMap[Block, BGame] = _
     var lastFinalizedBlock: Block = _
     var globalPanorama: ACC.Panorama = _
@@ -63,6 +65,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
   def this(config: Config) =
     this(config, {
         val s = new State
+        s.knownBricks = new mutable.HashSet[Brick](1000, 0.75)
         s.block2bgame = new LayeredMap[Block, BGame](block => block.generation)
         s.lastFinalizedBlock = config.genesis
         s.globalPanorama = ACC.Panorama.empty
@@ -78,6 +81,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
   override def createDetachedCopy(): BGamesDrivenFinalizerWithForkchoiceStartingAtLfb = {
     val clonedEquivocatorsRegistry = state.equivocatorsRegistry.createDetachedCopy()
     val clonedState = new State
+    clonedState.knownBricks = state.knownBricks.clone()
     clonedState.block2bgame = new LayeredMap[Block, BGame](block => block.generation)
     for ((block, bGame) <- state.block2bgame)
       clonedState.block2bgame += block -> bGame.createDetachedCopy(clonedEquivocatorsRegistry)
@@ -95,7 +99,8 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
     output = Some(listener)
   }
 
-  def addToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit = {
+  def addToLocalJdag(brick: Brick): Unit = {
+    state.knownBricks += brick
     state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, state.panoramasBuilder.panoramaOf(brick))
     state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
     val oldLastEq = state.equivocatorsRegistry.lastSeqNumber
@@ -132,6 +137,8 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
 
     advanceLfbChainAsManyStepsAsPossible()
   }
+
+  override def knowsAbout(brick: Brick): Boolean = state.knownBricks.contains(brick)
 
   override def equivocatorsRegistry: EquivocatorsRegistry = state.equivocatorsRegistry
 

@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine.highway
 
 import com.selfdualbrain.blockchain_structure.{ACC, BlockchainNode, Brick, ValidatorId}
-import com.selfdualbrain.data_structures.CloningSupport
+import com.selfdualbrain.data_structures.{CloningSupport, DirectedGraphUtils}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.stats.MovingWindowBeepsCounter
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -47,8 +47,9 @@ object HighwayValidator {
 
   class State extends ValidatorBaseImpl.State with CloningSupport[State] {
     var secondaryFinalizer: Finalizer = _
-    var currentRound: Tick = _
-    var roundWrapUpTimepoint: SimTimepoint = _
+    var currentRoundId: Tick = _
+    var currentRoundEnd: SimTimepoint = _
+    var currentRoundWrapUpTimepoint: SimTimepoint = _
     var currentRoundLeader: ValidatorId = _
     var currentRoundExponent: Int = _
     var speedUpCounter: Int = _
@@ -77,8 +78,8 @@ object HighwayValidator {
         context.genesis
       )
       secondaryFinalizer = new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb(secondaryFinalizerCfg)
-      currentRound = 0L
-      roundWrapUpTimepoint = SimTimepoint.zero
+      currentRoundId = 0L
+      currentRoundWrapUpTimepoint = SimTimepoint.zero
       currentRoundLeader = 0
       currentRoundExponent = cf.bootstrapRoundExponent
       speedUpCounter = 0
@@ -249,7 +250,7 @@ class HighwayValidator private (
     val marker = strategySpecificMarker.asInstanceOf[WakeupMarker]
 
     marker match {
-      case WakeupMarker.Lambda(roundId) => publishNewBrick(shouldBeBlock = true, roundId, state.roundWrapUpTimepoint)
+      case WakeupMarker.Lambda(roundId) => publishNewBrick(shouldBeBlock = true, roundId, state.currentRoundWrapUpTimepoint)
       case WakeupMarker.Omega(roundId) => omegaProcessing()
       case WakeupMarker.RoundWrapUp(roundId) => roundWrapUpProcessing()
     }
@@ -257,13 +258,14 @@ class HighwayValidator private (
 
   override protected def onBrickAddedToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit = {
     if (isLocallyCreated)
-      state.panoramaSeenFromMyLastBrick = state.globalPanorama
+      addBrickToSecondaryFinalizer(brick)
     else {
       //we hunt for the case of lambda message just being received i.e. when lambda-response creation should be triggered
       brick match {
         case x: Highway.NormalBlock =>
-          if (x.round == state.currentRound && x.creator == state.currentRoundLeader && x.creator != config.validatorId) {
-            //if round leader is a cloned copy of myself (i.e. an equivocator-via-bifurcation) I deliberately avoid sending the lambda-response
+          addBrickToSecondaryFinalizer(brick)
+          if (x.round == state.currentRoundId && x.creator == state.currentRoundLeader && x.creator != config.validatorId) {
+            //caution: if round leader is a cloned copy of myself (i.e. an equivocator-via-bifurcation) I deliberately avoid sending the lambda-response
             //this way number of lambda responses given leader receives is at most n-1, where n is number of validators
             lambdaResponseProcessing()
           }
@@ -274,6 +276,7 @@ class HighwayValidator private (
   }
 
   def lambdaResponseProcessing(): Unit = {
+    state.secondaryFinalizer
 
   }
 
@@ -281,8 +284,27 @@ class HighwayValidator private (
 
   }
 
-  def roundWrapUpProcessing(): Unit = {
+  //adding given brick to the secondary finalizer
+  //this involves discovering all dependencies that must be added before
+  private def addBrickToSecondaryFinalizer(brick: Brick): Unit = {
+    val jPastConeNewBricksIterator = DirectedGraphUtils.breadthFirstToposortTraverse(
+      starts = List(brick),
+      nextVertices = (b: Brick) => b.justifications.filterNot(j => state.secondaryFinalizer.knowsAbout(j)),
+      dagLevel = (b: Brick) => b.daglevel,
+      ascending = false
+    )
 
+    for (dep <- jPastConeNewBricksIterator.toIndexedSeq.reverse)
+      state.secondaryFinalizer.addToLocalJdag(dep)
+  }
+
+  private def roundWrapUpProcessing(): Unit = {
+    //if I am the leader, I publish the omega message now
+    if (state.currentRoundLeader == config.validatorId)
+      publishNewBrick(shouldBeBlock = true, state.currentRoundId, state.currentRoundEnd)
+
+    //switching the state to next round (round exponent logic happens here)
+    prepareForNextRound()
   }
 
   /**
@@ -291,18 +313,19 @@ class HighwayValidator private (
     * We also handle round exponent auto-adjustment.
     */
   private def prepareForNextRound(): Unit = {
-    //find the id of next round
-    state.currentRound = state.currentRound + roundLength(state.currentRoundExponent)
+    //calculate the id of next round
+    state.currentRoundId = state.currentRoundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)
 
     //check who will be the leader of next round
-    state.currentRoundLeader = config.leadersSequencer.findLeaderForRound(state.currentRound)
+    state.currentRoundLeader = config.leadersSequencer.findLeaderForRound(state.currentRoundId)
 
-    //auto-adjustment of the round exponent
+    //auto-adjustment of my round exponent
     autoAdjustmentOfRoundExponent()
 
-    //calculate round wrap-up timepoint
-    val endOfRoundAsTick = state.currentRound + roundLength(state.currentRoundExponent)
-    state.roundWrapUpTimepoint = SimTimepoint(endOfRoundAsTick * 1000) - state.effectiveOmegaMargin
+    //calculate round end and round wrap-up timepoints
+    val endOfRoundAsTick = state.currentRoundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)
+    state.currentRoundEnd = SimTimepoint(endOfRoundAsTick * 1000)
+    state.currentRoundWrapUpTimepoint = state.currentRoundEnd - state.effectiveOmegaMargin
   }
 
   private def autoAdjustmentOfRoundExponent(): Unit = {
@@ -312,7 +335,7 @@ class HighwayValidator private (
     def runaheadSlowdownConditionCheck(exponent: Int): Boolean = state.myLastMessagePublished match {
       case Some(msg) =>
         val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint - state.finalizer.lastFinalizedBlock.timepoint
-        val tolerance: TimeDelta = config.runaheadTolerance * roundLength(exponent)
+        val tolerance: TimeDelta = config.runaheadTolerance * roundLengthAsNumberOfTicks(exponent)
         currentRunahead > tolerance
       case None =>
         false
@@ -328,11 +351,10 @@ class HighwayValidator private (
     //for this to be possible we must however check if the beginning of new round is coherent with the new exponent
     //if exponent change cannot be applied now, we skip any other checks
     if (state.targetRoundExponent != state.currentRoundExponent)
-      if (state.currentRound % roundLength(state.targetRoundExponent) == 0)
+      if (state.currentRoundId % roundLengthAsNumberOfTicks(state.targetRoundExponent) == 0)
         state.currentRoundExponent = state.targetRoundExponent
       else
         return
-
 
     //if we are within exponent inertia period after last exponent change, we skip any further checks
     if (state.exponentInertiaCounter <= config.exponentInertia)
@@ -367,15 +389,23 @@ class HighwayValidator private (
     if (weWantToSlowDown) {
       state.targetRoundExponent += 1
       state.exponentInertiaCounter = 0
-      if (state.currentRound % roundLength(state.targetRoundExponent) == 0)
+      if (state.currentRoundId % roundLengthAsNumberOfTicks(state.targetRoundExponent) == 0)
         state.currentRoundExponent = state.targetRoundExponent
     } else {
       if (state.speedUpCounter >= config.exponentAccelerationPeriod && state.currentRoundExponent > 0) {
-        //we are about to consider speed-up now, unless such a speed up would immediately trigger runahead slowdown condition
+        //ok, so we are about to consider speed-up now ... (unless something stops us from doing so)
+
+        //potential issue 1: if such a speed up would immediately trigger runahead slowdown condition, we give up
         if (runaheadSlowdownConditionCheck(state.currentRoundExponent - 1))
           return //speed-up makes no sense at this point; we are just at the optimal round length now
+
+        //potential issue 2: if after a speed up, effective omega margin would consume more than half of the round length, we give up
+        if (state.effectiveOmegaMargin.toDouble / roundLengthAsNumberOfTicks(state.currentRoundExponent - 1) > 0.5)
+          return //this blockchain node does not have enough performance to use shorter rounds
+
+        //all looks good; let us actually do the speed-up now
         state.targetRoundExponent -= 1
-        state.currentRoundExponent = state.targetRoundExponent
+        state.currentRoundExponent = state.targetRoundExponent //no need to wait applying the new exponent because when speeding-up, rounds are always aligned OK
         state.speedUpCounter = 0
         state.exponentInertiaCounter = 0
       }
@@ -398,7 +428,7 @@ class HighwayValidator private (
     * @param exponent must be within 0..62 interval
     * @return 2 ^^ exponent (as Long value)
     */
-  def roundLength(exponent: Int): Long = {
+  def roundLengthAsNumberOfTicks(exponent: Int): Long = {
     assert (exponent >= 0)
     assert (exponent <= 62)
     return 1L << exponent
@@ -406,8 +436,8 @@ class HighwayValidator private (
 
 
   private def roundBoundary(round: Long): (SimTimepoint, SimTimepoint) = {
-//    val start: SimTimepoint = SimTimepoint(round * config.roundLength)
-//    val stop: SimTimepoint = start + config.roundLength
+    val start: SimTimepoint = SimTimepoint(round * config.roundLength)
+    val stop: SimTimepoint = start + config.roundLength
 //    return (start, stop)
     ???
   }
@@ -417,13 +447,13 @@ class HighwayValidator private (
   protected def publishNewBrick(shouldBeBlock: Boolean, round: Long, deadline: SimTimepoint): Unit = {
     val brick = createNewBrick(shouldBeBlock, round)
     if (context.time() <= deadline) {
-      state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
-      addToLocalJdag(brick, isLocallyCreated = true)
+      state.finalizer.addToLocalJdag(brick)
       context.broadcast(context.time(), brick)
       state.mySwimlane.append(brick)
       state.myLastMessagePublished = Some(brick)
+      onTimeBricksCounter.beep(brick.id, context.time().micros)
     } else {
-      state.lateBricksCounter.beep(brick.id, context.time().micros)
+      tooLateBricksCounter.beep(brick.id, context.time().micros)
     }
   }
 
