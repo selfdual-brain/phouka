@@ -31,10 +31,10 @@ trait Validator {
   def onNewBrickArrived(brick: Brick): Unit
 
   /**
-    * The time for creating next brick has just arrived.
-    * This wake up must have been set as an "alarm" via validator context (some time ago).
+    * Implementation-specific wake-up.
+    * Usually this is a wake-up for creating new brick.
     */
-  def onScheduledBrickCreation(strategySpecificMarker: Any): Unit
+  def onWakeUp(strategySpecificMarker: Any): Unit
 
   /**
     * A validator must be able to clone itself.

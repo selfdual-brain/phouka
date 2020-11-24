@@ -48,7 +48,7 @@ trait AbstractBallot extends Brick {
   def justifications: Iterable[Brick]
   def creator: ValidatorId
   def prevInSwimlane: Option[Brick]
-  def targetBlock: AbstractNormalBlock
+  def targetBlock: Block
 
   override lazy val toString: String =
     s"Ballot-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,target=${targetBlock.id},j=[${justifications.map(_.id).mkString(",")}])"

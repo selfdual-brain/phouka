@@ -66,7 +66,7 @@ class LeadersSeqValidator private (
     scheduleNextWakeup(beAggressive = true)
   }
 
-  override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
+  override def onWakeUp(strategySpecificMarker: Any): Unit = {
     val round: Long = strategySpecificMarker.asInstanceOf[Long]
     val (roundStart, roundStop) = roundBoundary(round)
     if (context.time() <= roundStop) {
@@ -89,6 +89,7 @@ class LeadersSeqValidator private (
     val brick = createNewBrick(shouldBeBlock, round)
     if (context.time() <= deadline) {
       state.finalizer.addToLocalJdag(brick)
+      onBrickAddedToLocalJdag(brick, isLocallyCreated = true)
       context.broadcast(context.time(), brick)
       state.mySwimlane.append(brick)
       state.myLastMessagePublished = Some(brick)
@@ -103,8 +104,9 @@ class LeadersSeqValidator private (
     val forkChoiceWinner: Block = state.finalizer.currentForkChoiceWinner()
     val justifications: IndexedSeq[Brick] = state.finalizer.panoramaOfWholeJdagAsJustificationsList
     val timeNow = context.time()
+
     val brick =
-      if (shouldBeBlock || forkChoiceWinner == context.genesis) {
+      if (shouldBeBlock) {
         val currentlyVisibleEquivocators: Set[ValidatorId] = state.finalizer.currentlyVisibleEquivocators
         val parentBlockEquivocators: Set[ValidatorId] =
           if (forkChoiceWinner == context.genesis)
@@ -137,7 +139,7 @@ class LeadersSeqValidator private (
           justifications,
           creator,
           prevInSwimlane = state.myLastMessagePublished,
-          targetBlock = forkChoiceWinner.asInstanceOf[LeadersSeq.NormalBlock]
+          targetBlock = forkChoiceWinner
         )
 
 
@@ -150,11 +152,11 @@ class LeadersSeqValidator private (
     if (beAggressive) {
       val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch)
       val wakeUpPoint: Long = timeNow.micros + (context.random.nextDouble() * (stop - timeNow) / 2).toLong
-      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
+      context.scheduleWakeUp(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
     } else {
       val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch + 1)
       val wakeUpPoint: Long = start.micros + (context.random.nextDouble() * (stop - start) / 2).toLong
-      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
+      context.scheduleWakeUp(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
     }
   }
 

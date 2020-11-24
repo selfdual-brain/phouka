@@ -182,7 +182,7 @@ class PhoukaEngine(
       case EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker) =>
         box.context.moveForwardLocalClockToAtLeast(timepoint)
         desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedWakeUp(eventId, box.context.time() - timepoint, strategySpecificMarker))
-        box.validatorInstance.onScheduledBrickCreation(timepoint, strategySpecificMarker)
+        box.validatorInstance.onWakeUp(timepoint, strategySpecificMarker)
         true
       case other =>
         throw new RuntimeException(s"not supported: $other")
@@ -271,7 +271,7 @@ class PhoukaEngine(
       desQueue.addLoopbackEvent(timepointOfPassingTheBrickToCommsLayer, nodeId, EventPayload.BroadcastBrick(brick))
     }
 
-    override def scheduleNextBrickPropose(wakeUpTimepoint: SimTimepoint, strategySpecificMarker: Any): Unit = {
+    override def scheduleWakeUp(wakeUpTimepoint: SimTimepoint, strategySpecificMarker: Any): Unit = {
       desQueue.addLoopbackEvent(wakeUpTimepoint, nodeId, EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker))
     }
 

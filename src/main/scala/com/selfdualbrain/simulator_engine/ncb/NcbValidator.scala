@@ -85,7 +85,7 @@ class NcbValidator private (
     scheduleNextWakeup()
   }
 
-  override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
+  override def onWakeUp(strategySpecificMarker: Any): Unit = {
     state.blockVsBallot.select() match {
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)
@@ -112,6 +112,7 @@ class NcbValidator private (
     val forkChoiceWinner: Block = state.finalizer.currentForkChoiceWinner()
     val justifications: IndexedSeq[Brick] = state.finalizer.panoramaOfWholeJdagAsJustificationsList
     val timeNow = context.time()
+
     val brick =
       if (shouldBeBlock || forkChoiceWinner == context.genesis) {
         val currentlyVisibleEquivocators: Set[ValidatorId] = state.finalizer.currentlyVisibleEquivocators
@@ -150,6 +151,6 @@ class NcbValidator private (
   }
 
   protected def scheduleNextWakeup(): Unit = {
-    context.scheduleNextBrickPropose(context.time() + state.brickProposeDelaysGenerator.next(), Unit)
+    context.scheduleWakeUp(context.time() + state.brickProposeDelaysGenerator.next(), Unit)
   }
 }

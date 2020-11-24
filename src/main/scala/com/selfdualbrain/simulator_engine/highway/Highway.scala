@@ -15,7 +15,7 @@ object Highway {
                   justifications: Iterable[Brick],
                   creator: ValidatorId,
                   prevInSwimlane: Option[Brick],
-                  targetBlock: NormalBlock,
+                  targetBlock: Block,
                   isOmega: Boolean
              ) extends AbstractBallot
 

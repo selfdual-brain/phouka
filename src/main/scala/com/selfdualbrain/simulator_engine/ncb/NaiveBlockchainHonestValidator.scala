@@ -213,7 +213,7 @@ class NaiveBlockchainHonestValidator private (
     }
   }
 
-  override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
+  override def onWakeUp(strategySpecificMarker: Any): Unit = {
     blockVsBallot.select() match {
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)
@@ -328,7 +328,7 @@ class NaiveBlockchainHonestValidator private (
   }
 
   protected def scheduleNextWakeup(): Unit = {
-    context.scheduleNextBrickPropose(context.time() + brickProposeDelaysGenerator.next(), Unit)
+    context.scheduleWakeUp(context.time() + brickProposeDelaysGenerator.next(), Unit)
   }
 
   //########################## J-DAG ##########################################

@@ -192,6 +192,14 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     //by default - do nothing
   }
 
+  //Integer exponentiation
+  protected def exp(x: Int, n: Int): Int = {
+    if(n == 0) 1
+    else if(n == 1) x
+    else if(n%2 == 0) exp(x*x, n/2)
+    else x * exp(x*x, (n-1)/2)
+  }
+
 }
 
 

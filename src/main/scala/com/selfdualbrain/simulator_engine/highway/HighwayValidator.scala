@@ -1,10 +1,11 @@
 package com.selfdualbrain.simulator_engine.highway
 
-import com.selfdualbrain.blockchain_structure.{ACC, BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Block, BlockchainNode, Brick, ValidatorId}
 import com.selfdualbrain.data_structures.{CloningSupport, DirectedGraphUtils}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.stats.MovingWindowBeepsCounter
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.transactions.BlockPayload
 
 object HighwayValidator {
 
@@ -52,6 +53,7 @@ object HighwayValidator {
     var currentRoundWrapUpTimepoint: SimTimepoint = _
     var currentRoundLeader: ValidatorId = _
     var currentRoundExponent: Int = _
+    var currentRoundLambdaMessageHasBeenReceived: Boolean = _
     var speedUpCounter: Int = _
     var exponentInertiaCounter: Int = _
     var targetRoundExponent: Int = _
@@ -82,6 +84,7 @@ object HighwayValidator {
       currentRoundWrapUpTimepoint = SimTimepoint.zero
       currentRoundLeader = 0
       currentRoundExponent = cf.bootstrapRoundExponent
+      currentRoundLambdaMessageHasBeenReceived = false
       speedUpCounter = 0
       exponentInertiaCounter = 0
       targetRoundExponent = cf.bootstrapRoundExponent
@@ -246,12 +249,13 @@ class HighwayValidator private (
     scheduleNextWakeup(beAggressive = true)
   }
 
-  override def onScheduledBrickCreation(strategySpecificMarker: Any): Unit = {
+  override def onWakeUp(strategySpecificMarker: Any): Unit = {
     val marker = strategySpecificMarker.asInstanceOf[WakeupMarker]
 
     marker match {
-      case WakeupMarker.Lambda(roundId) => publishNewBrick(shouldBeBlock = true, roundId, state.currentRoundWrapUpTimepoint)
-      case WakeupMarker.Omega(roundId) => omegaProcessing()
+      case WakeupMarker.Lambda(roundId) => publishNewBrick(role = BrickRole.Lambda, roundId, state.currentRoundWrapUpTimepoint)
+      case WakeupMarker.Omega(roundId) => publishNewBrick(role = BrickRole.Omega, round)
+
       case WakeupMarker.RoundWrapUp(roundId) => roundWrapUpProcessing()
     }
   }
@@ -264,9 +268,10 @@ class HighwayValidator private (
       brick match {
         case x: Highway.NormalBlock =>
           addBrickToSecondaryFinalizer(brick)
-          if (x.round == state.currentRoundId && x.creator == state.currentRoundLeader && x.creator != config.validatorId) {
+          if (x.round == state.currentRoundId && x.creator == state.currentRoundLeader && x.creator != config.validatorId && context.time() < state.currentRoundWrapUpTimepoint) {
             //caution: if round leader is a cloned copy of myself (i.e. an equivocator-via-bifurcation) I deliberately avoid sending the lambda-response
             //this way number of lambda responses given leader receives is at most n-1, where n is number of validators
+            state.currentRoundLambdaMessageHasBeenReceived = true
             lambdaResponseProcessing()
           }
         case x: Highway.Ballot =>
@@ -276,8 +281,15 @@ class HighwayValidator private (
   }
 
   def lambdaResponseProcessing(): Unit = {
-    state.secondaryFinalizer
+    //publish lambda-response message
+    publishNewBrick(role = BrickRole.LambdaResponse, state.currentRoundId, state.currentRoundEnd)
 
+    //schedule omega-message publishing (unless we are already past the round wrap-up point)
+    val timeNow = context.time()
+    if (timeNow < state.currentRoundWrapUpTimepoint) {
+      val omegaTimepoint = SimTimepoint(context.random.nextLong(state.currentRoundWrapUpTimepoint.micros - timeNow.micros))
+      context.scheduleWakeUp(omegaTimepoint, WakeupMarker.Omega(state.currentRoundId))
+    }
   }
 
   def omegaProcessing(): Unit = {
@@ -301,10 +313,17 @@ class HighwayValidator private (
   private def roundWrapUpProcessing(): Unit = {
     //if I am the leader, I publish the omega message now
     if (state.currentRoundLeader == config.validatorId)
-      publishNewBrick(shouldBeBlock = true, state.currentRoundId, state.currentRoundEnd)
+      publishNewBrick(role = BrickRole.Omega, state.currentRoundId, state.currentRoundEnd)
+
+    //if I am not the leader, but the lambda message for this round has not been received yet, I publish the omega message now
+    if (state.currentRoundLeader != config.validatorId && ! state.currentRoundLambdaMessageHasBeenReceived)
+      publishNewBrick(role = BrickRole.Omega, state.currentRoundId, state.currentRoundEnd)
 
     //switching the state to next round (round exponent logic happens here)
     prepareForNextRound()
+
+    //clearing the "lambda message received" flag
+    state.currentRoundLambdaMessageHasBeenReceived = false
   }
 
   /**
@@ -313,10 +332,10 @@ class HighwayValidator private (
     * We also handle round exponent auto-adjustment.
     */
   private def prepareForNextRound(): Unit = {
-    //calculate the id of next round
+    //calculate the id of next round (= the tick that my next round will start at)
     state.currentRoundId = state.currentRoundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)
 
-    //check who will be the leader of next round
+    //calculate who will be the leader
     state.currentRoundLeader = config.leadersSequencer.findLeaderForRound(state.currentRoundId)
 
     //auto-adjustment of my round exponent
@@ -326,6 +345,13 @@ class HighwayValidator private (
     val endOfRoundAsTick = state.currentRoundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)
     state.currentRoundEnd = SimTimepoint(endOfRoundAsTick * 1000)
     state.currentRoundWrapUpTimepoint = state.currentRoundEnd - state.effectiveOmegaMargin
+
+    //schedule the wake-up for lambda message creation (only if I am the leader)
+    if (state.currentRoundLeader == config.validatorId)
+      context.scheduleWakeUp(SimTimepoint(state.currentRoundId * 1000), WakeupMarker.Lambda(state.currentRoundId))
+
+    //schedule the wake-up for round wrap-up processing
+    context.scheduleWakeUp(state.currentRoundWrapUpTimepoint, WakeupMarker.RoundWrapUp(state.currentRoundId))
   }
 
   private def autoAdjustmentOfRoundExponent(): Unit = {
@@ -412,19 +438,11 @@ class HighwayValidator private (
     }
   }
 
-  //  //Integer exponentiation
-//  def exp(x: Int, n: Int): Int = {
-//    if(n == 0) 1
-//    else if(n == 1) x
-//    else if(n%2 == 0) exp(x*x, n/2)
-//    else x * exp(x*x, (n-1)/2)
-//  }
-
   /**
     * Calculates the length of a round for a given round exponent.
     * Returns round length as number of ticks.
     * Internally we just do integer exponentiation with base 2, implemented with bitwise shift.
-    *
+    *k
     * @param exponent must be within 0..62 interval
     * @return 2 ^^ exponent (as Long value)
     */
@@ -434,20 +452,19 @@ class HighwayValidator private (
     return 1L << exponent
   }
 
-
-  private def roundBoundary(round: Long): (SimTimepoint, SimTimepoint) = {
-    val start: SimTimepoint = SimTimepoint(round * config.roundLength)
-    val stop: SimTimepoint = start + config.roundLength
-//    return (start, stop)
-    ???
+  private def roundBoundary(roundId: Long): (SimTimepoint, SimTimepoint) = {
+    val start: SimTimepoint = SimTimepoint(roundId * 1000)
+    val stop: SimTimepoint = SimTimepoint(roundId + roundLengthAsNumberOfTicks(state.currentRoundExponent))
+    return (start, stop)
   }
 
   //################## PUBLISHING OF NEW MESSAGES ############################
 
-  protected def publishNewBrick(shouldBeBlock: Boolean, round: Long, deadline: SimTimepoint): Unit = {
-    val brick = createNewBrick(shouldBeBlock, round)
+  protected def publishNewBrick(role: BrickRole, round: Long, deadline: SimTimepoint): Unit = {
+    val brick = createNewBrick(role)
     if (context.time() <= deadline) {
       state.finalizer.addToLocalJdag(brick)
+      onBrickAddedToLocalJdag(brick, isLocallyCreated = true)
       context.broadcast(context.time(), brick)
       state.mySwimlane.append(brick)
       state.myLastMessagePublished = Some(brick)
@@ -457,32 +474,32 @@ class HighwayValidator private (
     }
   }
 
-  protected def createNewBrick(shouldBeBlock: Boolean, round: Long): Brick = {
+  protected def createNewBrick(role: BrickRole): Brick = {
     //simulation of "create new message" processing time
     context.registerProcessingTime(state.msgCreationCostGenerator.next())
     val creator: ValidatorId = config.validatorId
     state.mySwimlaneLastMessageSequenceNumber += 1
-    val forkChoiceWinner: Block = this.calculateCurrentForkChoiceWinner()
-
-    //we use "toSet" conversion in the middle to leave only distinct elements
-    //the conversion to immutable Array gives "Iterable" instance with smallest memory-footprint
-    val justifications: ArraySeq.ofRef[Brick] = new ArraySeq.ofRef[Brick](state.globalPanorama.honestSwimlanesTips.values.toSet.toArray)
     val timeNow = context.time()
-    val brick =
-      if (shouldBeBlock || forkChoiceWinner == context.genesis) {
-        val currentlyVisibleEquivocators: Set[ValidatorId] = state.globalPanorama.equivocators
+
+    val brick = role match {
+
+      case BrickRole.Lambda =>
+        val forkChoiceWinner: Block = state.finalizer.currentForkChoiceWinner()
+        val justifications: IndexedSeq[Brick] = state.finalizer.panoramaOfWholeJdagAsJustificationsList
+        val currentlyVisibleEquivocators: Set[ValidatorId] = state.finalizer.currentlyVisibleEquivocators
         val parentBlockEquivocators: Set[ValidatorId] =
           if (forkChoiceWinner == context.genesis)
             Set.empty
           else
-            state.panoramasBuilder.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
+            state.finalizer.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
         val payload: BlockPayload = config.blockPayloadBuilder.next()
-        LeadersSeq.NormalBlock(
+        Highway.NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
           timepoint = timeNow,
-          round,
+          state.currentRoundId,
+          state.currentRoundExponent,
           justifications,
           toBeSlashedInThisBlock,
           creator,
@@ -493,17 +510,41 @@ class HighwayValidator private (
           totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = state.brickHashGenerator.generateHash()
         )
-      } else
-        LeadersSeq.Ballot(
+
+      case BrickRole.LambdaResponse =>
+        val forkChoiceWinner: Block = state.secondaryFinalizer.currentForkChoiceWinner()
+        val justifications: IndexedSeq[Brick] = state.secondaryFinalizer.panoramaOfWholeJdagAsJustificationsList
+        Highway.Ballot(
           id = context.generateBrickId(),
           positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
           timepoint = context.time(),
-          round,
+          state.currentRoundId,
+          state.currentRoundExponent,
           justifications,
           creator,
           prevInSwimlane = state.myLastMessagePublished,
-          targetBlock = forkChoiceWinner.asInstanceOf[LeadersSeq.NormalBlock]
+          targetBlock = forkChoiceWinner,
+          isOmega = false
         )
+
+      case BrickRole.Omega =>
+        val forkChoiceWinner: Block = state.finalizer.currentForkChoiceWinner()
+        val justifications: IndexedSeq[Brick] = state.finalizer.panoramaOfWholeJdagAsJustificationsList
+        Highway.Ballot(
+          id = context.generateBrickId(),
+          positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
+          timepoint = context.time(),
+          state.currentRoundId,
+          state.currentRoundExponent,
+          justifications,
+          creator,
+          prevInSwimlane = state.myLastMessagePublished,
+          targetBlock = forkChoiceWinner,
+          isOmega = true
+        )
+
+    }
+
     return brick
   }
 
@@ -513,11 +554,11 @@ class HighwayValidator private (
     if (beAggressive) {
       val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch)
       val wakeUpPoint: Long = timeNow.micros + (context.random.nextDouble() * (stop - timeNow) / 2).toLong
-      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
+      context.scheduleWakeUp(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
     } else {
       val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch + 1)
       val wakeUpPoint: Long = start.micros + (context.random.nextDouble() * (stop - start) / 2).toLong
-      context.scheduleNextBrickPropose(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
+      context.scheduleWakeUp(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
     }
   }
 

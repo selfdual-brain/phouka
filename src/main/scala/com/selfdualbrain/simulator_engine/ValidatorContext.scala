@@ -40,12 +40,12 @@ trait ValidatorContext {
   def broadcast(timepointOfPassingTheBrickToCommsLayer: SimTimepoint, brick: Brick): Unit
 
   /**
-    * Schedules a wake-up event for itself.
+    * Schedules a wake-up event for the nested agent.
     *
     * @param wakeUpTimepoint must be equal or later than context.time()
     * @param strategySpecificMarker additional information carried with the wake-up event; this is specific to validator implementation
     */
-  def scheduleNextBrickPropose(wakeUpTimepoint: SimTimepoint, strategySpecificMarker: Any): Unit
+  def scheduleWakeUp(wakeUpTimepoint: SimTimepoint, strategySpecificMarker: Any): Unit
 
   /**
     * General way of sending private events (= events an agent schedules for itself).
