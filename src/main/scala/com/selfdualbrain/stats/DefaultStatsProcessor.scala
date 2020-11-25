@@ -122,14 +122,13 @@ class DefaultStatsProcessor(
           case EventPayload.Bifurcation(numberOfClones) =>
             val vid = agentId2validatorId(destination.address)
             if (! faultyValidatorsMap(vid)) {
-              faultyValidatorsMap(vid) = true
-              //todo: I forgot what I wanted to do here - investigate this shit
+              markValidatorAsFaulty(vid, timepoint)
             }
 
 
           case EventPayload.NodeCrash =>
             val vid = agentId2validatorId(destination.address)
-            faultyValidatorsMap(vid) = true
+            markValidatorAsFaulty(vid, timepoint)
         }
 
       case Event.Loopback(id, timepoint, agent, payload) =>
@@ -309,7 +308,7 @@ class DefaultStatsProcessor(
     assert (latencyMovingWindowStandardDeviation.length == lfbElementInfo.block.generation + 1)
   }
 
-  private def markValidatorAsFaulty(vid: ValidatorId, timepoint: SimTimepoint): Unit = { //todo: investigate why this method is not called - looks like a bug
+  private def markValidatorAsFaulty(vid: ValidatorId, timepoint: SimTimepoint): Unit = {
     faultyValidatorsMap(vid) = true
     faultyFreezingPoints(vid) = Some(timepoint)
 

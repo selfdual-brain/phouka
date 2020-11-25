@@ -5,7 +5,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 /**
-  * Super-fast "map-like" collection that internally uses ArrayBuffer.
+  * Super-fast "map-like" collection that internally uses an ArrayBuffer.
   * Conceptually this is a replacement for mutable.Map[Int,E] but really useful only if keys are "dense" in some <0,n> interval.
   *
   * @param initialSize initial size

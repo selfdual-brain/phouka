@@ -41,6 +41,8 @@ class FastIntMapWithAutoinit[E](initialSize: Int)(valuesInitializer: Int => E) e
 
   override def iterator: Iterator[(Int, E)] = storage.iterator.zipWithIndex collect {case (e,n) => (n,e)}
 
+  override def valuesIterator: Iterator[E] = storage.iterator
+
   private def lastIndexInUse: Int = storage.size - 1
 
   override def values: Iterable[E] = storage
