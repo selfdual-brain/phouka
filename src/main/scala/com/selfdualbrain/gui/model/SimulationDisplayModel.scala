@@ -1,7 +1,7 @@
 package com.selfdualbrain.gui.model
 
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.data_structures.{FastIntMap, FastIntMapWithAutoinit, FastMapOnIntInterval}
+import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
 import com.selfdualbrain.des.{Event, SimulationEngine}
 import com.selfdualbrain.gui.EventsFilter
 import com.selfdualbrain.gui_framework.EventsBroadcaster
@@ -13,30 +13,47 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
-  * This is the model for "simulation display" GUI. All the non-trivial GUI logic happens here.
-  * This model allows for different arrangements of actual forms and windows.
+  * This is a model underlying "simulation experiment GUI". All the non-trivial GUI logic happens here.
   *
-  * ============== Concepts ==============
-  * The GUI is centered around showing the log of events generated along a single simulation.
+  * ============== The general concept ==============
+  * GUI is centered around showing the log of events generated in a single simulation.
   * The simulation engine is an iterator of events. On every engine.next() a new event is produced.
   *
-  * Event ids are assigned sequentially along events actual creation inside the engine. On the other hand, events are subject
+  * ============== Event identifiers ==============
+  * Event ids are assigned sequentially inside the engine. The id is a number. These numbers correspond to chronology of engine
+  * internal operation, as opposed to the chronology of simulated time. On the other hand, events are subject
   * to DES-queue-implied sorting along the flow of simulated time. Therefore, when looking at the stream of events emitted by
-  * the engine, event ids are "shuffled". To help with this we distinguish step-id and event-id:
+  * the engine, event ids look "shuffled". To help with this we distinguish step-id and event-id:
   * - event-id is assigned at (internal) event creation
   * - step-id is assigned at the moment the event leaves the engine via engine.next()
   *
   * Therefore, if we run the engine in a loop and store every event in an Array, step-id will correspond exactly to the
-  * position of the event in the array, while event-id will appear "randomized".
+  * position of the event in the array, while event-id will appear somewhat "randomized".
   *
-  * In the simulation display we want to offer to the user full freedom in browsing the history of executed simulation.
-  * If needed, the used may also extend the simulation history by generating more events from the engine.
-  * In terms of the generated blockchain, "full freedom" means that the GUI offers 3-dimensional browsing:
+  * ============== Operation of the simulator as seen from the GUI perspective ==============
+  * The user can:
+  *   - define experiments
+  *   - run experiments
   *
-  * Dimension 1: selecting steps along the events log
-  * Dimension 2: selecting a validator to be observed
-  * Dimension 3: selecting a brick within the local jdag of a validator
+  * A running experiment is technically assembled as:
+  *   - an instance of SimulationEngine
+  *   - attached SimulationDisplayModel instance
+  *   - a collection of MVP components materializing the GUI windows, operation on top of SimulationDisplayModel instance
   *
+  * While the experiment is running, the user can:
+  *   - control the engine to execute given range of the simulation; the range can be extended any time
+  *   - browse the history & statistics of the simulation executed so far
+  *
+  * The running experiment is visualized and controlled with 2 top-level windows:
+  *   - experiment inspector: displays even log and statistics; also has controls for interaction with the engine
+  *   - blockchain graph: shows graphically blockchain snapshots
+  *
+  * GUI offers 3-dimensional browsing:
+  *   - dimension 1: selecting steps along the events log
+  *   - dimension 2: selecting a validator to be observed
+  *   - dimension 3: selecting a brick within the local jdag of a validator
+  *
+  * ### Implementation remark ###
   * The collection of all events is kept in the "allEvents" ArrayBuffer. The last step simulated so far (= emitted by the engine) we refer
   * to as "simulation horizon". The pointers (cursors) in all 3 browsing dimensions are:
   *
@@ -66,17 +83,12 @@ import scala.collection.mutable.ArrayBuffer
   * - adjust events filter
   * - export log to text file
   *
-  * Implementation remark: simulation engine uses Long value for representing step id. This makes very long simulations possible (without using the GUI).
+  * ### Implementation remark ###
+  * Simulation engine uses Long value for representing step id. This makes very long simulations possible (without using the GUI).
   * For simulations that are using GUI, we store all simulation steps produced by the engine in a single ArrayBuffer. JVM enforces the limit of array size
   * to 2147483647, i.e. whatever a 32-bit number can address. This establishes the limit on the number of steps that can be displayed in the GUI. To bypass
-  * this limit we would need to introduce some external storage (= a database). For now external storage is not supported.
-  *
-  * Because of this, within SimulationDisplayModel we represent stepId as Int and so we assume that only simulations not longer than what fits into Int are supported
-  * in the GUI.
-  *
-  * @param experimentConfig
-  * @param engine
-  * @param genesis
+  * this limit we would need to introduce some external storage (= a database). In this version of the simulator we do not use external storage. This implies
+  * a hard limit for maximal number of simulation steps the GUI can display. This limit is equal to Int.MaxValue.
   */
 class SimulationDisplayModel(
                               val experimentConfig: ExperimentConfig,
@@ -88,7 +100,7 @@ class SimulationDisplayModel(
                               maxNumberOfAgents: Int
                             ) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
 
-  //only-growing collection of (all) events: step-id ----> event
+  //ever-growing collection of (all) events: step-id ----> event
   private val allEvents = new FastMapOnIntInterval[Event[BlockchainNode, EventPayload]](expectedNumberOfEvents)
 
   //stepId ---> state snapshot

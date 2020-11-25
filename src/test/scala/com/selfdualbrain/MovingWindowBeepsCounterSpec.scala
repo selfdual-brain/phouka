@@ -1,6 +1,6 @@
 package com.selfdualbrain
 
-import com.selfdualbrain.stats.MovingWindowBeepsCounterWithHistory
+import com.selfdualbrain.data_structures.MovingWindowBeepsCounterWithHistory
 import com.selfdualbrain.time.TimeDelta
 
 import scala.util.Random

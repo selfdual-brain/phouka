@@ -1,8 +1,8 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{AbstractBallot, BlockchainNode, AbstractNormalBlock, ValidatorId}
-import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
+import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractNormalBlock, BlockchainNode, ValidatorId}
+import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval, MovingWindowBeepsCounterWithHistory}
 import com.selfdualbrain.des.{Event, SimulationObserver}
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -15,11 +15,11 @@ import scala.collection.mutable.ArrayBuffer
   * Implementation of "default" statistics for a simulation.
   *
   * Implementation remark: the stats we calculate here are straightforward and the calculations could be done way simpler.
-  * However, we do some substantial effort to evade performance bottlenecks - all calculations are incremental and done in constant time.
+  * However, we do some substantial effort to evade performance bottlenecks - all calculations are incremental and done in O(1).
   * In particular we use the following helper classes:
-  * TreeNodesByGenerationCounter - helps counting incrementally the number of blocks below certain generation (but this is done for all generations at once)
-  * MovingWindowBeepsCounter - helps counting finality events in a way that a moving-average of blocks-per-second performance metric can be calculated periodically
-  * CircularSummingBuffer - helps in implementing MovingWindowBeepsCounter
+  * - TreeNodesByGenerationCounter - helps counting incrementally the number of blocks below certain generation (but this is done for all generations at once)
+  * - MovingWindowBeepsCounter - helps counting finality events in a way that a moving-average of blocks-per-second performance metric can be calculated periodically
+  * - CircularSummingBuffer - helps in implementing MovingWindowBeepsCounter
   */
 class DefaultStatsProcessor(
                              latencyMovingWindow: Int, //number of lfb-chain elements
@@ -123,7 +123,7 @@ class DefaultStatsProcessor(
             val vid = agentId2validatorId(destination.address)
             if (! faultyValidatorsMap(vid)) {
               faultyValidatorsMap(vid) = true
-              //todo
+              //todo: I forgot what I wanted to do here - investigate this shit
             }
 
 
@@ -309,7 +309,7 @@ class DefaultStatsProcessor(
     assert (latencyMovingWindowStandardDeviation.length == lfbElementInfo.block.generation + 1)
   }
 
-  private def markValidatorAsFaulty(vid: ValidatorId, timepoint: SimTimepoint): Unit = {
+  private def markValidatorAsFaulty(vid: ValidatorId, timepoint: SimTimepoint): Unit = { //todo: investigate why this method is not called - looks like a bug
     faultyValidatorsMap(vid) = true
     faultyFreezingPoints(vid) = Some(timepoint)
 

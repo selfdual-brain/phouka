@@ -1,9 +1,8 @@
 package com.selfdualbrain.simulator_engine.highway
 
 import com.selfdualbrain.blockchain_structure.{Block, BlockchainNode, Brick, ValidatorId}
-import com.selfdualbrain.data_structures.{CloningSupport, DirectedGraphUtils}
+import com.selfdualbrain.data_structures.{CloningSupport, DirectedGraphUtils, MovingWindowBeepsCounter}
 import com.selfdualbrain.simulator_engine._
-import com.selfdualbrain.stats.MovingWindowBeepsCounter
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.transactions.BlockPayload
 

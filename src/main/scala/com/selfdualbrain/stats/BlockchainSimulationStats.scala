@@ -13,15 +13,17 @@ import com.selfdualbrain.time.SimTimepoint
   * ==========================================================================================
   * Remark: there is some inherent complexity of the semantics of statistics coming from the phenomenon of "faulty validators".
   * For a "vanilla" blockchain with all validators following the same "honest" behaviour, things are simple because
-  * one validator = one blockchain node. On the other hand, when we go into simulation of "faulty" things get hairy.
+  * one validator = one blockchain node. On the other hand, when we go into the simulation of "faulty" - things get hairy.
+  *
   * As an example of problems we run into when faulty behaviour simulation is enabled, consider the fundamental concept of "latency".
   * From a general point of view in any blockchain we have two "latencies"
   * - transaction-level-latency: time between (1) transaction is sent by a client to blockchain node and (2) transaction gets finalized
   * - block-level-latency: time between (1) block is proposed and (2) block gets finalized
+  *
   * These times are of course going to be different for every transaction/block. Let us focus on the block-level-latency case. These times
   * can be seen as a random variable and we would like to calculate the distribution of this random variable, or at least some typical
-  * parameters of this distribution, such as mean and standard deviation. In the case of a single blockchain node V the dataset
-  * to be considered is easy to pick - we need to consider all blocks finalized up to some point in time, then for every such block we
+  * parameters of this distribution such as mean value and standard deviation. In the case of a single blockchain node V the dataset
+  * to be considered is easy to pick - we need to take all blocks finalized up to some point in time, then for every such block we
   * take the distance on the timeline between proposal (done by V) and finalization (as observed at V). Troubles show up when we would like
   * to measure the distribution of latency across all nodes. What is the set of times we should take as the starting point of this calculation ?
   * When all blockchain nodes are honest, we could take into account only blocks that are seen as finalized on ALL nodes, then take
@@ -33,6 +35,7 @@ import com.selfdualbrain.time.SimTimepoint
   * into the latency distribution we are attempting to measure. Possibly we could then eliminate faulty nodes from the "working set", and so measure
   * the distribution of latency along the honest/healthy nodes only ? But this is also tricky - because when exactly a node can be considered faulty ?
   *
+  * //todo: 2 lines below are not exactly true - more accurate explanation needed; additionally the concept of "stats freezing" must be explained here
   * We evade that sort of troubles by rather ad-hoc approach to throw faulty validators out of calculation. The validator is considered faulty when
   * the engine marks it as faulty. Currently this happens when the validator bifurcates or its only node crashes.
   *

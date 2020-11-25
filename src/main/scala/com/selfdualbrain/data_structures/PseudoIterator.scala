@@ -1,5 +1,6 @@
 package com.selfdualbrain.data_structures
 
+//todo: explanation needed
 trait PseudoIterator[+E] {
   self =>
 

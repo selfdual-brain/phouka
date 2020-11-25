@@ -1,4 +1,4 @@
-package com.selfdualbrain.stats
+package com.selfdualbrain.data_structures
 
 /**
   * Circular int buffer that keeps track of total sum of its elements.

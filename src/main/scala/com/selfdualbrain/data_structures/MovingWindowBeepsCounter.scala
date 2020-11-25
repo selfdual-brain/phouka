@@ -1,4 +1,4 @@
-package com.selfdualbrain.stats
+package com.selfdualbrain.data_structures
 
 import scala.collection.mutable
 

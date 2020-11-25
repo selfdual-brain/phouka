@@ -1,7 +1,3 @@
-/*
- * Copyright CasperLabs LTD, 2019
- */
-
 package com.selfdualbrain.randomness
 
 import scala.reflect.ClassTag
