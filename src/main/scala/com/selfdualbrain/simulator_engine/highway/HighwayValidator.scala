@@ -242,12 +242,12 @@ class HighwayValidator private (
   override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
     val validatorInstance = new HighwayValidator(bNode, vContext, config, state.createDetachedCopy())
     val nextRoundId: Tick = state.currentRoundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)
-    validatorInstance.prepareForRound(nextRoundId)
+    validatorInstance.prepareForRound(nextRoundId, shouldPerformExponentAutoAdjustment = false)
     return validatorInstance
   }
 
   override def startup(): Unit = {
-    prepareForRound(0L)
+    prepareForRound(0L, shouldPerformExponentAutoAdjustment = false)
   }
 
   override def onWakeUp(strategySpecificMarker: Any): Unit = {
@@ -319,7 +319,7 @@ class HighwayValidator private (
     val nextRoundId: Tick = state.currentRoundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)
 
     //switching the state to next round (round exponent logic happens here)
-    prepareForRound(nextRoundId)
+    prepareForRound(nextRoundId, shouldPerformExponentAutoAdjustment = true)
   }
 
   /**
@@ -327,7 +327,7 @@ class HighwayValidator private (
     * We update "current round" and "current round leader" variables accordingly.
     * We also handle round exponent auto-adjustment.
     */
-  private def prepareForRound(roundId: Tick): Unit = {
+  private def prepareForRound(roundId: Tick, shouldPerformExponentAutoAdjustment: Boolean): Unit = {
     //calculate the id of next round (= the tick that my next round will start at)
     state.currentRoundId = roundId
 
@@ -335,7 +335,8 @@ class HighwayValidator private (
     state.currentRoundLeader = config.leadersSequencer.findLeaderForRound(roundId)
 
     //auto-adjustment of my round exponent
-    autoAdjustmentOfRoundExponent()
+    if (shouldPerformExponentAutoAdjustment)
+      autoAdjustmentOfRoundExponent()
 
     //calculate round end and round wrap-up timepoints
     val endOfRoundAsTick = roundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)

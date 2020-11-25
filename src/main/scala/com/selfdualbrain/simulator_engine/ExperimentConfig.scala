@@ -72,7 +72,9 @@ object ProposeStrategyConfig {
                       omegaWaitingMargin: TimeDelta,
                       exponentAccelerationPeriod: Int,
                       exponentSlowdownPeriod: Int,
-                      droppedBricksMovingAverageRange: Int,
+                      exponentInertia: Int,
+                      runaheadTolerance: Int,
+                      droppedBricksMovingAverageWindow: TimeDelta,
                       droppedBricksAlarmLevel: Double,
                       droppedBricksAlarmSuppressionPeriod: Int
                     ) extends ProposeStrategyConfig

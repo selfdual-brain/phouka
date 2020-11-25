@@ -8,6 +8,8 @@ import com.selfdualbrain.des.{ObservableSimulationEngine, SimulationEngineChassi
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelays, NetworkModel, SymmetricLatencyBandwidthGraphNetwork}
 import com.selfdualbrain.randomness.{IntSequenceGenerator, LongSequenceGenerator}
+import com.selfdualbrain.simulator_engine.highway.HighwayValidatorsFactory
+import com.selfdualbrain.simulator_engine.leaders_seq.LeadersSeqValidatorsFactory
 import com.selfdualbrain.simulator_engine.ncb.{Ncb, NcbValidatorsFactory}
 import com.selfdualbrain.stats.{BlockchainSimulationStats, DefaultStatsProcessor}
 import com.selfdualbrain.transactions.{BlockPayloadBuilder, TransactionsStream}
@@ -24,7 +26,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   private val weightsArray: Array[Ether] = new Array[Ether](config.numberOfValidators)
   for (i <- weightsArray.indices)
     weightsArray(i) = weightsGenerator.next()
-  private val weightsOfValidators: ValidatorId => Ether = (vid: ValidatorId) => weightsArray(vid)
+  private val weightsOfValidatorsAsFunction: ValidatorId => Ether = (vid: ValidatorId) => weightsArray(vid)
+  private val weightsOfValidatorsAsMap: Map[ValidatorId, Ether] = (weightsArray.toSeq.zipWithIndex map {case (weight,vid) => (vid,weight)}).toMap
   val totalWeight: Ether = weightsArray.sum
   private val relativeWeightsOfValidators: ValidatorId => Double = (vid: ValidatorId) => weightsArray(vid).toDouble / totalWeight
   val (ackLevel: Int, relativeFTT, absoluteFTT: Ether) = config.finalizer match {
@@ -42,17 +45,19 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
     }
   }
   val networkModel: NetworkModel[BlockchainNode, Brick] = buildNetworkModel()
-  val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(config.disruptionModel, randomGenerator, absoluteFTT, weightsOfValidators, config.numberOfValidators)
+  val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(config.disruptionModel, randomGenerator, absoluteFTT, weightsOfValidatorsAsFunction, config.numberOfValidators)
   private val computingPowersGenerator: LongSequenceGenerator = LongSequenceGenerator.fromConfig(config.nodesComputingPowerModel, randomGenerator)
   private val runForkChoiceFromGenesis: Boolean = config.forkChoiceStrategy match {
     case ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized => false
     case ForkChoiceStrategy.IteratedBGameStartingAtGenesis => true
   }
+
   val validatorsFactory: ValidatorsFactory = config.bricksProposeStrategy match {
+
     case ProposeStrategyConfig.NaiveCasper(brickProposeDelays, blocksFractionAsPercentage) =>
       new NcbValidatorsFactory(
         config.numberOfValidators,
-        weightsOfValidators,
+        weightsOfValidatorsAsFunction,
         totalWeight,
         blocksFractionAsPercentage,
         runForkChoiceFromGenesis,
@@ -67,9 +72,49 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.msgBufferSherlockMode
       )
 
-    case ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds(roundLength) => ??? //todo
+    case ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds(roundLength) =>
+      new LeadersSeqValidatorsFactory(
+        config.numberOfValidators,
+        weightsOfValidatorsAsFunction,
+        totalWeight,
+        runForkChoiceFromGenesis,
+        relativeFTT,
+        absoluteFTT,
+        ackLevel,
+        blockPayloadGenerator,
+        config.brickValidationCostModel,
+        config.brickCreationCostModel,
+        computingPowersGenerator,
+        config.msgBufferSherlockMode,
+        roundLength,
+        new LeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap)
+      )
 
-    case ProposeStrategyConfig.Highway(initialRoundExponent, omegaDelay, accelerationPeriod, slowdownPeriod) => ??? //todo
+    case c: ProposeStrategyConfig.Highway =>
+      new HighwayValidatorsFactory(
+        config.numberOfValidators,
+        weightsOfValidatorsAsFunction,
+        totalWeight,
+        runForkChoiceFromGenesis,
+        relativeFTT,
+        absoluteFTT,
+        ackLevel,
+        blockPayloadGenerator,
+        config.brickValidationCostModel,
+        config.brickCreationCostModel,
+        computingPowersGenerator,
+        config.msgBufferSherlockMode,
+        new LeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap),
+        c.initialRoundExponent,
+        c.exponentAccelerationPeriod,
+        c.runaheadTolerance,
+        c.exponentInertia,
+        c.omegaWaitingMargin,
+        c.droppedBricksMovingAverageWindow,
+        c.droppedBricksAlarmLevel,
+        c.droppedBricksAlarmSuppressionPeriod
+      )
+
   }
 
   val genesis: AbstractGenesis = config.bricksProposeStrategy match {
@@ -125,7 +170,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         throughputMovingWindow,
         throughputCheckpointsDelta,
         config.numberOfValidators,
-        weightsOfValidators,
+        weightsOfValidatorsAsFunction,
         absoluteFTT,
         totalWeight
       )
