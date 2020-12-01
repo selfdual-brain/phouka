@@ -108,7 +108,7 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       case SimulationDisplayModel.Ev.StepSelectionChanged(step) =>
         refreshDataSnapshot()
         trigger(SmartTable.DataEvent.GeneralDataChange)
-      case SimulationDisplayModel.Ev.ValidatorSelectionChanged(vid) =>
+      case SimulationDisplayModel.Ev.NodeSelectionChanged(vid) =>
         refreshDataSnapshot()
         trigger(SmartTable.DataEvent.GeneralDataChange)
       case other =>

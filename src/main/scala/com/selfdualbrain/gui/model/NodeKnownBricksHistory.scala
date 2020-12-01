@@ -7,7 +7,7 @@ import scala.collection.mutable.ArrayBuffer
 
 /**
   * When the user picks an event on the simulation log (and a validator) the GUI will display the "state of the world (as seen by this validator)"
-  * at that selected moment of simulation. In particular, the brickdag graph will be rendered for that specific state of the worls. Therefore,
+  * at that selected moment of simulation. In particular, the brickdag graph will be rendered for that specific state of the world. Therefore,
   * we need to restore somehow the set of "known bricks" for a validator at selected point in time.
   *
   * Technically, this could be done by either keeping snapshots or calculating this set on-the-fly by simulation log processing. For several reasons
@@ -28,15 +28,14 @@ class NodeKnownBricksHistory(expectedNumberOfBricks: Int, expectedNumberOfSimula
   private val snapshots = new FastMapOnIntInterval[Brick](expectedNumberOfBricks)
   //serves as a map: stepId => position in the snapshots; so for every step we know what si
   private val step2snapshot = new ArrayBuffer[Int](expectedNumberOfSimulationSteps)
+  //for given brickId this map tells the earliest snapshot where this brick is known
   private val brickId2snapshot = new FastIntMap[Int](expectedNumberOfBricks)
   private var snapshotCounter: Int = -1
   private var lastStepKnown: Int = -1
 
-  //  private var biggestBrickIdKnown: Int = -1
-
   def append(step: Int, brick: Brick): Unit = {
-    assert (step > lastStepKnown)
-    assert (! brickId2snapshot.contains(brick.id))
+    assert (step > lastStepKnown) //enforce that steps are processed in monotonic sequence
+    assert (! brickId2snapshot.contains(brick.id)) //every brick should be registered only once
 
     lastStepKnown = step
     snapshotCounter += 1

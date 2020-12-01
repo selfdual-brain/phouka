@@ -20,8 +20,8 @@ object EventPayload {
 
   //SEMANTIC
   case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends EventPayload(EventTag.DIRECT_ACCEPT)
-  case class AddedIncomingBrickToMsgBuffer(bufferedBrick: Brick, missingDependencies: Iterable[Brick], bufTransition: MsgBufferTransition)  extends EventPayload(EventTag.ADDED_ENTRY_TO_BUF)
-  case class AcceptedIncomingBrickAfterBuffering(bufferedBrick: Brick, bufTransition: MsgBufferTransition) extends EventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
+  case class AddedIncomingBrickToMsgBuffer(bufferedBrick: Brick, missingDependencies: Iterable[Brick], bufferSnapshotAfter: MsgBufferSnapshot)  extends EventPayload(EventTag.ADDED_ENTRY_TO_BUF)
+  case class AcceptedIncomingBrickAfterBuffering(bufferedBrick: Brick, bufferSnapshotAfter: MsgBufferSnapshot) extends EventPayload(EventTag.REMOVED_ENTRY_FROM_BUF)
   case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends EventPayload(EventTag.PRE_FINALITY)
   case class BlockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit) extends EventPayload(EventTag.FINALITY)
   case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends EventPayload(EventTag.EQUIVOCATION)
@@ -82,9 +82,9 @@ object EventTag {
     NETWORK_CONNECTION_RESTORED -> "network connection restored"
   )
 
-  def of(event: Event[ValidatorId, EventPayload]): Int = event.payload.filteringTag
+  def of(event: Event[BlockchainNode, EventPayload]): Int = event.payload.filteringTag
 
-  def asString(event: Event[ValidatorId, EventPayload]): String = collection(EventTag.of(event))
+  def asString(event: Event[BlockchainNode, EventPayload]): String = collection(EventTag.of(event))
 
   def tag2description(eventTag: Int): String = collection(eventTag)
 }

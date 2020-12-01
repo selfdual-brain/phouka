@@ -26,6 +26,7 @@ abstract class SimulationSetup {
   def engine: ObservableSimulationEngine[BlockchainNode, EventPayload]
   def guiCompatibleStats: Option[BlockchainSimulationStats]
   def genesis: AbstractGenesis
+  def node2validator(node: BlockchainNode): ValidatorId
 }
 
 

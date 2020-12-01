@@ -136,10 +136,8 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
       runBufferPruningCascadeFor(msg)
     } else {
       if (config.msgBufferSherlockMode) {
-        val bufferTransition = doBufferOp {
-          state.messagesBuffer.addMessage(msg, missingDependencies)
-        }
-        context.addOutputEvent(context.time(), EventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferTransition))
+        val bufferSnapshot = doBufferOp {state.messagesBuffer.addMessage(msg, missingDependencies)}
+        context.addOutputEvent(context.time(), EventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferSnapshot))
       } else {
         state.messagesBuffer.addMessage(msg, missingDependencies)
       }
@@ -159,9 +157,9 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
         this.onBrickAddedToLocalJdag(nextBrick, isLocallyCreated = false)
         val waitingForThisOne = state.messagesBuffer.findMessagesWaitingFor(nextBrick)
         if (config.msgBufferSherlockMode) {
-          val bufferTransition = doBufferOp {state.messagesBuffer.fulfillDependency(nextBrick)}
+          val bufferSnapshotAfter = doBufferOp {state.messagesBuffer.fulfillDependency(nextBrick)}
           if (nextBrick != msg)
-            context.addOutputEvent(context.time(), EventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferTransition))
+            context.addOutputEvent(context.time(), EventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferSnapshotAfter))
         } else {
           state.messagesBuffer.fulfillDependency(nextBrick)
         }
@@ -171,19 +169,16 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     }
   }
 
-  private val nopTransition = MsgBufferTransition(Map.empty, Map.empty)
+  private val emptyBufferSnapshot: MsgBufferSnapshot = Map.empty
 
-  protected def doBufferOp(operation: => Unit): MsgBufferTransition = {
+  protected def doBufferOp(operation: => Unit): MsgBufferSnapshot =
     if (config.msgBufferSherlockMode) {
-      val snapshotBefore = state.messagesBuffer.snapshot
       operation
-      val snapshotAfter = state.messagesBuffer.snapshot
-      return MsgBufferTransition(snapshotBefore, snapshotAfter)
+      state.messagesBuffer.snapshot
     } else {
       operation
-      return nopTransition
+      emptyBufferSnapshot
     }
-  }
 
   //########################## J-DAG ##########################################
 

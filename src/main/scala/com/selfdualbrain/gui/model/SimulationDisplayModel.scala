@@ -4,12 +4,13 @@ import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
 import com.selfdualbrain.des.{Event, SimulationEngine}
 import com.selfdualbrain.gui.EventsFilter
+import com.selfdualbrain.gui.model.SimulationDisplayModel.SimulationEngineStopCondition
 import com.selfdualbrain.gui_framework.EventsBroadcaster
-import com.selfdualbrain.simulator_engine._
+import com.selfdualbrain.simulator_engine.{EventPayload, _}
 import com.selfdualbrain.stats.{BlockchainSimulationStats, ValidatorStats}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.util.RepeatUntilExitCondition
 
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -50,8 +51,8 @@ import scala.collection.mutable.ArrayBuffer
   *
   * GUI offers 3-dimensional browsing:
   *   - dimension 1: selecting steps along the events log
-  *   - dimension 2: selecting a validator to be observed
-  *   - dimension 3: selecting a brick within the local jdag of a validator
+  *   - dimension 2: selecting a blockchain node to be observed
+  *   - dimension 3: selecting a brick within the local jdag of a selected node
   *
   * ### Implementation remark ###
   * The collection of all events is kept in the "allEvents" ArrayBuffer. The last step simulated so far (= emitted by the engine) we refer
@@ -80,7 +81,7 @@ import scala.collection.mutable.ArrayBuffer
   * - select observed validator
   * - select brick from the jdag
   * - save current graph as image
-  * - adjust events filter
+  * - update events filter
   * - export log to text file
   *
   * ### Implementation remark ###
@@ -97,50 +98,55 @@ class SimulationDisplayModel(
                               genesis: AbstractGenesis,
                               expectedNumberOfBricks: Int,
                               expectedNumberOfEvents: Int,
-                              maxNumberOfAgents: Int
+                              maxNumberOfAgents: Int,
+                              lfbChainMaxLengthEstimation: Int,
+                              node2validator: BlockchainNode => ValidatorId
                             ) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
+
+  import SimulationDisplayModel.Ev
 
   //ever-growing collection of (all) events: step-id ----> event
   private val allEvents = new FastMapOnIntInterval[Event[BlockchainNode, EventPayload]](expectedNumberOfEvents)
 
+  //Subset of all-events - obtained via applying current filter. This is what "events log" table is showing in the main window.
+  //This collection is recalculated from scratch after every filter change.
+  private var filteredEvents = new ArrayBuffer[(Int, Event[BlockchainNode, EventPayload])]
+
   //stepId ---> state snapshot
-  //for step x we keep the snapshot of e.loggingAgent, where e is the event corresponding to x
+  //for step (x,e) we keep the snapshot of e.loggingAgent
   //if there is no logging agent, the state snapshot is None
   private val agentStateSnapshots = new FastIntMap[AgentStateSnapshot](expectedNumberOfEvents)
 
   //agent id ---> bricks history
+  //for every agent we have an instance of NodeKnownBricksHistory, which is a collection of brick-set snapshots
+  //snapshots cover sets of bricks that are in the local jdag
+  //caution: please notice that when a brick in the messages buffer, it is NOT in the jdag YET, so it will not be included in the snapshot YET
   private val agent2bricksHistory = new FastMapOnIntInterval[NodeKnownBricksHistory](maxNumberOfAgents)
-//  for (i <- 0 until experimentConfig.numberOfValidators)
-//    agent2bricksHistory(i) = new NodeKnownBricksHistory(expectedNumberOfBricks, expectedNumberOfEvents)
+  for (i <- 0 until experimentConfig.numberOfValidators)
+    agent2bricksHistory(i) = new NodeKnownBricksHistory(expectedNumberOfBricks, expectedNumberOfEvents)
 
-  //This array is used as a map: validator-id ----> array-buffer.
-  //(where the key is validator id - and it corresponds to array index).
-  //For a given validator, the array buffer contains all summits observed by this validator so far (established along the LFB chain).
-  //Position in the buffer corresponds to generation of LFB chain element,
-  //i.e in the cell 13 there is summit ending b-game for LFB-chain element at height 13
-  //and at cell 0 is the summit for b-game anchored at Genesis.
-  private val summits = new FastMapOnIntInterval[ArrayBuffer[ACC.Summit]](experimentConfig.numberOfValidators)
-  for (vid <- 0 until experimentConfig.numberOfValidators)
-    summits(vid) = new ArrayBuffer[ACC.Summit]
+  //This is a map: node-id ----> map-of-summits-for-this-node
+  //For given node, its map-of-summits is a map: lfb-chain-element-generation -----> summit-established-for-this-element
+  private val summits = new FastMapOnIntInterval[FastMapOnIntInterval[ACC.Summit]](experimentConfig.numberOfValidators)
+  for (i <- 0 until experimentConfig.numberOfValidators)
+    summits(i) = new FastMapOnIntInterval[ACC.Summit](lfbChainMaxLengthEstimation)
 
-  //subset of all-events, obtained via filtering; this is what "events log" table is showing
-  //gets re-populated from scratch every time filter is changed
-  private var filteredEvents = new ArrayBuffer[(Int, Event[ValidatorId, EventPayload])]
+  //The whole GUI shows the state of the simulation after selectedStep execution.
+  private var selectedStep: Long = 0
 
-  //the id of validator for which the jdag graph is displayed
-  private var currentlyObservedValidator: ValidatorId = 0
+  //The id of current node (= for which the jdag graph is displayed).
+  private var selectedNode: BlockchainNode = BlockchainNode(0)
 
-  //current events filter in use
-  private var eventsFilter: EventsFilter = EventsFilter.Standard(Set.empty, takeAllValidatorsFlag = true, Set.empty, takeAllEventsFlag = true)
+  //Current events filter (applied to restrict visible subset of events).
+  private var eventsFilter: EventsFilter = EventsFilter.Standard(Set.empty, takeAllNodesFlag = true, Set.empty, takeAllEventsFlag = true)
 
+  //Currently selected brick (in the jdag window). None = no selection.
   private var selectedBrick: Option[Brick] = None
-
-  private var observedValidatorRenderedState: RenderedValidatorState = new RenderedValidatorState
 
   private var simulationEngineStopCondition: SimulationEngineStopCondition = new SimulationEngineStopCondition.NextNumberOfSteps(20)
 
   /**
-    * Keeps snapshot of whatever information we want to show about a blockchain node (along the history of simulation).
+    * Keeps the snapshot of blockchain node information we want to display in the GUI after selecting an event in the log.
     * We keep one snapshot per simulation step.
     * Caution: since one simulation step only changes stats of one blockchain node, we just keep the snapshot for this single node.
     */
@@ -158,7 +164,7 @@ class SimulationDisplayModel(
                                acceptedBricks: Int,
                                acceptedBlocks: Int,
                                acceptedBallots: Int,
-                               bricksWaitingInTheBuffer: Int,
+                               msgBufferSnapshot: MsgBufferSnapshot,
                                lastBrickPublished: Option[Brick],
                                ownBlocksFinalized: Int,
                                ownBlocksTentative: Int,
@@ -166,178 +172,11 @@ class SimulationDisplayModel(
                                isEquivocator: Boolean,
                                lfbChainLength: Int,
                                lastFinalitySummit: Option[ACC.Summit],
-                               currentBGameAnchor: Block,
+                               currentBGameAnchor: Block,//this is just last finalized block
                                currentBGameLastSummit: Option[ACC.Summit],
-                               forkChoiceWinner: Block
+                               forkChoiceWinner: Block,
+                               panorama: ACC.Panorama
                                )
-
-  /**
-    * Represents observed validator state as inferred from events log.
-    * Caution: this class is mutable. As the user moves the "selected event" on the events log table, we accordingly
-    * update the RenderedValidatorState by incremental processing of events.
-    * Important remark: when the selected event is "step N" we calculate the state so that all steps from 0 to N (inclusive) were executed
-    */
-  @deprecated
-  class RenderedValidatorState {
-
-    //number of step which is currently highlighted
-    //this determines "point in time" that is visualized/described in GUI
-    //in particular the jdag graphical presentation is reflecting the state of "currently observed validator"
-    //at the (simulated) timepoint defined by selected event
-    private var selectedStep: Int = 0
-
-    //set of bricks that are to be visually displayed in the "jdag graph" window
-    //this set is incrementally updated every time the user changes "selected event";
-    //we perform a complete recalculation of this set from scratch every time the user re-selects "currently observed validator"
-    private val knownBricks: mutable.Set[Brick] = new mutable.HashSet[Brick]()
-
-    private var msgBufferSnapshot: MsgBufferSnapshot = Map.empty
-
-    private var lastPartialSummitForCurrentBGame: Option[ACC.Summit] = None
-
-    private var lastFinalizedBlock: Block = genesis
-
-    private val equivocators: mutable.Set[ValidatorId] = new mutable.HashSet[ValidatorId]()
-
-    private var equivocationCatastrophe: Boolean = false
-
-    def currentStep: Int = selectedStep
-
-    def isInJdag(brick: Brick): Boolean = knownBricks.contains(brick)
-
-    def currentMsgBufferSnapshot: MsgBufferSnapshot = msgBufferSnapshot
-
-    //returns a pair: (last finalized block, partial summit for next finalized block
-    def currentFinalitySituation: (Block, Option[ACC.Summit]) = (lastFinalizedBlock, lastPartialSummitForCurrentBGame)
-
-    def knownEquivocators: Iterable[ValidatorId] = equivocators.toSeq
-
-    def isAfterEquivocationCatastrophe: Boolean = equivocationCatastrophe
-
-    //moving state one step into the future
-    def stepForward(): Unit = {
-      if (selectedStep == allEvents.length - 1)
-        advanceTheSimulationBy(10)
-
-      selectedStep += 1
-
-      allEvents(selectedStep) match {
-        case Event.External(id, timepoint, destination, payload) => //do nothing
-
-        case Event.Transport(id, timepoint, source, destination, payload) =>
-          payload match {
-            case EventPayload.WakeUpForCreatingNewBrick => //do nothing
-            case EventPayload.BrickDelivered(block) => //do nothing
-          }
-
-        case Event.Semantic(id, timepoint, source, payload) =>
-          payload match {
-            case EventPayload.BrickProposed(forkChoiceWinner, brick) =>
-              knownBricks += brick
-            case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
-              knownBricks += brick
-            case EventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
-              msgBufferSnapshot = bufTransition.snapshotAfter
-            case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
-              msgBufferSnapshot = bufTransition.snapshotAfter
-            case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
-              lastPartialSummitForCurrentBGame = Some(partialSummit)
-            case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
-              lastFinalizedBlock = finalizedBlock
-              lastPartialSummitForCurrentBGame = None
-            case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
-              equivocators += evilValidator
-            case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
-              equivocationCatastrophe = true
-          }
-      }
-    }
-
-    //moving state one step into the past
-    def stepBackward(): Unit = {
-      if (selectedStep == 0)
-        return //we are already at the beginning
-
-      allEvents(selectedStep) match {
-        case Event.External(id, timepoint, destination, payload) => //do nothing
-
-        case Event.Transport(id, timepoint, source, destination, payload) =>
-          payload match {
-            case EventPayload.WakeUpForCreatingNewBrick => //do nothing
-            case EventPayload.BrickDelivered(block) => //do nothing
-          }
-
-        case Event.Semantic(id, timepoint, source, payload) =>
-          payload match {
-            case EventPayload.BrickProposed(forkChoiceWinner, brick) =>
-              knownBricks -= brick
-            case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
-              knownBricks -= brick
-            case EventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
-              msgBufferSnapshot = bufTransition.snapshotBefore
-            case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
-              msgBufferSnapshot = bufTransition.snapshotBefore
-            case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
-              lastPartialSummitForCurrentBGame = undoPreFinalityStep(selectedStep)
-            case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
-              val (lfb, partialSummit) = undoFinalityStep(selectedStep)
-              lastFinalizedBlock = lfb
-              lastPartialSummitForCurrentBGame = partialSummit
-            case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
-              equivocators -= evilValidator
-            case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
-              equivocationCatastrophe = false
-          }
-      }
-
-      selectedStep -= 1
-    }
-
-    //finds previous "partial summit" value
-    private def undoPreFinalityStep(step: Int): Option[ACC.Summit] = {
-      for (i <- step to 0 by -1) {
-        allEvents(i) match {
-          case Event.Semantic(id, timepoint, source, payload) =>
-            payload match {
-              case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
-                return Some(partialSummit)
-              case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
-                return None
-              case other =>
-              //ignore
-            }
-
-          case _ =>
-          //ignore
-        }
-      }
-      //we are back at the beginning of simulation
-      return None
-    }
-
-    //finds previous finalized block and "partial summit" value
-    private def undoFinalityStep(step: Int): (Block, Option[ACC.Summit]) = {
-      for (i <- step to 0 by -1) {
-        allEvents(i) match {
-          case Event.Semantic(id, timepoint, source, payload) =>
-            payload match {
-              case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
-                return (bGameAnchor, Some(partialSummit))
-              case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
-                return (finalizedBlock, None)
-              case other =>
-              //ignore
-            }
-
-          case _ =>
-          //ignore
-        }
-      }
-      //we are back at the beginning of simulation
-      return (genesis, None)
-    }
-
-  }
 
 //################################ PUBLIC ################################################
 
@@ -353,35 +192,61 @@ class SimulationDisplayModel(
   def simulationHorizon: Int = engine.lastStepExecuted.toInt //for the GUI, we must assume that the number of steps in within Int range (this limitation is not present in the engine itself)
 
   //runs the engine to produce requested portion of steps, i.e. we extend the "simulation horizon"
-  //returns the id of last step executed (coincides with the position of last element in allEvents collection)
-  def advanceTheSimulationBy(numberOfSteps: Int): Int = {
+  def advanceTheSimulation(stopCondition: SimulationEngineStopCondition): Unit = {
+    val stopConditionChecker = stopCondition.createNew(engine)
     val eventsTableInsertedRowsBuffer = new ArrayBuffer[Int]
-    for ((step,event) <- engine.take(numberOfSteps)) {
+    RepeatUntilExitCondition {
+      //pull next step from the engine and store it
+      val (step, event) = engine.next()
       val stepAsInt: Int = step.toInt
-      if (step.toInt == Int.MaxValue)
-        throw new RuntimeException(s"reached the end of capacity of simulator GUI by hitting stepId == Int.MaxValue")
-      allEvents.append(event)
+      allEvents += stepAsInt -> event
+
+      //update filtered events collection
       if (eventsFilter.isEventIncluded(event)) {
-        eventsAfterFiltering.append((stepAsInt,event))
-        eventsTableInsertedRowsBuffer.addOne(eventsAfterFiltering.length - 1) //number of row in "events log" table
+        val insertionPosition: Int = eventsAfterFiltering.length
+        eventsAfterFiltering.append(stepAsInt -> event)
+        eventsTableInsertedRowsBuffer.addOne(insertionPosition)
       }
-      assert (allEvents.length == stepAsInt + 1)
+
+      //save jdag contents snapshot and summit snapshot (if applicable)
+      //manage caching data structures in case of new agent creation
       event match {
+        case Event.Engine(id, timepoint, agent, payload) =>
+          payload match {
+            case EventPayload.BroadcastBrick(brick) =>
+              agent2bricksHistory(agent.get.address).append(stepAsInt, brick)
+            case EventPayload.NewAgentSpawned(validatorId) =>
+              agent2bricksHistory(agent.get.address) = new NodeKnownBricksHistory(expectedNumberOfBricks, expectedNumberOfEvents)
+              summits(agent.get.address) = new FastMapOnIntInterval[ACC.Summit](lfbChainMaxLengthEstimation)
+          }
+
         case Event.Semantic(id, timepoint, source, payload) =>
           payload match {
             case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
-              summits(source) += summit
-              assert(summits(source)(bGameAnchor.generation) == summit)
+              summits(source.address) += bGameAnchor.generation -> summit
+            case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
+              agent2bricksHistory(source.address).append(stepAsInt, brick)
+            case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshotAfter) =>
+              agent2bricksHistory(source.address).append(stepAsInt, brick)
             case other =>
             //ignore
           }
         case _ =>
         //ignore
       }
+
+      //store agent state snapshot (if possible)
+      event.loggingAgent match {
+        case Some(a) => agentStateSnapshots += stepAsInt -> extractStateSnapshotOf(a)
+        case None => //do nothing
+      }
+
+      //check loop exit condition
+      stopConditionChecker.checkStop(step, event) || step == Int.MaxValue
     }
 
-    trigger(Ev.SimulationAdvanced(numberOfSteps, engine.lastStepExecuted.toInt, eventsTableInsertedRowsBuffer.headOption, eventsTableInsertedRowsBuffer.lastOption))
-    return allEvents.length - 1
+    //announce to listeners that we just advanced the simulation
+    trigger(Ev.SimulationAdvanced(eventsTableInsertedRowsBuffer.size, engine.lastStepExecuted.toInt, eventsTableInsertedRowsBuffer.headOption, eventsTableInsertedRowsBuffer.lastOption))
   }
 
   def getEngineStopCondition: SimulationEngineStopCondition = simulationEngineStopCondition
@@ -390,31 +255,28 @@ class SimulationDisplayModel(
     simulationEngineStopCondition = condition
   }
 
-  //--------------------- OBSERVED VALIDATOR -------------------------
+  //--------------------- OBSERVED NODE -------------------------
 
-  def getObservedValidator: ValidatorId = currentlyObservedValidator
+  def getObservedNode: BlockchainNode = selectedNode
 
-  def setObservedValidator(vid: ValidatorId): Unit = {
-    if (vid == currentlyObservedValidator)
+  def setObservedNode(node: BlockchainNode): Unit = {
+    if (node == selectedNode)
       return //no change is needed
 
     //remembering which step we are displaying
     //this is needed because we are just about to destroy the rendered state, where the current step pointer really lives
     val s = currentlyDisplayedStep
 
-    //switching the validator under observation and rendering its state from scratch
-    //caution: this will take some time, because we need to re-evaluate all events since the beginning of the simulation
-    //up to the displayed step
-    currentlyObservedValidator = vid
-    observedValidatorRenderedState = new RenderedValidatorState
-    trigger(Ev.ValidatorSelectionChanged(currentlyObservedValidator))
+    //switching the node under observation and rendering its state from scratch
+    selectedNode = node
+    trigger(Ev.NodeSelectionChanged(selectedNode))
     displayStep(s)
   }
 
-  def stateOfObservedValidator: RenderedValidatorState = observedValidatorRenderedState
+  def stateOfObservedValidator: AgentStateSnapshot = observedValidatorRenderedState
 
   def getSummit(generation: Int): Option[ACC.Summit] = {
-    val summitsOfCurrentValidator = summits(currentlyObservedValidator)
+    val summitsOfCurrentValidator = summits(selectedNode)
     if (generation <= summitsOfCurrentValidator.length - 1)
       Some(summitsOfCurrentValidator(generation))
     else
@@ -423,7 +285,7 @@ class SimulationDisplayModel(
 
   //--------------------- EVENTS LOG -------------------------
 
-  def eventsAfterFiltering: ArrayBuffer[(Int,Event[ValidatorId,EventPayload])] = filteredEvents
+  def eventsAfterFiltering: ArrayBuffer[(Int, Event[BlockchainNode, EventPayload])] = filteredEvents
 
   def getEvent(step: Int): Event[ValidatorId,EventPayload] = allEvents(step)
 
@@ -472,6 +334,39 @@ class SimulationDisplayModel(
     trigger(Ev.BrickSelectionChanged(selectedBrick))
   }
 
+//################################### PRIVATE ############################################
+
+  private def extractStateSnapshotOf(node: BlockchainNode): AgentStateSnapshot = {
+    new AgentStateSnapshot(
+      step = engine.lastStepExecuted,
+      knownBricksSnapshot: Int,
+      jDagSize: Int,
+      jDagDepth: Int,
+      publishedBricks: Int,
+      publishedBlocks: Int,
+      publishedBallots: Int,
+      receivedBricks: Int,
+      receivedBlocks: Int,
+      receivedBallots: Int,
+      acceptedBricks: Int,
+      acceptedBlocks: Int,
+      acceptedBallots: Int,
+      msgBufferSnapshot: MsgBufferSnapshot,
+      lastBrickPublished: Option[Brick],
+      ownBlocksFinalized: Int,
+      ownBlocksTentative: Int,
+      ownBlocksOrphaned: Int,
+      isEquivocator: Boolean,
+      lfbChainLength: Int,
+      lastFinalitySummit: Option[ACC.Summit],
+      currentBGameAnchor: Block,//this is just last finalized block
+      currentBGameLastSummit: Option[ACC.Summit],
+      forkChoiceWinner: Block,
+      panorama: ACC.Panorama
+
+    )
+  }
+
 }
 
 object SimulationDisplayModel {
@@ -505,12 +400,12 @@ object SimulationDisplayModel {
     case class SimulationAdvanced(numberOfSteps: Int, lastStep: Int, firstInsertedRow: Option[Int], lastInsertedRow: Option[Int]) extends Ev //firstInsertedRow, lastInsertedRow
 
     /**
-      * Fired after the selection of which validator is the "currently observed validator" has changed.
-      * In the GUI, this will cause complete re-drawing of jdag graph (because only the jdag of currently observed validator is showing).
+      * Fired after the selection of which blockchain node is the "currently observed node" has changed.
+      * In the GUI, this will cause complete re-drawing of jdag graph (because only the jdag of currently observed node is showing).
       *
-      * @param vid validator that became the "currently observed validator"
+      * @param node validator that became the "currently observed validator"
       */
-    case class ValidatorSelectionChanged(vid: ValidatorId) extends Ev
+    case class NodeSelectionChanged(node: BlockchainNode) extends Ev
 
     /**
       * The user picked another simulation step as the "current step" that the GUI should focus on.
@@ -532,6 +427,11 @@ object SimulationDisplayModel {
   sealed abstract class SimulationEngineStopCondition {
     def caseTag: Int
     def render(): String
+    def createNew(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker
+  }
+
+  trait EngineStopConditionChecker {
+    def checkStop(step: Long, event: Event[BlockchainNode, EventPayload]): Boolean
   }
 
   object SimulationEngineStopCondition {
@@ -598,26 +498,46 @@ object SimulationDisplayModel {
     case class NextNumberOfSteps(n: Int) extends SimulationEngineStopCondition {
       override def caseTag: Int = 0
       override def render(): String = n.toString
+      override def createNew(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+        private val start = engine.lastStepExecuted
+        private val stop = start + n
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = step == stop
+      }
     }
 
     case class ReachExactStep(n: Int) extends SimulationEngineStopCondition {
       override def caseTag: Int = 1
       override def render(): String = n.toString
+      override def createNew(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = step == n
+      }
     }
 
-    case class SimulatedTimeDelta(micros: TimeDelta) extends SimulationEngineStopCondition {
+    case class SimulatedTimeDelta(delta: TimeDelta) extends SimulationEngineStopCondition {
       override def caseTag: Int = 2
-      override def render(): String = SimTimepoint.render(micros)
+      override def render(): String = SimTimepoint.render(delta)
+      override def createNew(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+        private val stop = engine.currentTime + delta
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = engine.currentTime >= stop
+      }
     }
 
     case class ReachExactSimulatedTimePoint(point: SimTimepoint) extends SimulationEngineStopCondition {
       override def caseTag: BlockdagVertexId = 3
       override def render(): String = point.toString
+      override def createNew(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = engine.currentTime >= point
+      }
     }
 
     case class WallClockTimeDelta(hours: Int, minutes: Int, seconds: Int) extends SimulationEngineStopCondition {
       override def caseTag: BlockdagVertexId = 4
       override def render(): String = s"$hours:$minutes:$seconds"
+      override def createNew(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+        private val start = System.currentTimeMillis()
+        private val stop = start + (TimeDelta.hours(hours) + TimeDelta.minutes(minutes) + TimeDelta.seconds(seconds)) / 1000
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = System.currentTimeMillis() >= stop
+      }
     }
 
   }
