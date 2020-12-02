@@ -121,9 +121,9 @@ class SimulationDisplayModel(
   //for every agent we have an instance of NodeKnownBricksHistory, which is a collection of brick-set snapshots
   //snapshots cover sets of bricks that are in the local jdag
   //caution: please notice that when a brick in the messages buffer, it is NOT in the jdag YET, so it will not be included in the snapshot YET
-  private val agent2bricksHistory = new FastMapOnIntInterval[NodeKnownBricksHistory](maxNumberOfAgents)
+  private val agent2bricksHistory = new FastMapOnIntInterval[JdagBricksCollectionSnapshotsStorage](maxNumberOfAgents)
   for (i <- 0 until experimentConfig.numberOfValidators)
-    agent2bricksHistory(i) = new NodeKnownBricksHistory(expectedNumberOfBricks, expectedNumberOfEvents)
+    agent2bricksHistory(i) = new JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks, expectedNumberOfEvents)
 
   //This is a map: node-id ----> map-of-summits-for-this-node
   //For given node, its map-of-summits is a map: lfb-chain-element-generation -----> summit-established-for-this-element
@@ -152,7 +152,7 @@ class SimulationDisplayModel(
     */
   case class AgentStateSnapshot(
                                step: Int,
-                               knownBricksSnapshot: Int,
+                               jDagBricksSnapshot: Int,
                                jDagSize: Int,
                                jDagDepth: Int,
                                publishedBricks: Int,
@@ -214,9 +214,9 @@ class SimulationDisplayModel(
         case Event.Engine(id, timepoint, agent, payload) =>
           payload match {
             case EventPayload.BroadcastBrick(brick) =>
-              agent2bricksHistory(agent.get.address).append(stepAsInt, brick)
+              agent2bricksHistory(agent.get.address).registerBrickWasAddedToJdag(stepAsInt, brick)
             case EventPayload.NewAgentSpawned(validatorId) =>
-              agent2bricksHistory(agent.get.address) = new NodeKnownBricksHistory(expectedNumberOfBricks, expectedNumberOfEvents)
+              agent2bricksHistory(agent.get.address) = new JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks, expectedNumberOfEvents)
               summits(agent.get.address) = new FastMapOnIntInterval[ACC.Summit](lfbChainMaxLengthEstimation)
           }
 
@@ -225,9 +225,9 @@ class SimulationDisplayModel(
             case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
               summits(source.address) += bGameAnchor.generation -> summit
             case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
-              agent2bricksHistory(source.address).append(stepAsInt, brick)
+              agent2bricksHistory(source.address).registerBrickWasAddedToJdag(stepAsInt, brick)
             case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshotAfter) =>
-              agent2bricksHistory(source.address).append(stepAsInt, brick)
+              agent2bricksHistory(source.address).registerBrickWasAddedToJdag(stepAsInt, brick)
             case other =>
             //ignore
           }
@@ -339,9 +339,9 @@ class SimulationDisplayModel(
   private def extractStateSnapshotOf(node: BlockchainNode): AgentStateSnapshot = {
     new AgentStateSnapshot(
       step = engine.lastStepExecuted,
-      knownBricksSnapshot: Int,
-      jDagSize: Int,
-      jDagDepth: Int,
+      jDagBricksSnapshot = agent2bricksHistory(node.address).currentJdagBricksSnapshotIndex,
+      jDagSize = agent2bricksHistory(node.address).currentJDagSize,
+      jDagDepth = stats.perValidatorStats().,
       publishedBricks: Int,
       publishedBlocks: Int,
       publishedBallots: Int,
