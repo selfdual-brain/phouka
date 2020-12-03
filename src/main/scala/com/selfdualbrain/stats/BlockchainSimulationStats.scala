@@ -22,12 +22,13 @@ import com.selfdualbrain.time.SimTimepoint
   *
   * These times are of course going to be different for every transaction/block. Let us focus on the block-level-latency case. These times
   * can be seen as a random variable and we would like to calculate the distribution of this random variable, or at least some typical
-  * parameters of this distribution such as mean value and standard deviation. In the case of a single blockchain node V the dataset
-  * to be considered is easy to pick - we need to take all blocks finalized up to some point in time, then for every such block we
-  * take the distance on the timeline between proposal (done by V) and finalization (as observed at V). Troubles show up when we would like
-  * to measure the distribution of latency across all nodes. What is the set of times we should take as the starting point of this calculation ?
-  * When all blockchain nodes are honest, we could take into account only blocks that are seen as finalized on ALL nodes, then take
-  * the spectrum of latencies measured for all these blocks per node, throw all these times into a single set and run calculations of mean value
+  * parameters of this distribution such as mean value and standard deviation. In the case of a single blockchain node V we need to take all blocks
+  * finalized up to some point in time, then for every such block we take the time distance between proposal (done by V) and finalization
+  * (as observed at V).
+  *
+  * Troubles show up when we want to measure the distribution of latency across all nodes. What is the set of times we should take as the starting
+  * point of this calculation ? When all blockchain nodes are honest, we could take into account only blocks that are seen as finalized on ALL nodes,
+  * then take the spectrum of latencies measured for all these blocks per node, throw all these times into a single set and run calculations of mean value
   * and standard deviation. However, this naive approach leads to pathology when some nodes are crashed or turned into equivocators via bifurcation.
   * A crashed node will never signal finality, so our set of "completely finalized blocks" will no longer move forward. For a bifurcated
   * equivocator things are even more tricky - should we count it in the stats as a single validator or rather two nodes ? Going for "single validator"
@@ -190,6 +191,6 @@ trait BlockchainSimulationStats extends SimulationStats {
   def movingWindowThroughput: SimTimepoint => Double
 
   //Statistics calculated separately for every validator.
-  def perValidatorStats(validator: ValidatorId): ValidatorStats
+  def perValidatorStats(validator: ValidatorId): NodeLocalStats
 
 }

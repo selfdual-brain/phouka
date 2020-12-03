@@ -7,7 +7,7 @@ import com.selfdualbrain.gui.EventsFilter
 import com.selfdualbrain.gui.model.SimulationDisplayModel.SimulationEngineStopCondition
 import com.selfdualbrain.gui_framework.EventsBroadcaster
 import com.selfdualbrain.simulator_engine.{EventPayload, _}
-import com.selfdualbrain.stats.{BlockchainSimulationStats, ValidatorStats}
+import com.selfdualbrain.stats.{BlockchainSimulationStats, NodeLocalStats}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.util.RepeatUntilExitCondition
 
@@ -184,7 +184,7 @@ class SimulationDisplayModel(
 
   def simulationStatistics: BlockchainSimulationStats = stats
 
-  def perValidatorStats(vid: ValidatorId): ValidatorStats = simulationStatistics.perValidatorStats(vid)
+  def perValidatorStats(vid: ValidatorId): NodeLocalStats = simulationStatistics.perValidatorStats(vid)
 
   //--------------------- HORIZON -------------------------
 

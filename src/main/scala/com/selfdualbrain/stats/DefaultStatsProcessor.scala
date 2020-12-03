@@ -65,7 +65,7 @@ class DefaultStatsProcessor(
   //... corresponding standard deviation
   private val latencyMovingWindowStandardDeviation = new ArrayBuffer[Double]
   //per-validator statistics (array seen as a map ValidatorId -----> ValidatorStats)
-  private var vid2stats = new Array[PerValidatorCounters](numberOfValidators)
+  private var vid2stats = new Array[NodeLocalStatsProcessor](numberOfValidators)
   //counter of visibly finalized blocks; this counter is used for blockchain throughput calculation
   private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounterWithHistory(throughputMovingWindow, throughputCheckpointsDelta)
   //flags marking faulty validators
@@ -76,7 +76,7 @@ class DefaultStatsProcessor(
     faultyFreezingPoints(i) = None
 
   for (i <- 0 until numberOfValidators)
-    vid2stats(i) = new PerValidatorCounters(i, this)
+    vid2stats(i) = new NodeLocalStatsProcessor(i, this)
 
   latencyMovingWindowAverage.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
   latencyMovingWindowStandardDeviation.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
@@ -153,15 +153,15 @@ class DefaultStatsProcessor(
           handleSemanticEvent(vid, eventTimepoint, eventPayload, vStats)
           visiblyFinalizedBlocksMovingWindowCounter.silence(eventTimepoint.micros)
           assert (
-            assertion = vStats.myJdagSize == vStats.numberOfBricksIPublished + vStats.receivedHandledBricks - vStats.numberOfBricksInTheBuffer,
-            message = s"event $event: ${vStats.myJdagSize} != ${vStats.numberOfBricksIPublished} + ${vStats.receivedHandledBricks} - ${vStats.numberOfBricksInTheBuffer}"
+            assertion = vStats.jdagSize == vStats.ownBricksPublished + vStats.receivedHandledBricks - vStats.numberOfBricksInTheBuffer,
+            message = s"event $event: ${vStats.jdagSize} != ${vStats.ownBricksPublished} + ${vStats.receivedHandledBricks} - ${vStats.numberOfBricksInTheBuffer}"
           )
         }
     }
 
   }
 
-  private def handleSemanticEvent(vid: ValidatorId, eventTimepoint: SimTimepoint, payload: EventPayload, vStats: PerValidatorCounters): Unit = {
+  private def handleSemanticEvent(vid: ValidatorId, eventTimepoint: SimTimepoint, payload: EventPayload, vStats: NodeLocalStatsProcessor): Unit = {
     payload match {
 
       case EventPayload.ConsumedWakeUp(consumedEventId, consumptionDelay, strategySpecificMarker) =>
@@ -397,7 +397,7 @@ class DefaultStatsProcessor(
     }
   }
 
-  override def perValidatorStats(validator: ValidatorId): ValidatorStats = vid2stats(validator)
+  override def perValidatorStats(validator: ValidatorId): NodeLocalStats = vid2stats(validator)
 
   override def isFaulty(vid: ValidatorId): Boolean = faultyValidatorsMap(vid)
 

@@ -46,22 +46,22 @@ class StatsPrinter(out: AbstractTextOutput, numberOfValidators: Int) {
 
   }
 
-  private def printValidatorStats(stats: ValidatorStats): Unit = {
-    out.print(s"published bricks: ${stats.numberOfBricksIPublished} (${stats.numberOfBlocksIPublished} blocks, ${stats.numberOfBallotsIPublished} ballots)")
-    out.print(s"received bricks: ${stats.numberOfBricksIReceived} (${stats.numberOfBlocksIReceived} blocks, ${stats.numberOfBallotsIReceived} ballots)")
-    val accepted = stats.numberOfBlocksIAccepted + stats.numberOfBallotsIAccepted
-    val acceptedBlocks = stats.numberOfBlocksIAccepted
-    val acceptedBallots = stats.numberOfBallotsIAccepted
+  private def printValidatorStats(stats: NodeLocalStats): Unit = {
+    out.print(s"published bricks: ${stats.ownBricksPublished} (${stats.ownBlocksPublished} blocks, ${stats.ownBallotsPublished} ballots)")
+    out.print(s"received bricks: ${stats.allBricksReceived} (${stats.allBlocksReceived} blocks, ${stats.allBallotsReceived} ballots)")
+    val accepted = stats.allBlocksAccepted + stats.allBallotsAccepted
+    val acceptedBlocks = stats.allBlocksAccepted
+    val acceptedBallots = stats.allBallotsAccepted
     out.print(s"accepted bricks: $accepted ($acceptedBlocks blocks, $acceptedBallots ballots)")
     out.print(s"still waiting in the buffer: ${stats.numberOfBricksInTheBuffer}")
     out.print(f"buffering chance [$percentChar]: ${stats.averageBufferingChanceForIncomingBricks * 100}%.2f")
     out.print(f"average buffering time [seconds]: ${stats.averageBufferingTimeOverBricksThatWereBuffered}%.2f")
     out.print(s"my blocks I can see as finalized: ${stats.numberOfMyBlocksThatICanSeeFinalized}")
-    out.print(s"my blocks I can see  as orphaned: ${stats.numberOfMyBlocksThatICanAlreadySeeAsOrphaned}")
-    out.print(s"jdag size: ${stats.myJdagSize} depth: ${stats.myJdagDepth}")
-    out.print(f"local latency [seconds]: ${stats.averageLatencyIAmObservingForMyBlocks}%.2f")
-    out.print(f"local throughput [blocks per hour]: ${stats.averageThroughputIAmGenerating * 3600}%.2f")
-    out.print(f"local orphan rate [$percentChar]: ${stats.averageFractionOfMyBlocksThatGetOrphaned * 100}")
+    out.print(s"my blocks I can see  as orphaned: ${stats.ownBlocksOrphaned}")
+    out.print(s"jdag size: ${stats.jdagSize} depth: ${stats.jdagDepth}")
+    out.print(f"local latency [seconds]: ${stats.ownBlocksAverageLatency}%.2f")
+    out.print(f"local throughput [blocks per hour]: ${stats.ownBlocksThroughputBlocksPerSecond * 3600}%.2f")
+    out.print(f"local orphan rate [$percentChar]: ${stats.ownBlocksOrphanRate * 100}")
   }
 
 }
