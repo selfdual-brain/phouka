@@ -500,6 +500,7 @@ class HighwayValidator private (
           parent = forkChoiceWinner,
           numberOfTransactions = payload.numberOfTransactions,
           payloadSize = payload.transactionsBinarySize,
+          binarySize = calculateBlockBinarySize(justifications.size, payload.transactionsBinarySize),
           totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = state.brickHashGenerator.generateHash()
         )
@@ -517,7 +518,8 @@ class HighwayValidator private (
           creator,
           prevInSwimlane = state.myLastMessagePublished,
           targetBlock = forkChoiceWinner,
-          isOmega = false
+          isOmega = false,
+          binarySize = calculateBallotBinarySize(justifications.size)
         )
 
       case BrickRole.Omega =>
@@ -533,7 +535,8 @@ class HighwayValidator private (
           creator,
           prevInSwimlane = state.myLastMessagePublished,
           targetBlock = forkChoiceWinner,
-          isOmega = true
+          isOmega = true,
+          binarySize = calculateBallotBinarySize(justifications.size)
         )
 
     }

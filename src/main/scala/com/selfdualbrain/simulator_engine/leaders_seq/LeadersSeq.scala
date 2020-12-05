@@ -14,7 +14,8 @@ object LeadersSeq {
                   justifications: Iterable[Brick],
                   creator: ValidatorId,
                   prevInSwimlane: Option[Brick],
-                  targetBlock: Block
+                  targetBlock: Block,
+                  binarySize: Int
              ) extends AbstractBallot
 
   case class NormalBlock(
@@ -29,6 +30,7 @@ object LeadersSeq {
                   parent: Block,
                   numberOfTransactions: Int,
                   payloadSize: Int,
+                  binarySize: Int,
                   totalGas: Long,
                   hash: Hash
              ) extends AbstractNormalBlock

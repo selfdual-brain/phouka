@@ -16,7 +16,8 @@ object Highway {
                   creator: ValidatorId,
                   prevInSwimlane: Option[Brick],
                   targetBlock: Block,
-                  isOmega: Boolean
+                  isOmega: Boolean,
+                  binarySize: Int
              ) extends AbstractBallot
 
   case class NormalBlock(
@@ -32,6 +33,7 @@ object Highway {
                   parent: Block,
                   numberOfTransactions: Int,
                   payloadSize: Int,
+                  binarySize: Int,
                   totalGas: Long,
                   hash: Hash
             ) extends AbstractNormalBlock

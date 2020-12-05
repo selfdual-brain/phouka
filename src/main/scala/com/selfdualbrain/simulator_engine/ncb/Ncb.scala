@@ -13,7 +13,8 @@ object Ncb {
                 justifications: Iterable[Brick],
                 creator: ValidatorId,
                 prevInSwimlane: Option[Brick],
-                targetBlock: NormalBlock
+                targetBlock: NormalBlock,
+                binarySize: Int
             ) extends AbstractBallot
 
   case class NormalBlock(
@@ -27,6 +28,7 @@ object Ncb {
                 parent: Block,
                 numberOfTransactions: Int,
                 payloadSize: Int,
+                binarySize: Int,
                 totalGas: Long,
                 hash: Hash
             ) extends AbstractNormalBlock

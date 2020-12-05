@@ -1,7 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{Block, Brick}
+import com.selfdualbrain.blockchain_structure.{AbstractNormalBlock, Block, Brick}
 import com.selfdualbrain.time.TimeDelta
 
 trait NodeLocalStats {
@@ -21,6 +21,11 @@ trait NodeLocalStats {
   def lastFinalizedBlock: Block
 
   def lastForkChoiceWinner: Block
+
+  //Status of the on-going b-game
+  //None = no partial summit
+  //Some((k,b)) = achieved partial summit at level k for block b
+  def currentBGameStatus: Option[(Int, AbstractNormalBlock)]
 
   //simulation(t).jdagBricks(v).size
   def jdagSize: Long
@@ -139,8 +144,6 @@ trait NodeLocalStats {
   def blockchainOrphanRate: Double
 
   //within all data transmitted so far, tells the fraction that is not part of transactions in finalized blocks
-  //let LFG = generation of last finalized block
-  //only blocks with generation up to LFG and ballots with target block having generation up to LFG are counted
   def protocolOverhead: Double
 
 }

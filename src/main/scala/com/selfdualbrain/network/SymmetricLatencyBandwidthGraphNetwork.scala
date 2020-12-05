@@ -31,7 +31,6 @@ import scala.util.Random
 class SymmetricLatencyBandwidthGraphNetwork(
                                              random: Random,
                                              initialNumberOfNodes: Int,
-                                             msgSizeCalculator: Brick => Int,
                                              latencyAverageGen: LongSequenceGenerator, //here we interpret integers as microseconds
                                              latencyMinMaxSpread: LongSequenceGenerator, ////here we interpret integers as microseconds
                                              bandwidthGen: LongSequenceGenerator //here we measure bandwidth in bits/sec
@@ -52,7 +51,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
   override def calculateMsgDelay(msg: Brick, sender: BlockchainNode, destination: BlockchainNode, sendingTime: SimTimepoint): TimeDelta = {
     val connectionParams = networkGeometryTable(sender.address)(destination.address)
     val latency: TimeDelta = connectionParams.latencyGenerator.next()
-    val transferDelay: TimeDelta = msgSizeCalculator(msg).toLong * 1000000 / connectionParams.bandwidth
+    val transferDelay: TimeDelta = msg.binarySize.toLong * 1000000 / connectionParams.bandwidth
     return latency + transferDelay
   }
 

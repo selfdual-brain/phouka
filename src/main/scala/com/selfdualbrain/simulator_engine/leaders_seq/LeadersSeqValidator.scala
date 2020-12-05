@@ -127,6 +127,7 @@ class LeadersSeqValidator private (
           parent = forkChoiceWinner,
           numberOfTransactions = payload.numberOfTransactions,
           payloadSize = payload.transactionsBinarySize,
+          binarySize = calculateBlockBinarySize(justifications.size, payload.transactionsBinarySize),
           totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = state.brickHashGenerator.generateHash()
         )
@@ -139,7 +140,8 @@ class LeadersSeqValidator private (
           justifications,
           creator,
           prevInSwimlane = state.myLastMessagePublished,
-          targetBlock = forkChoiceWinner
+          targetBlock = forkChoiceWinner,
+          binarySize = calculateBallotBinarySize(justifications.size)
         )
 
 

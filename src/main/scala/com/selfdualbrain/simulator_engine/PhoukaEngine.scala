@@ -60,6 +60,14 @@ class PhoukaEngine(
     var networkOutageGoingToBeFixedAt: SimTimepoint = SimTimepoint.zero
     var broadcastBuffer = new ArrayBuffer[Brick]
     var receivedBricksBuffer = new ArrayBuffer[Brick]
+    var totalProcessingTime: TimeDelta = 0L
+
+    def executeAndRecordProcessingTimeConsumption(block: => Unit): Unit = {
+      val processingStartTimepoint: SimTimepoint = context.time()
+      block
+      val timeConsumedForProcessing: TimeDelta = context.time() - processingStartTimepoint
+      totalProcessingTime += timeConsumedForProcessing
+    }
   }
 
   //initialize nodes
@@ -101,6 +109,12 @@ class PhoukaEngine(
 
   override def currentTime: SimTimepoint = desQueue.currentTime
 
+  override def numberOfAgents: Int = lastNodeIdAllocated + 1
+
+  override def localClockOfAgent(agent: BlockchainNode): SimTimepoint = nodes(agent.address).context.time()
+
+  override def totalProcessingTimeOfAgent(agent: BlockchainNode): TimeDelta = nodes(agent.address).totalProcessingTime
+
   //###################################### PRIVATE ########################################
 
   //returns None if subsequent event is "masked" - i.e. should not be emitted outside the engine
@@ -109,14 +123,14 @@ class PhoukaEngine(
     val box = nodes(event.loggingAgent.get.address) //todo: handle general case - logging agent can possibly be None
 
     return if (box.status == NodeStatus.CRASHED)
-      None
+      None //dead node is supposed to be silent; hence after the crash we "magically" delete all events scheduled for this node
     else {
       val shouldBeMasked: Boolean = event match {
         case Event.External(id, timepoint, destination, payload) => handleExternal(box, id, timepoint, destination, payload)
         case Event.Transport(id, timepoint, source, destination, payload) => handleTransport(box, id, timepoint, source, destination, payload.asInstanceOf[EventPayload])
         case Event.Loopback(id, timepoint, agent, payload) => handleLoopback(box, id, timepoint, agent, payload)
         case Event.Engine(id, timepoint, agent, payload) => handleEngine(box, id, timepoint, agent, payload)
-        case Event.Semantic(id, timepoint, source, payload) => false
+        case Event.Semantic(id, timepoint, source, payload) => false //semantic events are never masked, but also no extra processing of them within the engine is needed, because they are just "output"
       }
 
       if (shouldBeMasked)
@@ -182,7 +196,9 @@ class PhoukaEngine(
       case EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker) =>
         box.context.moveForwardLocalClockToAtLeast(timepoint)
         desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedWakeUp(eventId, box.context.time() - timepoint, strategySpecificMarker))
-        box.validatorInstance.onWakeUp(timepoint, strategySpecificMarker)
+        box executeAndRecordProcessingTimeConsumption {
+          box.validatorInstance.onWakeUp(timepoint, strategySpecificMarker)
+        }
         true
       case other =>
         throw new RuntimeException(s"not supported: $other")
@@ -226,7 +242,9 @@ class PhoukaEngine(
       source = destinationAgentBox.nodeId,
       payload = EventPayload.ConsumedBrickDelivery(eventId, destinationAgentBox.context.time() - brickDeliveryTimepoint, brick)
     )
-    destinationAgentBox.validatorInstance.onNewBrickArrived(brick)
+    destinationAgentBox executeAndRecordProcessingTimeConsumption {
+      destinationAgentBox.validatorInstance.onNewBrickArrived(brick)
+    }
   }
 
   protected def nextBrickId(): BlockdagVertexId = {

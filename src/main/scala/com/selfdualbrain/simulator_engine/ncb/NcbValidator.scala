@@ -134,6 +134,7 @@ class NcbValidator private (
           parent = forkChoiceWinner,
           numberOfTransactions = payload.numberOfTransactions,
           payloadSize = payload.transactionsBinarySize,
+          binarySize = calculateBlockBinarySize(justifications.size, payload.transactionsBinarySize),
           totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = state.brickHashGenerator.generateHash()
         )
@@ -145,7 +146,8 @@ class NcbValidator private (
           justifications,
           creator,
           prevInSwimlane = state.myLastMessagePublished,
-          targetBlock = forkChoiceWinner.asInstanceOf[Ncb.NormalBlock]
+          targetBlock = forkChoiceWinner.asInstanceOf[Ncb.NormalBlock],
+          binarySize = calculateBallotBinarySize(justifications.size)
         )
     return brick
   }

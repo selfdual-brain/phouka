@@ -1,8 +1,9 @@
 package com.selfdualbrain.des
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 /**
   * Upgrades any SimulationEngine to ObservableSimulationEngine.
+  * Caution: we use Decorator pattern.
   *
   * @param engine underlying simulation engine
   * @tparam A type of agent identifiers
@@ -21,6 +22,12 @@ class SimulationEngineChassis[A,P](engine: SimulationEngine[A,P]) extends Observ
   override def currentTime: SimTimepoint = engine.currentTime
 
   override def hasNext: Boolean = engine.hasNext
+
+  override def numberOfAgents: Int = engine.numberOfAgents
+
+  override def localClockOfAgent(agent: A): SimTimepoint = engine.localClockOfAgent(agent)
+
+  override def totalProcessingTimeOfAgent(agent: A): TimeDelta = engine.totalProcessingTimeOfAgent(agent)
 
   override def next(): (Long, Event[A,P]) = {
     val pair = engine.next() //no pattern matching here so to reuse the same tuple instance (= minimize overhead if there is no observers)

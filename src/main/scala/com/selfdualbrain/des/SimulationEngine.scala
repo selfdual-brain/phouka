@@ -1,18 +1,36 @@
 package com.selfdualbrain.des
 
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 /**
-  * Technically, simulation engine is something that just looks like an iterator of events.
-  * However, every event returned by next() method must be "processed by the engine" before the method next() returns.
+  * Conceptually, a SimulationEngine instance is a running simulation experiment. Technically - it is just an iterator of events.
+  * Simulation engine assigns subsequent numbers to every emitted event and this number is called "step id". Some additional methods
+  * here provide access to simulated time metrics.
+  *
+  * Caution: pay attention with distinguishing simulation time and wall-clock time.
+  * For simulation time we use types SimTimepoint (for representing points in time continuum) and TimeDelta (for representing
+  * amounts of time). Usually this is the "time" showing up in the API. Simulated time has "1 microsecond" resolution.
+  * That said, simulated time is just a Long value. SimTimepoint and TimeDelta are just wrappers for Long.
+  * For wall-clock time we usually use milliseconds (as received from System.currentTimeMillis).
   *
   * @tparam A type of agent identifiers
   */
 trait SimulationEngine[A,P] extends Iterator[(Long, Event[A,P])] {
 
-  //steps are 0-based
+  //Tells the step-id of last event pulled from the iterator.
+  //Caution: first event in the simulation has step=id=0.
   def lastStepExecuted: Long
 
-  //timepoint of last event pulled
+  //Simulated timepoint of last event pulled from the iterator.
+  //In practice calling this method equals to checking the "master clock" of the simulation.
   def currentTime: SimTimepoint
+
+  //Current number of agents participating in this simulation.
+  //Caution: this number can change over time, as the simulation framework supports agents to be created on-the-fly.
+  def numberOfAgents: Int
+
+  //Every agent maintains its own clock (so to be able to simulate processing times).
+  def localClockOfAgent(agent: A): SimTimepoint
+
+  def totalProcessingTimeOfAgent(agent: A): TimeDelta
 }

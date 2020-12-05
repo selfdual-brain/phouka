@@ -27,6 +27,7 @@ trait Brick extends BlockchainVertex {
   def prevInSwimlane: Option[Brick]
   def justifications: Iterable[Brick]
   def positionInSwimlane: Int
+  def binarySize: Int //simulated binary size of the brick (not to be confused with the actual size of this data structure in the simulator !)
 
   override lazy val daglevel: Int =
     if (justifications.isEmpty)

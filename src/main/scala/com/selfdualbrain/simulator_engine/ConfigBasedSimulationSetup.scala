@@ -37,13 +37,6 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   }
   private val transactionsStream: TransactionsStream = TransactionsStream.fromConfig(config.transactionsStreamModel, randomGenerator)
   private val blockPayloadGenerator: BlockPayloadBuilder = BlockPayloadBuilder.fromConfig(config.blocksBuildingStrategy, transactionsStream)
-  private val brickSizeCalculator: Brick => Int = (b: Brick) => {
-    val headerSize = config.brickHeaderCoreSize + b.justifications.size * config.singleJustificationSize
-    b match {
-      case x: AbstractNormalBlock => headerSize + x.payloadSize
-      case x: AbstractBallot => headerSize
-    }
-  }
   val networkModel: NetworkModel[BlockchainNode, Brick] = buildNetworkModel()
   val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(config.disruptionModel, randomGenerator, absoluteFTT, weightsOfValidatorsAsFunction, config.numberOfValidators)
   private val computingPowersGenerator: LongSequenceGenerator = LongSequenceGenerator.fromConfig(config.nodesComputingPowerModel, randomGenerator)
@@ -160,7 +153,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
       val latencyAverageGen = LongSequenceGenerator.fromConfig(latencyAverageCfg, randomGenerator)
       val latencyMinMaxSpreadGen = LongSequenceGenerator.fromConfig(latencyMinMaxSpreadCfg, randomGenerator)
       val bandwidthGen = LongSequenceGenerator.fromConfig(bandwidthCfg, randomGenerator)
-      new SymmetricLatencyBandwidthGraphNetwork(randomGenerator, config.numberOfValidators, brickSizeCalculator, latencyAverageGen, latencyMinMaxSpreadGen, bandwidthGen)
+      new SymmetricLatencyBandwidthGraphNetwork(randomGenerator, config.numberOfValidators, latencyAverageGen, latencyMinMaxSpreadGen, bandwidthGen)
   }
 
   private def buildObserver(cfg: ObserverConfig): SimulationObserver[BlockchainNode, EventPayload] = cfg match {

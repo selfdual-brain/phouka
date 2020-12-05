@@ -52,6 +52,10 @@ object ValidatorBaseImpl {
 
     //flag that enables emitting semantic events around msg buffer operations
     var msgBufferSherlockMode: Boolean = _
+
+    var brickHeaderCoreSize: Int = _
+
+    var singleJustificationSize: Int = _
   }
 
   class State extends CloningSupport[State] {
@@ -186,6 +190,12 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
   protected def onBrickAddedToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit = {
     //by default - do nothing
   }
+
+  protected def calculateBallotBinarySize(numberOfJustifications: Int): Int =
+    config.brickHeaderCoreSize + numberOfJustifications * config.singleJustificationSize
+
+  protected def calculateBlockBinarySize(numberOfJustifications: Int, payloadSize: Int): Int =
+    config.brickHeaderCoreSize + numberOfJustifications * config.singleJustificationSize + payloadSize
 
   //Integer exponentiation
   protected def exp(x: Int, n: Int): Int = {
