@@ -1,9 +1,9 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractNormalBlock, BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractNormalBlock, Block, BlockchainNode, ValidatorId}
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval, MovingWindowBeepsCounterWithHistory}
-import com.selfdualbrain.des.{Event, SimulationObserver}
+import com.selfdualbrain.des.{Event, SimulationEngine, SimulationObserver}
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.util.RepeatUntilExitCondition
@@ -28,8 +28,10 @@ class DefaultStatsProcessor(
                              numberOfValidators: Int,
                              weightsMap: ValidatorId => Ether,
                              absoluteFTT: Ether,
-                             totalWeightOfValidators: Ether
-                           ) extends SimulationObserver[BlockchainNode, EventPayload] with BlockchainSimulationStats {
+                             totalWeightOfValidators: Ether,
+                             genesis: Block,
+                             engine: SimulationEngine[BlockchainNode, EventPayload]
+                         ) extends SimulationObserver[BlockchainNode, EventPayload] with BlockchainSimulationStats {
 
   assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
 
@@ -64,19 +66,18 @@ class DefaultStatsProcessor(
   private val latencyMovingWindowAverage = new ArrayBuffer[Double]
   //... corresponding standard deviation
   private val latencyMovingWindowStandardDeviation = new ArrayBuffer[Double]
-  //per-validator statistics (array seen as a map ValidatorId -----> ValidatorStats)
-  private var vid2stats = new Array[NodeLocalStatsProcessor](numberOfValidators)
+  //per-node statistics
+  private val node2stats = new FastMapOnIntInterval[NodeLocalStats](numberOfValidators)
+  //per-validator frozen statistics
+  private val validator2frozenStats = new FastIntMap[NodeLocalStats](numberOfValidators)
   //counter of visibly finalized blocks; this counter is used for blockchain throughput calculation
   private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounterWithHistory(throughputMovingWindow, throughputCheckpointsDelta)
   //flags marking faulty validators
   private val faultyValidatorsMap = new Array[Boolean](numberOfValidators)
   //when a validator goes faulty, we free per-validator stats for this one
-  private val faultyFreezingPoints = new Array[Option[SimTimepoint]](numberOfValidators)
-  for (i <- faultyFreezingPoints.indices)
-    faultyFreezingPoints(i) = None
-
-  for (i <- 0 until numberOfValidators)
-    vid2stats(i) = new NodeLocalStatsProcessor(i, this)
+  private val faultyValidatorsFreezingPoints = new Array[Option[SimTimepoint]](numberOfValidators)
+  for (i <- faultyValidatorsFreezingPoints.indices)
+    faultyValidatorsFreezingPoints(i) = None
 
   latencyMovingWindowAverage.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
   latencyMovingWindowStandardDeviation.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
@@ -95,113 +96,58 @@ class DefaultStatsProcessor(
     event match {
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
-          case EventPayload.NewAgentSpawned(vid) =>
-            agentId2validatorId(agent.get.address) = vid
+          case EventPayload.NewAgentSpawned(vid, progenitor) =>
+            val newNodeAddress: Int = agent.get.address
+            agentId2validatorId(newNodeAddress) = vid
+            node2stats(newNodeAddress) = progenitor match {
+              //creating per-node stats processor for new node
+              case None => new NodeLocalStatsProcessor(vid, BlockchainNode(newNodeAddress), basicStats = this, weightsMap, genesis, engine)
+              //cloning per-node stats processor after bifurcation
+              case Some(p) => node2stats(p.address).createDetachedCopy(agent.get)
+            }
 
           case EventPayload.BroadcastBrick(brick) =>
-            val vid = agentId2validatorId(agent.get.address)
-            if (! faultyValidatorsMap(vid)) {
-              val vStats = vid2stats(agent.get.address)
-              brick match {
-                case block: AbstractNormalBlock =>
-                  publishedBlocksCounter += 1
-                  vStats.myBlocksCounter += 1
-                  blocksByGenerationCounters.nodeAdded(block.generation)
-                  vStats.myBlocksByGenerationCounters.nodeAdded(block.generation)
-                case ballot: AbstractBallot =>
-                  publishedBallotsCounter += 1
-                  vStats.myBallotsCounter += 1
-              }
-              vStats.myBrickdagSize += 1
-              vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
+            brick match {
+              case block: AbstractNormalBlock =>
+                publishedBlocksCounter += 1
+                blocksByGenerationCounters.nodeAdded(block.generation)
+              case ballot: AbstractBallot =>
+                publishedBallotsCounter += 1
             }
         }
+        node2stats(agent.get.address).handleEvent(timepoint, payload)
 
       case Event.External(id, timepoint, destination, payload) =>
         payload match {
           case EventPayload.Bifurcation(numberOfClones) =>
             val vid = agentId2validatorId(destination.address)
-            if (! faultyValidatorsMap(vid)) {
-              markValidatorAsFaulty(vid, timepoint)
-            }
-
+            ensureValidatorIsMarkedAsFaulty(vid, timepoint)
 
           case EventPayload.NodeCrash =>
             val vid = agentId2validatorId(destination.address)
-            markValidatorAsFaulty(vid, timepoint)
-        }
-
-      case Event.Loopback(id, timepoint, agent, payload) =>
-        //ignored
-
-      case Event.Transport(id, timepoint, source, destination, payload) =>
-        val vid = agentId2validatorId(destination.address)
-        if (! faultyValidatorsMap(vid)) {
-          payload match {
-            case EventPayload.BrickDelivered(brick) =>
-              if (brick.isInstanceOf[AbstractNormalBlock])
-                vid2stats(destination.address).receivedBlocksCounter += 1
-              else
-                vid2stats(destination.address).receivedBallotsCounter += 1
-          }
+            ensureValidatorIsMarkedAsFaulty(vid, timepoint)
         }
 
       case Event.Semantic(id, eventTimepoint, source, eventPayload) =>
         val vid = agentId2validatorId(source.address)
         if (! faultyValidatorsMap(vid)) {
-          val vStats = vid2stats(source.address)
-          handleSemanticEvent(vid, eventTimepoint, eventPayload, vStats)
+          handleSemanticEvent(vid, eventTimepoint, eventPayload)
           visiblyFinalizedBlocksMovingWindowCounter.silence(eventTimepoint.micros)
-          assert (
-            assertion = vStats.jdagSize == vStats.ownBricksPublished + vStats.receivedHandledBricks - vStats.numberOfBricksInTheBuffer,
-            message = s"event $event: ${vStats.jdagSize} != ${vStats.ownBricksPublished} + ${vStats.receivedHandledBricks} - ${vStats.numberOfBricksInTheBuffer}"
-          )
         }
+        node2stats(source.address).handleEvent(eventTimepoint, eventPayload)
+
+      case Event.Transport(id, timepoint, source, destination, payload) =>
+        node2stats(destination.address).handleEvent(timepoint, payload)
+
+      case other =>
+        //ignore
+
     }
 
   }
 
-  private def handleSemanticEvent(vid: ValidatorId, eventTimepoint: SimTimepoint, payload: EventPayload, vStats: NodeLocalStatsProcessor): Unit = {
+  private def handleSemanticEvent(vid: ValidatorId, eventTimepoint: SimTimepoint, payload: EventPayload): Unit = {
     payload match {
-
-      case EventPayload.ConsumedWakeUp(consumedEventId, consumptionDelay, strategySpecificMarker) =>
-        //ignore
-
-      case EventPayload.ConsumedBrickDelivery(consumedEventId, consumptionDelay, brick) =>
-        //ignore
-
-      case EventPayload.NetworkConnectionLost =>
-        //ignore
-
-      case EventPayload.NetworkConnectionRestored =>
-        //ignore
-
-      case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
-        if (brick.isInstanceOf[AbstractNormalBlock])
-          vStats.acceptedBlocksCounter += 1
-        else
-          vStats.acceptedBallotsCounter += 1
-
-        vStats.receivedHandledBricks += 1
-        vStats.myBrickdagSize += 1
-        vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
-
-      case EventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) =>
-        vStats.numberOfBricksThatEnteredMsgBuffer += 1
-        vStats.receivedHandledBricks += 1
-
-      case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) =>
-        vStats.numberOfBricksThatLeftMsgBuffer += 1
-        if (brick.isInstanceOf[AbstractNormalBlock])
-          vStats.acceptedBlocksCounter += 1
-        else
-          vStats.acceptedBallotsCounter += 1
-        vStats.myBrickdagSize += 1
-        vStats.myBrickdagDepth = math.max(vStats.myBrickdagDepth, brick.daglevel)
-        vStats.sumOfBufferingTimes += eventTimepoint.micros - brick.timepoint.micros
-
-      case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
-        //do nothing
 
       case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
         //possibly this is the moment when we are witnessing a completely new element of the LFB chain
@@ -232,7 +178,6 @@ class DefaultStatsProcessor(
           visiblyFinalizedBlocksCounter += 1
           assert (visiblyFinalizedBlocksCounter == finalizedBlock.generation)
           transactionsCounter += finalizedBlock.numberOfTransactions
-          vid2stats(finalizedBlock.creator).myBlocksThatGotVisiblyFinalizedStatusCounter += 1
           visiblyFinalizedBlocksMovingWindowCounter.beep(finalizedBlock.generation, eventTimepoint.micros)
         }
 
@@ -241,38 +186,9 @@ class DefaultStatsProcessor(
         if (! wasCompletelyFinalizedBefore && lfbElementInfo.isCompletelyFinalized)
           onBlockAchievingCompletelyFinalizedStatus(lfbElementInfo)
 
-        //special handling of the case when this finality event is emitted by the creator of the finalized block
-        if (vid == finalizedBlock.creator) {
-          vStats.myBlocksThatICanSeeFinalizedCounter += 1
-          vStats.sumOfLatenciesOfAllLocallyCreatedBlocks += eventTimepoint - finalizedBlock.timepoint
-        }
+      case other =>
+        //ignore
 
-        //within a single validator perspective, subsequent finality events are for blocks with generations 1,2,3,4,5 ...... (monotonic, no gaps, starting with 1)
-        vStats.lastFinalizedBlockGeneration = finalizedBlock.generation
-
-      case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
-        //The condition below is needed because of important corner case: when N1 and N2 are two blockchain nodes running on the same validator-id V1
-        //then N1 can notice validator V1 equivocating.
-        //Our approach to implementing equivocators works via cloning the state of a node (-> bifurcation).
-        //After a bifurcation, both clones operate "as usual" - so they are not "aware" they are now collectively producing equivocations;
-        //they can only "discover" (after some time) there is something fishy going on around - by realizing that "omg, the evil validator-id is just my own id.. wow".
-        //Said that, every "bifurcated" sibling will just attempt to continue doing "business us usual", i.e. producing blocks, accepting blocks, calculating finality etc.
-        //Here in stats we however deliberately handle the "observed equivocator" flags in the following way:
-        //"V was observed equivocating" = "some node N using validator id different than V witnessed equivocation by V
-        //and was considered healthy at the moment of this observation".
-        //Please notice that this definition is not "local" and in fact it could NOT be implemented in real blockchain. Only we here in the simulator,
-        //thanks to "god's view", are able to establish such concepts.
-        if (evilValidator != vid) {
-          visibleEquivocators += evilValidator
-          vid2stats(evilValidator).wasObservedAsEquivocatorX = true
-          if (! vStats.observedEquivocators.contains(evilValidator)) {
-            vStats.observedEquivocators += evilValidator
-            vStats.weightOfObservedEquivocatorsX += weightsMap(evilValidator)
-          }
-        }
-
-      case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
-        vStats.isAfterObservingEquivocationCatastropheX = true
     }
 
   }
@@ -280,7 +196,6 @@ class DefaultStatsProcessor(
   private def onBlockAchievingCompletelyFinalizedStatus(lfbElementInfo: LfbElementInfo): Unit = {
     //updating basic counters
     completelyFinalizedBlocksCounter += 1
-    vid2stats(lfbElementInfo.block.creator).myCompletelyFinalizedBlocksCounter += 1
 
     //if we done the math right, then it is impossible for higher block to reach "completely finalized" state before lower block
     assert (completelyFinalizedBlocksCounter == lfbElementInfo.block.generation)
@@ -308,9 +223,17 @@ class DefaultStatsProcessor(
     assert (latencyMovingWindowStandardDeviation.length == lfbElementInfo.block.generation + 1)
   }
 
-  private def markValidatorAsFaulty(vid: ValidatorId, timepoint: SimTimepoint): Unit = {
+  private def ensureValidatorIsMarkedAsFaulty(vid: ValidatorId, timepoint: SimTimepoint): Unit = {
+    //do not handle "becoming faulty" twice
+    if (faultyValidatorsMap(vid))
+      return
+
+    //mark faulty
     faultyValidatorsMap(vid) = true
-    faultyFreezingPoints(vid) = Some(timepoint)
+
+    //save a snapshot of node stats
+    faultyValidatorsFreezingPoints(vid) = Some(timepoint)
+    validator2frozenStats(vid) = node2stats(vid).createDetachedCopy(BlockchainNode(vid))
 
     //a validator turning faulty may cause a cascade of finality map elements to turn into "completely finalized" state
     //this cascade is implemented as the loop below
@@ -326,7 +249,6 @@ class DefaultStatsProcessor(
         (! lfbElementInfo.isCompletelyFinalized) || completelyFinalizedBlocksCounter == finalityMap.size
       }
     }
-
   }
 
   override def totalTime: SimTimepoint = lastStepTimepoint
@@ -397,11 +319,18 @@ class DefaultStatsProcessor(
     }
   }
 
-  override def perValidatorStats(validator: ValidatorId): NodeLocalStats = vid2stats(validator)
+  override def perValidatorStats(validator: ValidatorId): NodeLocalStats = {
+    if (isFaulty(validator))
+      validator2frozenStats(validator)
+    else
+      node2stats(validator)
+  }
+
+  override def perNodeStats(node: BlockchainNode): NodeLocalStats = node2stats(node.address)
 
   override def isFaulty(vid: ValidatorId): Boolean = faultyValidatorsMap(vid)
 
-  override def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint] = faultyFreezingPoints(vid)
+  override def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint] = faultyValidatorsFreezingPoints(vid)
 
   override def cumulativeTPS: Double = transactionsCounter.toDouble / totalTime.asSeconds
 }

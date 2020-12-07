@@ -1,7 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractNormalBlock, Block, BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{SimulationEngine, SimulationStats}
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -11,7 +11,13 @@ import scala.collection.mutable
 /**
   * Per-validator statistics (as accumulated by default stats processor).
   */
-class NodeLocalStatsProcessor(vid: ValidatorId, node: BlockchainNode, basicStats: SimulationStats, weightsMap: ValidatorId => Ether, genesis: Block, engine: SimulationEngine[BlockchainNode, EventPayload]) extends NodeLocalStats {
+class NodeLocalStatsProcessor(
+                               vid: ValidatorId,
+                               node: BlockchainNode,
+                               basicStats: SimulationStats,
+                               weightsMap: ValidatorId => Ether,
+                               genesis: Block,
+                               engine: SimulationEngine[BlockchainNode, EventPayload]) extends NodeLocalStats {
 
   //blocks that I published
   private var ownBlocksCounter: Long = 0
@@ -32,7 +38,7 @@ class NodeLocalStatsProcessor(vid: ValidatorId, node: BlockchainNode, basicStats
   //received ballots that I added to local j-dag
   private var acceptedBallotsCounter: Long = 0
   //by-generation-counters-array for my blocks
-  private val myBlocksByGenerationCounters = new TreeNodesByGenerationCounter
+  private var myBlocksByGenerationCounters = new TreeNodesByGenerationCounter
   //counter of these blocks I established finality of, which were published by me
   private var ownBlocksFinalizedCounter: Long = 0
   //counter of all transactions in blocks that I published and finalized
@@ -64,7 +70,7 @@ class NodeLocalStatsProcessor(vid: ValidatorId, node: BlockchainNode, basicStats
   //turned on after this validator, still being healthy, observed total weight of equivocators exceeding FTT
   private var isAfterObservingEquivocationCatastropheX: Boolean = false
   //collection of equivocators observed so far
-  private val observedEquivocators = new mutable.HashSet[ValidatorId]
+  private var observedEquivocators = new mutable.HashSet[ValidatorId]
   //total weight of validators in "observed equivocators" collection
   private var weightOfObservedEquivocatorsX: Long = 0
   //brick delivery and wakeup events counter
@@ -75,7 +81,7 @@ class NodeLocalStatsProcessor(vid: ValidatorId, node: BlockchainNode, basicStats
   private var transactionsInAllFinalizedBlocksCounter: Long = 0L
   private var totalGasInAllFinalizedBlocksCounter: Long = 0L
   private var sumOfLatenciesForAllFinalizedBlocks: TimeDelta = 0L
-  private val allBlocksByGenerationCounters = new TreeNodesByGenerationCounter
+  private var allBlocksByGenerationCounters = new TreeNodesByGenerationCounter
   private var allBricksCumulativeBinarySize: Long = 0L
   private var transactionsDataCounter: Long = 0L
 
@@ -84,10 +90,10 @@ class NodeLocalStatsProcessor(vid: ValidatorId, node: BlockchainNode, basicStats
 //                                               PROCESSING EVENTS
 //#####################################################################################################################################
 
-  def handleEvent(eventTimepoint: SimTimepoint, payload: EventPayload): Unit = {
+  override def handleEvent(eventTimepoint: SimTimepoint, payload: EventPayload): Unit = {
 
     payload match {
-      //TRANSPORT
+      //=========TRANSPORT=========
       case EventPayload.BrickDelivered(brick) =>
         if (brick.isInstanceOf[AbstractNormalBlock]) {
           receivedBlocksCounter += 1
@@ -97,11 +103,11 @@ class NodeLocalStatsProcessor(vid: ValidatorId, node: BlockchainNode, basicStats
           sumOfReceivedBallotsNetworkDelays += eventTimepoint - brick.timepoint
         }
 
-      //LOOPBACK
+      //=========LOOPBACK=========
       case EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker) =>
         //ignore
 
-      //ENGINE
+      //=========ENGINE=========
       case EventPayload.BroadcastBrick(brick) =>
         lastBrickPublishedX = Some(brick)
         brick match {
@@ -122,10 +128,10 @@ class NodeLocalStatsProcessor(vid: ValidatorId, node: BlockchainNode, basicStats
       case EventPayload.NetworkDisruptionEnd(disruptionEventId) =>
         //ignore
 
-      case EventPayload.NewAgentSpawned(validatorId) =>
+      case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
         //ignore
 
-      //SEMANTIC
+      //=========SEMANTIC=========
       case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
         brick match {
           case block: AbstractNormalBlock =>
@@ -201,7 +207,7 @@ class NodeLocalStatsProcessor(vid: ValidatorId, node: BlockchainNode, basicStats
       case EventPayload.NetworkConnectionRestored =>
         //ignore
 
-      //EXTERNAL
+      //=========EXTERNAL=========
       case EventPayload.Bifurcation(numberOfClones) =>
         //ignore
 
@@ -331,6 +337,52 @@ class NodeLocalStatsProcessor(vid: ValidatorId, node: BlockchainNode, basicStats
   }
 
   override def protocolOverhead: Double = (allBricksCumulativeBinarySize - transactionsDataCounter).toDouble / allBricksCumulativeBinarySize
+
+  //#####################################################################################################################################
+  //                                             CLONING
+  //#####################################################################################################################################
+
+  override def createDetachedCopy(blockchainNode: BlockchainNode): NodeLocalStats = {
+    val copy = new NodeLocalStatsProcessor(vid, node, basicStats, weightsMap, genesis, engine)
+
+    copy.ownBlocksCounter = ownBlocksCounter
+    copy.ownBallotsCounter = ownBallotsCounter
+    copy.receivedBlocksCounter = receivedBlocksCounter
+    copy.sumOfReceivedBlocksNetworkDelays = sumOfReceivedBlocksNetworkDelays
+    copy.receivedBallotsCounter = receivedBallotsCounter
+    copy.sumOfReceivedBallotsNetworkDelays = sumOfReceivedBallotsNetworkDelays
+    copy.receivedHandledBricks = receivedHandledBricks
+    copy.acceptedBlocksCounter = acceptedBlocksCounter
+    copy.acceptedBallotsCounter = acceptedBallotsCounter
+    copy.myBlocksByGenerationCounters = myBlocksByGenerationCounters.createDetachedCopy()
+    copy.ownBlocksFinalizedCounter = ownBlocksFinalizedCounter
+    copy.transactionsInMyFinalizedBlocksCounter = transactionsInMyFinalizedBlocksCounter
+    copy.totalGasInMyFinalizedBlocksCounter = totalGasInMyFinalizedBlocksCounter
+    copy.myBrickdagDepth = myBrickdagDepth
+    copy.myBrickdagSize = myBrickdagSize
+    copy.lastBrickPublishedX = lastBrickPublishedX
+    copy.lastFinalizedBlockX = lastFinalizedBlockX
+    copy.lastForkChoiceWinnerX  = lastForkChoiceWinnerX
+    copy.currentBGameStatusX  = currentBGameStatusX
+    copy.sumOfLatenciesForOwnBlocks = sumOfLatenciesForOwnBlocks
+    copy.sumOfBufferingTimes = sumOfBufferingTimes
+    copy.numberOfBricksThatEnteredMsgBuffer = numberOfBricksThatEnteredMsgBuffer
+    copy.numberOfBricksThatLeftMsgBuffer = numberOfBricksThatLeftMsgBuffer
+    copy.lastFinalizedBlockGeneration = lastFinalizedBlockGeneration
+    copy.isAfterObservingEquivocationCatastropheX = isAfterObservingEquivocationCatastropheX
+    copy.observedEquivocators = observedEquivocators.clone()
+    copy.weightOfObservedEquivocatorsX = weightOfObservedEquivocatorsX
+    copy.eventConsumptionsCounter = eventConsumptionsCounter
+    copy.sumOfConsumptionDelays = sumOfConsumptionDelays
+    copy.transactionsInAllFinalizedBlocksCounter = transactionsInAllFinalizedBlocksCounter
+    copy.totalGasInAllFinalizedBlocksCounter = totalGasInAllFinalizedBlocksCounter
+    copy.sumOfLatenciesForAllFinalizedBlocks = sumOfLatenciesForAllFinalizedBlocks
+    copy.allBlocksByGenerationCounters = allBlocksByGenerationCounters.createDetachedCopy()
+    copy.allBricksCumulativeBinarySize = allBricksCumulativeBinarySize
+    copy.transactionsDataCounter = transactionsDataCounter
+
+    return copy
+  }
 
 }
 

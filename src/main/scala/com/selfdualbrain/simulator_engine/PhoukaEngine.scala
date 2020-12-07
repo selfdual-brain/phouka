@@ -81,7 +81,7 @@ class PhoukaEngine(
     val newBox = new NodeBox(nodeId, i, newValidator, context)
     nodes.append(newBox)
     context.moveForwardLocalClockToAtLeast(desQueue.currentTime)
-    desQueue.addEngineEvent(context.time(), Some(nodeId), EventPayload.NewAgentSpawned(i))
+    desQueue.addEngineEvent(context.time(), Some(nodeId), EventPayload.NewAgentSpawned(i, progenitor = None))
     newValidator.startup()
   }
 
@@ -166,7 +166,11 @@ class PhoukaEngine(
           val newValidator = box.validatorInstance.clone(newNodeId, context)
           val newBox = new NodeBox(newNodeId, box.validatorId, newValidator, context)
           nodes.append(newBox)
-          desQueue.addEngineEvent(context.time(), Some(newNodeId), EventPayload.NewAgentSpawned(box.validatorId))
+          desQueue.addEngineEvent(
+            timepoint = context.time(),
+            agent = Some(newNodeId),
+            payload = EventPayload.NewAgentSpawned(validatorId = box.validatorId, progenitor = Some(destination))
+          )
         }
         true
 

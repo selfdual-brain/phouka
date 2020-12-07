@@ -1,10 +1,16 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{AbstractNormalBlock, Block, Brick}
-import com.selfdualbrain.time.TimeDelta
+import com.selfdualbrain.blockchain_structure.{AbstractNormalBlock, Block, BlockchainNode, Brick}
+import com.selfdualbrain.simulator_engine.EventPayload
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 trait NodeLocalStats {
+
+  //creates a clone of this stats that will handle node bifurcation
+  def createDetachedCopy(blockchainNode: BlockchainNode): NodeLocalStats
+
+  def handleEvent(eventTimepoint: SimTimepoint, payload: EventPayload): Unit
 
   //############################ LOCAL NODE STATE ################################################
 
