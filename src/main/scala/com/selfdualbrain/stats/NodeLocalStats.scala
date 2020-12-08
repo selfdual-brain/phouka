@@ -1,8 +1,8 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{AbstractNormalBlock, Block, BlockchainNode, Brick}
-import com.selfdualbrain.simulator_engine.EventPayload
+import com.selfdualbrain.blockchain_structure.{ACC, AbstractNormalBlock, Block, BlockchainNode, Brick}
+import com.selfdualbrain.simulator_engine.{EventPayload, MsgBufferSnapshot}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 trait NodeLocalStats {
@@ -15,6 +15,8 @@ trait NodeLocalStats {
   //############################ LOCAL NODE STATE ################################################
 
   def numberOfBricksInTheBuffer: Long
+
+  def msgBufferSnapshot: MsgBufferSnapshot
 
   //Number of blocks this validator can see as finalized. i.e. the LFB chain length.
   //Caution: technically we do not count Genesis, so in other words this returns the highest generation
@@ -32,6 +34,10 @@ trait NodeLocalStats {
   //None = no partial summit
   //Some((k,b)) = achieved partial summit at level k for block b
   def currentBGameStatus: Option[(Int, AbstractNormalBlock)]
+
+  def summitForLastFinalizedBlock: Option[ACC.Summit]
+
+  def lastPartialSummitForCurrentBGame: Option[ACC.Summit]
 
   //simulation(t).jdagBricks(v).size
   def jdagSize: Long

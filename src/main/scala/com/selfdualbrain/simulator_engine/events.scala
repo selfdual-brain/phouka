@@ -37,8 +37,6 @@ object EventPayload {
   case class NetworkDisruptionBegin(period: TimeDelta) extends EventPayload(EventTag.NETWORK_DISRUPTION_BEGIN)
 }
 
-case class MsgBufferTransition(snapshotBefore: MsgBufferSnapshot, snapshotAfter: MsgBufferSnapshot)
-
 object EventTag {
   val NEW_AGENT_SPAWNED = 0
   val BRICK_DELIVERED = 1

@@ -45,7 +45,7 @@ class JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks: Int, expected
     * @param simulationStep simulation step at which brick adding happened
     * @param brick brick added to local jdag
     */
-  def registerBrickWasAddedToJdag(simulationStep: Int, brick: Brick): Unit = {
+  def onBrickAddedToJdag(simulationStep: Int, brick: Brick): Unit = {
     assert (simulationStep > lastStepKnown) //enforce that steps are processed in monotonic sequence
     assert (! brickId2snapshot.contains(brick.id)) //every brick should be registered only once
 

@@ -1,9 +1,9 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure._
+import com.selfdualbrain.blockchain_structure.{ACC, _}
 import com.selfdualbrain.des.{SimulationEngine, SimulationStats}
-import com.selfdualbrain.simulator_engine.EventPayload
+import com.selfdualbrain.simulator_engine.{EventPayload, MsgBufferSnapshot}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -65,8 +65,14 @@ class NodeLocalStatsProcessor(
   private var numberOfBricksThatEnteredMsgBuffer: Long = 0
   //number if incoming bricks that left messages buffer (i.e. that were accepted after buffering)
   private var numberOfBricksThatLeftMsgBuffer: Long = 0
+  //snapshot of message buffer
+  private var currentMsgBufferSnapshot: MsgBufferSnapshot = Map.empty
   //generation of last finalized block; this value coincides with the length of finalized chain (not counting Genesis)
   private var lastFinalizedBlockGeneration: Long = 0
+  //summit that was built at the moment of finalizing last finalized block
+  private var summitForLastFinalizedBlockX: Option[ACC.Summit] = None
+  //last partial summit achieved for the on-going b-game (if any)
+  private var lastPartialSummitForCurrentBGameX: Option[ACC.Summit] = None
   //turned on after this validator, still being healthy, observed total weight of equivocators exceeding FTT
   private var isAfterObservingEquivocationCatastropheX: Boolean = false
   //collection of equivocators observed so far
@@ -150,9 +156,11 @@ class NodeLocalStatsProcessor(
       case EventPayload.AddedIncomingBrickToMsgBuffer(bufferedBrick, missingDependencies, bufferSnapshotAfter) =>
         numberOfBricksThatEnteredMsgBuffer += 1
         receivedHandledBricks += 1
+        currentMsgBufferSnapshot = bufferSnapshotAfter
 
       case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufferSnapshotAfter) =>
         numberOfBricksThatLeftMsgBuffer += 1
+        currentMsgBufferSnapshot = bufferSnapshotAfter
         brick match {
           case block: AbstractNormalBlock =>
             acceptedBlocksCounter += 1
@@ -169,6 +177,7 @@ class NodeLocalStatsProcessor(
 
       case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
         currentBGameStatusX = Some(partialSummit.level -> partialSummit.consensusValue)
+        lastPartialSummitForCurrentBGameX = Some(partialSummit)
 
       case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
         if (vid == finalizedBlock.creator) {
@@ -178,6 +187,8 @@ class NodeLocalStatsProcessor(
           totalGasInMyFinalizedBlocksCounter == finalizedBlock.totalGas
         }
         lastFinalizedBlockX = finalizedBlock
+        summitForLastFinalizedBlockX = Some(summit)
+        lastPartialSummitForCurrentBGameX = None
         lastFinalizedBlockGeneration = finalizedBlock.generation
         currentBGameStatusX = None
         sumOfLatenciesForAllFinalizedBlocks += eventTimepoint - finalizedBlock.timepoint
@@ -227,6 +238,8 @@ class NodeLocalStatsProcessor(
 
   override def numberOfBricksInTheBuffer: Long = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
 
+  override def msgBufferSnapshot: MsgBufferSnapshot = currentMsgBufferSnapshot
+
   override def lengthOfLfbChain: Long = lastFinalizedBlockGeneration
 
   override def lastBrickPublished: Option[Brick] = lastBrickPublishedX
@@ -236,6 +249,10 @@ class NodeLocalStatsProcessor(
   override def lastForkChoiceWinner: Block = lastForkChoiceWinnerX
 
   override def currentBGameStatus: Option[(ValidatorId, AbstractNormalBlock)] = currentBGameStatusX
+
+  override def summitForLastFinalizedBlock: Option[ACC.Summit] = summitForLastFinalizedBlockX
+
+  override def lastPartialSummitForCurrentBGame: Option[ACC.Summit] = lastPartialSummitForCurrentBGameX
 
   override def jdagSize: Long = myBrickdagSize
 
@@ -368,7 +385,10 @@ class NodeLocalStatsProcessor(
     copy.sumOfBufferingTimes = sumOfBufferingTimes
     copy.numberOfBricksThatEnteredMsgBuffer = numberOfBricksThatEnteredMsgBuffer
     copy.numberOfBricksThatLeftMsgBuffer = numberOfBricksThatLeftMsgBuffer
+    copy.currentMsgBufferSnapshot = currentMsgBufferSnapshot
     copy.lastFinalizedBlockGeneration = lastFinalizedBlockGeneration
+    copy.summitForLastFinalizedBlockX = summitForLastFinalizedBlockX
+    copy.lastPartialSummitForCurrentBGameX = lastPartialSummitForCurrentBGameX
     copy.isAfterObservingEquivocationCatastropheX = isAfterObservingEquivocationCatastropheX
     copy.observedEquivocators = observedEquivocators.clone()
     copy.weightOfObservedEquivocatorsX = weightOfObservedEquivocatorsX
