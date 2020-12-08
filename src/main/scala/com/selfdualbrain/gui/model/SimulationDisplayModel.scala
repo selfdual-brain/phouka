@@ -100,8 +100,7 @@ class SimulationDisplayModel(
                               expectedNumberOfBricks: Int,
                               expectedNumberOfEvents: Int,
                               maxNumberOfAgents: Int,
-                              lfbChainMaxLengthEstimation: Int,
-                              node2validator: BlockchainNode => ValidatorId
+                              lfbChainMaxLengthEstimation: Int
                             ) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
 
   import SimulationDisplayModel.Ev
@@ -267,53 +266,44 @@ class SimulationDisplayModel(
   def selectedNode: BlockchainNode = selectedNodeX
 
   def selectedNode_=(node: BlockchainNode): Unit = {
-    if (node == selectedNodeX)
-      return //no change is needed
-
-    //remembering which step we are displaying
-    //this is needed because we are just about to destroy the rendered state, where the current step pointer really lives
-    val s = currentlyDisplayedStep
-
-    //switching the node under observation and rendering its state from scratch
-    selectedNodeX = node
-    trigger(Ev.NodeSelectionChanged(selectedNodeX))
-    displayStep(s)
+    if (node != selectedNode) {
+      selectedNodeX = node
+      trigger(Ev.NodeSelectionChanged(selectedNodeX))
+    }
   }
 
   def selectedStep: Int = selectedStepX
 
-  //changing the selected event implies we need to determine which bricks are to be be visible
-  //at the new position of the timeline
   def selectedStep_=(stepId: Int): Unit = {
-    if (stepId == currentlyDisplayedStep)
-      return //no change, do nothing
-
-    if (stepId > this.currentlyDisplayedStep)
-      for (i <- this.currentlyDisplayedStep until stepId) observedValidatorRenderedState.stepForward()
-    else {
-      if (stepId > this.currentlyDisplayedStep / 2)
-        for (i <- this.currentlyDisplayedStep until stepId by -1) observedValidatorRenderedState.stepBackward()
-      else {
-        observedValidatorRenderedState = new RenderedValidatorState
-        for (i <- 0 until stepId) observedValidatorRenderedState.stepForward()
-      }
+    if (stepId != selectedStep) {
+      selectedStepX = stepId
+      trigger(Ev.StepSelectionChanged(stepId))
     }
-
-    assert(this.currentlyDisplayedStep == stepId)
-    trigger(Ev.StepSelectionChanged(stepId))
   }
 
   def selectedBrick: Option[Brick] = selectedBrickX
 
-  def selectBrick_=(brick: Brick): Unit = {
-    //todo
+  def selectBrick_=(brick: Option[Brick]): Unit = {
+    if (brick != selectedBrick) {
+      selectedBrickX = brick
+      trigger(Ev.BrickSelectionChanged(brick))
+    }
   }
 
-  def stateOfSelectedNode: AgentStateSnapshot = ??? //todo
+  def stateSnapshotForSelectedNodeAndStep: Option[AgentStateSnapshot] = {
+    val stepOrNothing = (selectedStep to 0 by -1) find { step =>
+      agentStateSnapshots.get(step) match {
+        case Some(snapshot) => snapshot.agent == selectedNodeX
+        case None => false
+      }
+    }
+
+    return stepOrNothing map (step => agentStateSnapshots(step))
+  }
 
   def getSummit(generation: Int): Option[ACC.Summit] = {
-    val summitsOfCurrentValidator = summits(selectedNodeX)
-    if (generation <= summitsOfCurrentValidator.length - 1)
+    val summitsOfCurrentValidator = summits(selectedNodeX.address)
+    if (summitsOfCurrentValidator.nonEmpty && generation <= summitsOfCurrentValidator.lastKey.get)
       Some(summitsOfCurrentValidator(generation))
     else
       None
@@ -323,18 +313,15 @@ class SimulationDisplayModel(
 
   def eventsAfterFiltering: ArrayBuffer[(Int, Event[BlockchainNode, EventPayload])] = filteredEvents
 
-  def getEvent(step: Int): Event[ValidatorId,EventPayload] = allEvents(step)
+  def getEvent(step: Int): Event[BlockchainNode, EventPayload] = allEvents(step)
 
   def getFilter: EventsFilter = eventsFilter
 
   def setFilter(filter: EventsFilter): Unit = {
     eventsFilter = filter
-    filteredEvents = allEvents.zipWithIndex collect {case (ev, step) if filter.isEventIncluded(ev) => (step,ev)}
+    filteredEvents = allEvents.underlyingArrayBuffer.zipWithIndex collect { case (ev, step) if filter.isEventIncluded(ev) => (step,ev)}
     trigger(Ev.FilterChanged)
   }
-
-  def currentlyDisplayedStep: Int = observedValidatorRenderedState.currentStep
-
 
 //  def displayStepByDisplayPosition(positionInFilteredEventsCollection: Int): Unit = {
 //    val stepId = filteredEvents(positionInFilteredEventsCollection)._1
@@ -392,10 +379,19 @@ object SimulationDisplayModel {
 
   def createDefault(): SimulationDisplayModel = {
     val config = ExperimentConfig.default
-    val setup = new ConfigBasedSimulationSetup(config)
-    val engine: PhoukaEngine = setup.engine.asInstanceOf[PhoukaEngine]
-    val genesis = engine.genesis
-    new SimulationDisplayModel(config, engine, setup.guiCompatibleStats.get, genesis)
+    val expSetup = new ConfigBasedSimulationSetup(config)
+    val engine: PhoukaEngine = expSetup.engine.asInstanceOf[PhoukaEngine]
+    val genesis = expSetup.genesis
+    new SimulationDisplayModel(
+      config,
+      engine,
+      expSetup.guiCompatibleStats.get,
+      genesis,
+      expectedNumberOfBricks = 10000,
+      expectedNumberOfEvents = 100000,
+      maxNumberOfAgents = 100,
+      lfbChainMaxLengthEstimation = 200
+    )
   }
 
   sealed abstract class Ev

@@ -2,7 +2,6 @@ package com.selfdualbrain.data_structures
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.reflect.ClassTag
 
 /**
   * Super-fast "map-like" collection that internally uses ArrayBuffer.
@@ -48,6 +47,12 @@ class FastIntMapWithAutoinit[E](initialSize: Int)(valuesInitializer: Int => E) e
   override def values: Iterable[E] = storage
 
   override def size: Int = storage.size
+
+  override def isEmpty: Boolean = size == 0
+
+  def lastKey: Option[Int] = if (isEmpty) None else Some(lastIndexInUse)
+
+  def underlyingArrayBuffer: ArrayBuffer[E] = storage
 }
 
 class FastMapOnIntInterval[E](initialSize: Int) extends FastIntMapWithAutoinit[E](initialSize)((i: Int) => throw new RuntimeException(s"only adding first key missing is supported; attempted key $i"))

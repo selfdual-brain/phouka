@@ -2,7 +2,6 @@ package com.selfdualbrain.data_structures
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.reflect.ClassTag
 
 /**
   * Super-fast "map-like" collection that internally uses an ArrayBuffer.
@@ -55,4 +54,5 @@ class FastIntMap[E](initialSize: Int = 16) extends mutable.Map[Int,E] {
 
   override def size: Int = storage.size
 
+  override def isEmpty: Boolean = size == 0
 }
