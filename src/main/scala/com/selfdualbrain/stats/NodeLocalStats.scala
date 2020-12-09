@@ -1,7 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{ACC, AbstractNormalBlock, Block, BlockchainNode, Brick}
+import com.selfdualbrain.blockchain_structure.{ACC, AbstractNormalBlock, Block, BlockchainNode, Brick, ValidatorId}
 import com.selfdualbrain.simulator_engine.{EventPayload, MsgBufferSnapshot}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
@@ -48,6 +48,8 @@ trait NodeLocalStats {
   def numberOfObservedEquivocators: Int
 
   def weightOfObservedEquivocators: Ether
+
+  def knownEquivocators: Iterable[ValidatorId]
 
   def isAfterObservingEquivocationCatastrophe: Boolean
 

@@ -158,6 +158,14 @@ object HighwayValidator {
   * and last finalized block. But 'latency' we mean the distance between creation and finalization for a given block. Conceptually these correspond
   * to two different ways of measuring how much finality is delayed behind the "nose" of the blockchain.
   *
+  * ### ORPHAN RATE SLOWDOWN ###
+  *
+  * High orphan rate is generally a signal of too short rounds, given the performance of the network and nodes computing power. For the purpose of
+  * round-exponent auto-adjustment we apply the following strategy:
+  * - I calculate the "moving" orphan rate taking into account only blocks created in last N rounds before the round of last finalized block (including
+  * the last finalized block).
+  * - If the orphan rate is bigger than orphanRateSlowdownThreshold, the validator increases its round exponent
+  *
   * ### PERFORMANCE STRESS SLOWDOWN ###
   * The simulation of nodes and network performance is flexible enough to create "node performance stress" conditions in the blockchain
   * i.e. when a validator has troubles trying to produce bricks according to the round's schedule. We expect nodes being pushed to the limits of performance
@@ -176,6 +184,14 @@ object HighwayValidator {
   * 1. After decreasing, the runahead slowdown condition would be immediately triggered.
   * 2. There is decided but not yet executed round exponent increase.
   * 3. The number of rounds passed since last round exponent adjustment is less than 'slowdownInertia'.
+  *
+  * ### TAMING DIVERSITY ###
+  * Whatever is set by previous rules, is filtered by the final check: the round exponent of a validator cannot be too far from the average (calculated
+  * for honest validators).
+  * The exact condition is: AVG - 2.5 < E < AVG + 2.5, where E is current exponent and AVG is weighted average round exponent over all honest validators
+  * (the node use latest message of each honest validator as the source of information on the current round exponent used by this validator).
+  * This condition enforces that at worst case, the set of round exponents used in the blockchain is a set of 5 consecutive integers, in other words
+  * the fastest node operates at most 32 times faster than the slowest node.
   *
   * ============= OMEGA WAITING MARGIN =============
   *
@@ -353,6 +369,7 @@ class HighwayValidator private (
     state.currentRoundLambdaMessageHasBeenReceived = false
   }
 
+  @deprecated //todo: refactor to more idiomatic programming style
   private def autoAdjustmentOfRoundExponent(): Unit = {
 
     //for a given round exponent we check 'runahead slowdown condition'
@@ -435,6 +452,49 @@ class HighwayValidator private (
         state.exponentInertiaCounter = 0
       }
     }
+  }
+
+  private def autoAdjustmentOfRoundExponent2(): Unit = {
+    import RoundExponentAdjustmentDecision._
+
+    //update counters
+    state.speedUpCounter += 1
+    state.exponentInertiaCounter += 1
+    if (state.droppedBricksAlarmSuppressionCounter > 0)
+      state.droppedBricksAlarmSuppressionCounter -= 1
+
+    //if round exponent change is already decided, we attempt to apply this change now
+    //for this to be possible we must however check if the beginning of new round is coherent with the new exponent
+    //if exponent change cannot be applied now, we skip any other checks ...
+    if (state.targetRoundExponent != state.currentRoundExponent)
+      if (state.currentRoundId % roundLengthAsNumberOfTicks(state.targetRoundExponent) == 0)
+        state.currentRoundExponent = state.targetRoundExponent
+      else
+        return
+
+    //... otherwise - analyze the overall situation and make a decision what we would like to do with the exponent
+    makeRoundExponentAdjustmentDecision() match {
+      case KeepAsIs =>
+        //well, great; nothing to be done here
+
+      case RunaheadSlowdown =>
+
+      case PerformanceStressSlowdown =>
+
+      case OrphanRateSlowdown =>
+
+      case FollowTheCrowdSlowdown =>
+
+      case FollowTheCrowdSpeedup =>
+
+      case GeneralAccelerationSpeedUp =>
+    }
+  }
+
+
+  private def makeRoundExponentAdjustmentDecision(): RoundExponentAdjustmentDecision = {
+    //todo
+    return RoundExponentAdjustmentDecision.KeepAsIs
   }
 
   /**

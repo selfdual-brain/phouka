@@ -262,6 +262,8 @@ class NodeLocalStatsProcessor(
 
   override def weightOfObservedEquivocators: Ether = weightOfObservedEquivocatorsX
 
+  override def knownEquivocators: Iterable[ValidatorId] = observedEquivocators
+
   override def isAfterObservingEquivocationCatastrophe: Boolean = isAfterObservingEquivocationCatastropheX
 
 

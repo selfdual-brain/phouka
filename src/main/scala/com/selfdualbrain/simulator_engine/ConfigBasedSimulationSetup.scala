@@ -165,7 +165,9 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.numberOfValidators,
         weightsOfValidatorsAsFunction,
         absoluteFTT,
-        totalWeight
+        totalWeight,
+        genesis,
+        engine
       )
 
     case ObserverConfig.FileBasedRecorder(targetDir, agentsToBeLogged) =>

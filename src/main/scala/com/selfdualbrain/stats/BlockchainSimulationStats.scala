@@ -80,6 +80,10 @@ import com.selfdualbrain.time.SimTimepoint
   */
 trait BlockchainSimulationStats extends SimulationStats {
 
+  def numberOfValidators: Int
+
+  def numberOfBlockchainNodes: Int
+
   def isFaulty(vid: ValidatorId): Boolean
 
   def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint]

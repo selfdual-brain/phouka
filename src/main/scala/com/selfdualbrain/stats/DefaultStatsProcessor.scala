@@ -1,7 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractNormalBlock, Block, BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractNormalBlock, Block, BlockchainNode, Brick, ValidatorId}
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval, MovingWindowBeepsCounterWithHistory}
 import com.selfdualbrain.des.{Event, SimulationEngine, SimulationObserver}
 import com.selfdualbrain.simulator_engine.EventPayload
@@ -53,8 +53,10 @@ class DefaultStatsProcessor(
   private var completelyFinalizedBlocksCounter: Long = 0
   //counter of transactions in visibly finalized blocks
   private var transactionsCounter: Long = 0
-  //counter of visible equivocators (= for which at least one validator has seen an equivocation)
-  private var visibleEquivocators: mutable.Set[ValidatorId] = new mutable.HashSet[ValidatorId]
+  //collection of equivocators observed so far
+  private var observedEquivocators = new mutable.HashSet[ValidatorId]
+  //total weight of validators in "observed equivocators" collection
+  private var weightOfObservedEquivocatorsX: Long = 0
   //counters of "blocks below generation"
   private val blocksByGenerationCounters = new TreeNodesByGenerationCounter
   //metainfo+stats we attach to LFB chain elements
@@ -81,6 +83,10 @@ class DefaultStatsProcessor(
 
   latencyMovingWindowAverage.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
   latencyMovingWindowStandardDeviation.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
+
+//#################################################################################################################################################
+//                                                          EVENTS PROCESSING
+//#################################################################################################################################################
 
   /**
     * Updates statistics by taking into account given event.
@@ -141,7 +147,6 @@ class DefaultStatsProcessor(
 
       case other =>
         //ignore
-
     }
 
   }
@@ -185,6 +190,12 @@ class DefaultStatsProcessor(
         //(= now we have finality timepoints for all non-faulty validators)
         if (! wasCompletelyFinalizedBefore && lfbElementInfo.isCompletelyFinalized)
           onBlockAchievingCompletelyFinalizedStatus(lfbElementInfo)
+
+      case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
+        if (! observedEquivocators.contains(evilValidator)) {
+          observedEquivocators += evilValidator
+          weightOfObservedEquivocatorsX += weightsMap(evilValidator)
+        }
 
       case other =>
         //ignore
@@ -251,6 +262,14 @@ class DefaultStatsProcessor(
     }
   }
 
+//#################################################################################################################################################
+//                                                          STATISTICS ACCESSING
+//#################################################################################################################################################
+
+  override def numberOfValidators: ValidatorId = numberOfValidators
+
+  override def numberOfBlockchainNodes: ValidatorId = node2stats.size
+
   override def totalTime: SimTimepoint = lastStepTimepoint
 
   override def numberOfEvents: Long = eventsCounter
@@ -276,9 +295,9 @@ class DefaultStatsProcessor(
 
   override def numberOfCompletelyFinalizedBlocks: Long = completelyFinalizedBlocksCounter
 
-  override def numberOfObservedEquivocators: Int = visibleEquivocators.size
+  override def numberOfObservedEquivocators: Int = observedEquivocators.size
 
-  override def weightOfObservedEquivocators: Ether = visibleEquivocators.map(vid => weightsMap(vid)).sum
+  override def weightOfObservedEquivocators: Ether = weightOfObservedEquivocatorsX
 
   override def weightOfObservedEquivocatorsAsPercentage: Double = weightOfObservedEquivocators.toDouble / totalWeightOfValidators * 100
 
