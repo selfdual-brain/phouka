@@ -110,7 +110,7 @@ class NodeLocalStatsProcessor(
         }
 
       //=========LOOPBACK=========
-      case EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker) =>
+      case EventPayload.WakeUp(strategySpecificMarker) =>
         //ignore
 
       //=========ENGINE=========

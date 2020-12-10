@@ -53,7 +53,7 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
 
       case Event.Loopback(id, timepoint, agent, payload) =>
         payload match {
-          case EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker) =>
+          case EventPayload.WakeUp(strategySpecificMarker) =>
             s"wakeup - arrived, marker=$strategySpecificMarker"
         }
 

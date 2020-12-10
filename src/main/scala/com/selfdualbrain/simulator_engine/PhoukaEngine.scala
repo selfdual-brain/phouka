@@ -197,7 +197,7 @@ class PhoukaEngine(
   //results: true = mask this event; false = emit this event
   protected def handleLoopback(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: BlockchainNode, payload: EventPayload): Boolean = {
     payload match {
-      case EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker) =>
+      case EventPayload.WakeUp(strategySpecificMarker) =>
         box.context.moveForwardLocalClockToAtLeast(timepoint)
         desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedWakeUp(eventId, box.context.time() - timepoint, strategySpecificMarker))
         box executeAndRecordProcessingTimeConsumption {
@@ -294,7 +294,7 @@ class PhoukaEngine(
     }
 
     override def scheduleWakeUp(wakeUpTimepoint: SimTimepoint, strategySpecificMarker: Any): Unit = {
-      desQueue.addLoopbackEvent(wakeUpTimepoint, nodeId, EventPayload.WakeUpForCreatingNewBrick(strategySpecificMarker))
+      desQueue.addLoopbackEvent(wakeUpTimepoint, nodeId, EventPayload.WakeUp(strategySpecificMarker))
     }
 
     override def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: EventPayload): Unit = {

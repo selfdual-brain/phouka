@@ -5,6 +5,7 @@ import com.selfdualbrain.data_structures.{CloningSupport, DirectedGraphUtils, Mo
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.transactions.BlockPayload
+import com.selfdualbrain.util.ThreeWayControlCommand
 
 object HighwayValidator {
 
@@ -185,7 +186,7 @@ object HighwayValidator {
   * 2. There is decided but not yet executed round exponent increase.
   * 3. The number of rounds passed since last round exponent adjustment is less than 'slowdownInertia'.
   *
-  * ### TAMING DIVERSITY ###
+  * ### FOLLOW THE CROWD ###
   * Whatever is set by previous rules, is filtered by the final check: the round exponent of a validator cannot be too far from the average (calculated
   * for honest validators).
   * The exact condition is: AVG - 2.5 < E < AVG + 2.5, where E is current exponent and AVG is weighted average round exponent over all honest validators
@@ -365,96 +366,11 @@ class HighwayValidator private (
     //schedule the wake-up for round wrap-up processing
     context.scheduleWakeUp(state.currentRoundWrapUpTimepoint, WakeupMarker.RoundWrapUp(roundId))
 
-    //clearing the "lambda message received" flag
+    //clear the "lambda message received" flag
     state.currentRoundLambdaMessageHasBeenReceived = false
   }
 
-  @deprecated //todo: refactor to more idiomatic programming style
   private def autoAdjustmentOfRoundExponent(): Unit = {
-
-    //for a given round exponent we check 'runahead slowdown condition'
-    //result = true means that LFB chain is too far behind the front of the blockchain (i.e. slowdown is needed)
-    def runaheadSlowdownConditionCheck(exponent: Int): Boolean = state.myLastMessagePublished match {
-      case Some(msg) =>
-        val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint - state.finalizer.lastFinalizedBlock.timepoint
-        val tolerance: TimeDelta = config.runaheadTolerance * roundLengthAsNumberOfTicks(exponent)
-        currentRunahead > tolerance
-      case None =>
-        false
-    }
-
-    //update counters
-    state.speedUpCounter += 1
-    state.exponentInertiaCounter += 1
-    if (state.droppedBricksAlarmSuppressionCounter > 0)
-      state.droppedBricksAlarmSuppressionCounter -= 1
-
-    //if round exponent change is already decided, we attempt to apply this change now
-    //for this to be possible we must however check if the beginning of new round is coherent with the new exponent
-    //if exponent change cannot be applied now, we skip any other checks
-    if (state.targetRoundExponent != state.currentRoundExponent)
-      if (state.currentRoundId % roundLengthAsNumberOfTicks(state.targetRoundExponent) == 0)
-        state.currentRoundExponent = state.targetRoundExponent
-      else
-        return
-
-    //if we are within exponent inertia period after last exponent change, we skip any further checks
-    if (state.exponentInertiaCounter <= config.exponentInertia)
-      return
-
-    //runahead slowdown check
-    val runaheadSlowdownDecision: Boolean = runaheadSlowdownConditionCheck(state.currentRoundExponent)
-
-    //performance-stress slowdown check
-    val performanceStressSlowdownDecision: Boolean =
-      if (state.droppedBricksAlarmSuppressionCounter > 0)
-        false
-      else {
-        val bricksPublished = onTimeBricksCounter.numberOfBeepsInTheWindow(context.time().micros)
-        val bricksDropped = tooLateBricksCounter.numberOfBeepsInTheWindow(context.time().micros)
-        if (bricksPublished + bricksDropped == 0)
-          false
-        else {
-          val movingWindowDropRate: Double = bricksDropped.toDouble / (bricksPublished + bricksDropped)
-          movingWindowDropRate > config.droppedBricksAlarmLevel
-        }
-      }
-
-    //restarting 'dropped bricks alarm suppression' counter
-    if (performanceStressSlowdownDecision)
-      state.droppedBricksAlarmSuppressionCounter = config.droppedBricksAlarmSuppressionPeriod
-
-    //combined decision on potential slowdown
-    val weWantToSlowDown: Boolean = runaheadSlowdownDecision || performanceStressSlowdownDecision
-
-    //apply slowdown or - if no slowdown is decided at this point - consider speedup
-    if (weWantToSlowDown) {
-      state.targetRoundExponent += 1
-      state.exponentInertiaCounter = 0
-      if (state.currentRoundId % roundLengthAsNumberOfTicks(state.targetRoundExponent) == 0)
-        state.currentRoundExponent = state.targetRoundExponent
-    } else {
-      if (state.speedUpCounter >= config.exponentAccelerationPeriod && state.currentRoundExponent > 0) {
-        //ok, so we are about to consider speed-up now ... (unless something stops us from doing so)
-
-        //potential issue 1: if such a speed up would immediately trigger runahead slowdown condition, we give up
-        if (runaheadSlowdownConditionCheck(state.currentRoundExponent - 1))
-          return //speed-up makes no sense at this point; we are just at the optimal round length now
-
-        //potential issue 2: if after a speed up, effective omega margin would consume more than half of the round length, we give up
-        if (state.effectiveOmegaMargin.toDouble / roundLengthAsNumberOfTicks(state.currentRoundExponent - 1) > 0.5)
-          return //this blockchain node does not have enough performance to use shorter rounds
-
-        //all looks good; let us actually do the speed-up now
-        state.targetRoundExponent -= 1
-        state.currentRoundExponent = state.targetRoundExponent //no need to wait applying the new exponent because when speeding-up, rounds are always aligned OK
-        state.speedUpCounter = 0
-        state.exponentInertiaCounter = 0
-      }
-    }
-  }
-
-  private def autoAdjustmentOfRoundExponent2(): Unit = {
     import RoundExponentAdjustmentDecision._
 
     //update counters
@@ -475,25 +391,125 @@ class HighwayValidator private (
     //... otherwise - analyze the overall situation and make a decision what we would like to do with the exponent
     makeRoundExponentAdjustmentDecision() match {
       case KeepAsIs =>
-        //well, great; nothing to be done here
+        //nothing to be done here
 
       case RunaheadSlowdown =>
+        applySlowdown()
 
       case PerformanceStressSlowdown =>
+        state.droppedBricksAlarmSuppressionCounter = config.droppedBricksAlarmSuppressionPeriod
+        applySlowdown()
 
       case OrphanRateSlowdown =>
+        applySlowdown()
 
       case FollowTheCrowdSlowdown =>
+        applySlowdown()
 
       case FollowTheCrowdSpeedup =>
+        applySpeedup()
 
       case GeneralAccelerationSpeedUp =>
+        applySpeedup()
+    }
+
+    def applySlowdown(): Unit = {
+      state.targetRoundExponent = state.currentRoundExponent + 1
+      state.exponentInertiaCounter = 0
+      state.speedUpCounter = 0
+      if (state.currentRoundId % roundLengthAsNumberOfTicks(state.targetRoundExponent) == 0)
+        state.currentRoundExponent = state.targetRoundExponent
+    }
+
+    def applySpeedup(): Unit = {
+      state.targetRoundExponent = state.currentRoundExponent - 1
+      state.currentRoundExponent = state.targetRoundExponent //no need to wait applying the new exponent because when speeding-up, rounds are always aligned OK
+      state.speedUpCounter = 0
+      state.exponentInertiaCounter = 0
     }
   }
 
-
   private def makeRoundExponentAdjustmentDecision(): RoundExponentAdjustmentDecision = {
-    //todo
+
+    //true = slowdown is needed
+    def runaheadSlowdownCheck(roundExponent: Int): Boolean = state.myLastMessagePublished match {
+      case Some(msg) =>
+        val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint - state.finalizer.lastFinalizedBlock.timepoint
+        val tolerance: TimeDelta = config.runaheadTolerance * roundLengthAsNumberOfTicks(roundExponent)
+        currentRunahead > tolerance
+      case None =>
+        false
+    }
+
+    //true = slowdown is needed
+    def performanceStressSlowdownCheck(): Boolean =
+      if (state.droppedBricksAlarmSuppressionCounter > 0)
+        false
+      else {
+        val bricksPublished = onTimeBricksCounter.numberOfBeepsInTheWindow(context.time().micros)
+        val bricksDropped = tooLateBricksCounter.numberOfBeepsInTheWindow(context.time().micros)
+        if (bricksPublished + bricksDropped == 0)
+          false
+        else {
+          val movingWindowDropRate: Double = bricksDropped.toDouble / (bricksPublished + bricksDropped)
+          movingWindowDropRate > config.droppedBricksAlarmLevel
+        }
+      }
+
+    //true = slowdown is needed
+    def roundTooShortInRelationToOmegaMarginCheck(roundExponent: Int): Boolean = state.effectiveOmegaMargin.toDouble / roundLengthAsNumberOfTicks(roundExponent) > 0.5
+
+    //true = slowdown is needed
+    def orphanRateTooHighCheck(): Boolean = {
+      ???
+    }
+
+    //true = we have green light for changing round exponent; false = red light (inertia period after last change is still in progress)
+    def exponentInertiaGreenLightCheck(): Boolean = {
+
+    }
+
+    def followTheCrowdCheck():(Int, Int) = ???
+
+    //true = it is time to accelerate
+    def generalAccelerationCheck(): Boolean = ???
+
+    //================= ROUND EXPONENT AUTO-ADJUSTMENT DECISION MAKING CIRCUIT =================
+
+    //inertia check goes first; we definitely want to avoid validators changing their round exponents as crazy
+    if (! exponentInertiaGreenLightCheck())
+      return RoundExponentAdjustmentDecision.KeepAsIs
+
+    //performance stress is our hard limit anyway, even if this violates "follow the crowd" rule
+    //after all, a node cannot operate faster than its processor is able to
+    val weAttemptToProcessStuffTooFast = performanceStressSlowdownCheck()
+    if (weAttemptToProcessStuffTooFast)
+      return RoundExponentAdjustmentDecision.PerformanceStressSlowdown
+
+    //check current limits implied by "follow the crowd rule"
+    //if we are outside the limits, attempt to follow the crowd now and skip any other considerations
+    val (loLimit, hiLimit) = followTheCrowdCheck()
+    if (state.currentRoundExponent < loLimit)
+      return RoundExponentAdjustmentDecision.FollowTheCrowdSlowdown
+    if (state.currentRoundExponent > hiLimit)
+      return RoundExponentAdjustmentDecision.FollowTheCrowdSpeedup
+
+    //decide to slowdown if last finalized block is too far in the past
+    val runaheadSlowdownSuggested: Boolean = runaheadSlowdownCheck(state.currentRoundExponent)
+    if (runaheadSlowdownSuggested && state.currentRoundExponent + 1 <= hiLimit)
+      return RoundExponentAdjustmentDecision.RunaheadSlowdown
+
+    //decide to slowdown if moving-window orphan rate is too high
+    val orphanRateSlowdownSuggested: Boolean = orphanRateTooHighCheck()
+    if (orphanRateSlowdownSuggested && state.currentRoundExponent + 1 <= hiLimit)
+      return RoundExponentAdjustmentDecision.OrphanRateSlowdown
+
+    //possibly accelerate
+    val okToAccelerate = generalAccelerationCheck()
+    if (okToAccelerate && state.currentRoundExponent - 1 >= loLimit)
+      return RoundExponentAdjustmentDecision.GeneralAccelerationSpeedUp
+
+    //reaching this point means that all reasons for changing the round exponent now were rejected
     return RoundExponentAdjustmentDecision.KeepAsIs
   }
 
@@ -603,5 +619,93 @@ class HighwayValidator private (
 
     return brick
   }
+
+//############################################################### THRASH ###################################################################
+
+  @deprecated //todo: refactor to more idiomatic programming style
+  private def autoAdjustmentOfRoundExponent_Old(): Unit = {
+
+    //for a given round exponent we check 'runahead slowdown condition'
+    //result = true means that LFB chain is too far behind the front of the blockchain (i.e. slowdown is needed)
+    def runaheadSlowdownConditionCheck(exponent: Int): Boolean = state.myLastMessagePublished match {
+      case Some(msg) =>
+        val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint - state.finalizer.lastFinalizedBlock.timepoint
+        val tolerance: TimeDelta = config.runaheadTolerance * roundLengthAsNumberOfTicks(exponent)
+        currentRunahead > tolerance
+      case None =>
+        false
+    }
+
+    //update counters
+    state.speedUpCounter += 1
+    state.exponentInertiaCounter += 1
+    if (state.droppedBricksAlarmSuppressionCounter > 0)
+      state.droppedBricksAlarmSuppressionCounter -= 1
+
+    //if round exponent change is already decided, we attempt to apply this change now
+    //for this to be possible we must however check if the beginning of new round is coherent with the new exponent
+    //if exponent change cannot be applied now, we skip any other checks
+    if (state.targetRoundExponent != state.currentRoundExponent)
+      if (state.currentRoundId % roundLengthAsNumberOfTicks(state.targetRoundExponent) == 0)
+        state.currentRoundExponent = state.targetRoundExponent
+      else
+        return
+
+    //if we are within exponent inertia period after last exponent change, we skip any further checks
+    if (state.exponentInertiaCounter <= config.exponentInertia)
+      return
+
+    //runahead slowdown check
+    val runaheadSlowdownDecision: Boolean = runaheadSlowdownConditionCheck(state.currentRoundExponent)
+
+    //performance-stress slowdown check
+    val performanceStressSlowdownDecision: Boolean =
+      if (state.droppedBricksAlarmSuppressionCounter > 0)
+        false
+      else {
+        val bricksPublished = onTimeBricksCounter.numberOfBeepsInTheWindow(context.time().micros)
+        val bricksDropped = tooLateBricksCounter.numberOfBeepsInTheWindow(context.time().micros)
+        if (bricksPublished + bricksDropped == 0)
+          false
+        else {
+          val movingWindowDropRate: Double = bricksDropped.toDouble / (bricksPublished + bricksDropped)
+          movingWindowDropRate > config.droppedBricksAlarmLevel
+        }
+      }
+
+    //restarting 'dropped bricks alarm suppression' counter
+    if (performanceStressSlowdownDecision)
+      state.droppedBricksAlarmSuppressionCounter = config.droppedBricksAlarmSuppressionPeriod
+
+    //combined decision on potential slowdown
+    val weWantToSlowDown: Boolean = runaheadSlowdownDecision || performanceStressSlowdownDecision
+
+    //apply slowdown or - if no slowdown is decided at this point - consider speedup
+    if (weWantToSlowDown) {
+      state.targetRoundExponent += 1
+      state.exponentInertiaCounter = 0
+      if (state.currentRoundId % roundLengthAsNumberOfTicks(state.targetRoundExponent) == 0)
+        state.currentRoundExponent = state.targetRoundExponent
+    } else {
+      if (state.speedUpCounter >= config.exponentAccelerationPeriod && state.currentRoundExponent > 0) {
+        //ok, so we are about to consider speed-up now ... (unless something stops us from doing so)
+
+        //potential issue 1: if such a speed up would immediately trigger runahead slowdown condition, we give up
+        if (runaheadSlowdownConditionCheck(state.currentRoundExponent - 1))
+          return //speed-up makes no sense at this point; we are just at the optimal round length now
+
+        //potential issue 2: if after a speed up, effective omega margin would consume more than half of the round length, we give up
+        if (state.effectiveOmegaMargin.toDouble / roundLengthAsNumberOfTicks(state.currentRoundExponent - 1) > 0.5)
+          return //this blockchain node does not have enough performance to use shorter rounds
+
+        //all looks good; let us actually do the speed-up now
+        state.targetRoundExponent -= 1
+        state.currentRoundExponent = state.targetRoundExponent //no need to wait applying the new exponent because when speeding-up, rounds are always aligned OK
+        state.speedUpCounter = 0
+        state.exponentInertiaCounter = 0
+      }
+    }
+  }
+
 
 }

@@ -11,7 +11,7 @@ object EventPayload {
   case class BrickDelivered(brick: Brick) extends EventPayload(EventTag.BRICK_DELIVERED)
 
   //LOOPBACK
-  case class WakeUpForCreatingNewBrick(strategySpecificMarker: Any) extends EventPayload(EventTag.WAKE_UP)
+  case class WakeUp(strategySpecificMarker: Any) extends EventPayload(EventTag.WAKE_UP)
 
   //ENGINE
   case class BroadcastBrick(brick: Brick) extends EventPayload(EventTag.BROADCAST_BRICK)
@@ -30,6 +30,7 @@ object EventPayload {
   case class ConsumedWakeUp(consumedEventId: Long, consumptionDelay: TimeDelta, strategySpecificMarker: Any) extends EventPayload(EventTag.CONSUMED_WAKEUP)
   case object NetworkConnectionLost extends EventPayload(EventTag.NETWORK_CONNECTION_LOST)
   case object NetworkConnectionRestored extends EventPayload(EventTag.NETWORK_CONNECTION_RESTORED)
+  case class StrategySpecificOutput[P](cargo: P) extends EventPayload(EventTag.STRATEGY_SPECIFIC_OUTPUT)
 
   //EXTERNAL
   case class Bifurcation(numberOfClones: Int) extends EventPayload(EventTag.BIFURCATION)
@@ -57,6 +58,7 @@ object EventTag {
   val CONSUMED_WAKEUP = 16
   val NETWORK_CONNECTION_RESTORED = 17
   val NETWORK_CONNECTION_LOST = 18
+  val STRATEGY_SPECIFIC_OUTPUT = 19
 
   val collection = Map(
     NEW_AGENT_SPAWNED -> "agent created",
@@ -77,7 +79,8 @@ object EventTag {
     CONSUMED_BRICK_DELIVERY -> "brick consumption",
     CONSUMED_WAKEUP -> "wake-up consumption",
     NETWORK_CONNECTION_LOST -> "network connection lost",
-    NETWORK_CONNECTION_RESTORED -> "network connection restored"
+    NETWORK_CONNECTION_RESTORED -> "network connection restored",
+    STRATEGY_SPECIFIC_OUTPUT -> "diagnostic"
   )
 
   def of(event: Event[BlockchainNode, EventPayload]): Int = event.payload.filteringTag
