@@ -58,8 +58,11 @@ trait ValidatorContext {
     * Simply speaking this is just "simulation output". No agent is interpreting output, the output is something like "logging".
     * Nevertheless, this "logging" is interlaced with all the events happening in the simulation, and sorted according to simulation time
     * (which would NOT happen if, say, we use log4j).
+    *
+    * In other words, we distinguish in-simulation logging (happens here) from engine-level logging (log4j). They both are needed but live
+    * in different conceptual layers.
     */
-  def addOutputEvent(timepoint: SimTimepoint, payload: EventPayload): Unit
+  def addOutputEvent(payload: EventPayload): Unit
 
   /**
     * Returns simulation time (as seen by the nested agent).

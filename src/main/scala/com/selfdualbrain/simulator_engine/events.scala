@@ -11,7 +11,7 @@ object EventPayload {
   case class BrickDelivered(brick: Brick) extends EventPayload(EventTag.BRICK_DELIVERED)
 
   //LOOPBACK
-  case class WakeUp(strategySpecificMarker: Any) extends EventPayload(EventTag.WAKE_UP)
+  case class WakeUp[M](strategySpecificMarker: M) extends EventPayload(EventTag.WAKE_UP)
 
   //ENGINE
   case class BroadcastBrick(brick: Brick) extends EventPayload(EventTag.BROADCAST_BRICK)
@@ -80,7 +80,7 @@ object EventTag {
     CONSUMED_WAKEUP -> "wake-up consumption",
     NETWORK_CONNECTION_LOST -> "network connection lost",
     NETWORK_CONNECTION_RESTORED -> "network connection restored",
-    STRATEGY_SPECIFIC_OUTPUT -> "diagnostic"
+    STRATEGY_SPECIFIC_OUTPUT -> "strategy-specific"
   )
 
   def of(event: Event[BlockchainNode, EventPayload]): Int = event.payload.filteringTag

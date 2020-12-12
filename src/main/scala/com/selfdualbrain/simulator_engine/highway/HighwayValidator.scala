@@ -5,7 +5,6 @@ import com.selfdualbrain.data_structures.{CloningSupport, DirectedGraphUtils, Mo
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.transactions.BlockPayload
-import com.selfdualbrain.util.ThreeWayControlCommand
 
 object HighwayValidator {
 
@@ -389,7 +388,10 @@ class HighwayValidator private (
         return
 
     //... otherwise - analyze the overall situation and make a decision what we would like to do with the exponent
-    makeRoundExponentAdjustmentDecision() match {
+    val decision = makeRoundExponentAdjustmentDecision()
+
+    //apply the decision
+    decision match {
       case KeepAsIs =>
         //nothing to be done here
 
@@ -411,6 +413,14 @@ class HighwayValidator private (
 
       case GeneralAccelerationSpeedUp =>
         applySpeedup()
+    }
+
+    //simulation-level logging of exponent adjustment
+    decision match {
+      case KeepAsIs =>
+        //nothing to be done here
+      case other =>
+        context.addOutputEvent(EventPayload.StrategySpecificOutput(Highway.CustomOutput.RoundExponentAdjustment(decision, state.targetRoundExponent)))
     }
 
     def applySlowdown(): Unit = {
@@ -540,6 +550,7 @@ class HighwayValidator private (
       onTimeBricksCounter.beep(brick.id, context.time().micros)
     } else {
       tooLateBricksCounter.beep(brick.id, context.time().micros)
+      context.addOutputEvent(EventPayload.StrategySpecificOutput(Highway.CustomOutput.BrickDropped(brick, state.currentRoundEnd, state.currentRoundEnd - context.time())))
     }
   }
 

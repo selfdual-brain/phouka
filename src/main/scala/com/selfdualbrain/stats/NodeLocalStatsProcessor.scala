@@ -109,10 +109,6 @@ class NodeLocalStatsProcessor(
           sumOfReceivedBallotsNetworkDelays += eventTimepoint - brick.timepoint
         }
 
-      //=========LOOPBACK=========
-      case EventPayload.WakeUp(strategySpecificMarker) =>
-        //ignore
-
       //=========ENGINE=========
       case EventPayload.BroadcastBrick(brick) =>
         lastBrickPublishedX = Some(brick)
@@ -212,20 +208,7 @@ class NodeLocalStatsProcessor(
         eventConsumptionsCounter += 1
         sumOfConsumptionDelays += consumptionDelay
 
-      case EventPayload.NetworkConnectionLost =>
-        //ignore
-
-      case EventPayload.NetworkConnectionRestored =>
-        //ignore
-
-      //=========EXTERNAL=========
-      case EventPayload.Bifurcation(numberOfClones) =>
-        //ignore
-
-      case EventPayload.NodeCrash =>
-        //ignore
-
-      case EventPayload.NetworkDisruptionBegin(period: TimeDelta) =>
+      case other =>
         //ignore
 
     }

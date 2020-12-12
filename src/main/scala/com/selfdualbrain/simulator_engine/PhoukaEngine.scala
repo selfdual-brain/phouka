@@ -301,8 +301,8 @@ class PhoukaEngine(
       desQueue.addTransportEvent(timepoint = wakeUpTimepoint, source = nodeId, destination = nodeId, payload)
     }
 
-    override def addOutputEvent(timepoint: SimTimepoint, payload: EventPayload): Unit = {
-      desQueue.addOutputEvent(timepoint, source = nodeId, payload)
+    override def addOutputEvent(payload: EventPayload): Unit = {
+      desQueue.addOutputEvent(time(), source = nodeId, payload)
     }
 
     override def time(): SimTimepoint = localClock
