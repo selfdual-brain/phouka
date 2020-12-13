@@ -117,11 +117,11 @@ object ValidatorBaseImpl {
   * @tparam CF config type
   * @tparam ST state snapshot type
   */
-abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorBaseImpl.State, M](
+abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorBaseImpl.State](
                                                                                                 blockchainNode: BlockchainNode,
                                                                                                 context: ValidatorContext,
                                                                                                 config: CF,
-                                                                                                state: ST) extends Validator[M] {
+                                                                                                state: ST) extends Validator {
 
   //wiring finalizer instance to local processing
   //caution: this is also crucial while cloning (cloned Finalizer has output in "not-connected" state

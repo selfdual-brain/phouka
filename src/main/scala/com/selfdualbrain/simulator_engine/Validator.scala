@@ -6,7 +6,7 @@ import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick}
   * Defines features of an agent ("validator") to be compatible with PhoukaEngine.
   * The engine uses this trait for delivering events to agents.
   */
-trait Validator[M] {
+trait Validator {
 
   /**
     * Called by the engine at the beginning of the simulation.
@@ -26,7 +26,7 @@ trait Validator[M] {
     * Implementation-specific wake-up.
     * Usually this is a wake-up for creating new brick.
     */
-  def onWakeUp(strategySpecificMarker: M): Unit
+  def onWakeUp(strategySpecificMarker: Any): Unit
 
   /**
     * A validator must be able to clone itself.
@@ -36,7 +36,7 @@ trait Validator[M] {
     * Two (or more) blockchain nodes that share the same validator-id but otherwise operate independently,
     * effectively are seen as an equivocator.
     */
-  def clone(blockchainNode: BlockchainNode, context: ValidatorContext): Validator[M]
+  def clone(blockchainNode: BlockchainNode, context: ValidatorContext): Validator
 
 }
 

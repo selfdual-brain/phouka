@@ -59,8 +59,12 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
 
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
-          case EventPayload.NewAgentSpawned(vid) =>
-            s"spawned new agent ${agent.get} using validator-id $vid"
+          case EventPayload.NewAgentSpawned(vid, progenitor) =>
+            val progenitorDesc: String = progenitor match {
+              case Some(p) => s"(cloned from $p)"
+              case None => ""
+            }
+            s"spawned new agent ${agent.get} using validator-id $vid $progenitorDesc"
           case EventPayload.BroadcastBrick(brick) =>
             s"published $brick"
           case EventPayload.NetworkDisruptionEnd(eventId) =>
@@ -71,12 +75,12 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
         payload match {
           case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
             s"directly added incoming $brick to local blockdag"
-          case EventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, bufTransition) =>
+          case EventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, snapshotAfter) =>
             val dependencies = missingDependencies.map(d => d.id).mkString(",")
-            val bufSnapshot = msgBufferSnapshotDescription(bufTransition.snapshotAfter)
+            val bufSnapshot = msgBufferSnapshotDescription(snapshotAfter)
             s"added brick to msg buffer, brick=$brick missing dependencies = $dependencies, buffer state after=[$bufSnapshot]"
-          case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, bufTransition) =>
-            val bufSnapshot = msgBufferSnapshotDescription(bufTransition.snapshotAfter)
+          case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshotAfter) =>
+            val bufSnapshot = msgBufferSnapshotDescription(snapshotAfter)
             s"accepted brick from msg buffer, brick=$brick, buffer state after=[$bufSnapshot]"
           case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
             s"pre-finality - level ${partialSummit.level}"

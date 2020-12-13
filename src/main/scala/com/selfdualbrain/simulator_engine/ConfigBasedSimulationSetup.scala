@@ -143,6 +143,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   override def guiCompatibleStats: Option[BlockchainSimulationStats] = guiCompatibleStatsX
 
+  override def node2validator(node: BlockchainNode): ValidatorId = ???
+
   //###################################################################################
 
   private def buildNetworkModel(): NetworkModel[BlockchainNode, Brick] = config.networkModel match {

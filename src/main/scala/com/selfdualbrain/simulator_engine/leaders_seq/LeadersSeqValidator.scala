@@ -40,7 +40,7 @@ class LeadersSeqValidator private (
                                     context: ValidatorContext,
                                     config: LeadersSeqValidator.Config,
                                     state: ValidatorBaseImpl.State
-                                  ) extends ValidatorBaseImpl[LeadersSeqValidator.Config, ValidatorBaseImpl.State, Long](blockchainNode, context, config, state) {
+                                  ) extends ValidatorBaseImpl[LeadersSeqValidator.Config, ValidatorBaseImpl.State](blockchainNode, context, config, state) {
 
   def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: LeadersSeqValidator.Config) =
     this(
@@ -54,7 +54,7 @@ class LeadersSeqValidator private (
       }
     )
 
-  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator[Long] = {
+  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
     val validatorInstance = new LeadersSeqValidator(bNode, vContext, config, state.createDetachedCopy())
     validatorInstance.scheduleNextWakeup(beAggressive = false)
     return validatorInstance
@@ -66,7 +66,7 @@ class LeadersSeqValidator private (
     scheduleNextWakeup(beAggressive = true)
   }
 
-  override def onWakeUp(strategySpecificMarker: Long): Unit = {
+  override def onWakeUp(strategySpecificMarker: Any): Unit = {
     val round: Long = strategySpecificMarker.asInstanceOf[Long]
     val (roundStart, roundStop) = roundBoundary(round)
     if (context.time() <= roundStop) {

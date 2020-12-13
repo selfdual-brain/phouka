@@ -201,7 +201,7 @@ class PhoukaEngine(
         box.context.moveForwardLocalClockToAtLeast(timepoint)
         desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedWakeUp(eventId, box.context.time() - timepoint, strategySpecificMarker))
         box executeAndRecordProcessingTimeConsumption {
-          box.validatorInstance.onWakeUp(timepoint, strategySpecificMarker)
+          box.validatorInstance.onWakeUp(strategySpecificMarker)
         }
         true
       case other =>

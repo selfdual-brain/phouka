@@ -244,7 +244,7 @@ class HighwayValidator private (
                                  context: ValidatorContext,
                                  config: HighwayValidator.Config,
                                  state: HighwayValidator.State
-                               ) extends ValidatorBaseImpl[HighwayValidator.Config, ValidatorBaseImpl.State, Highway.WakeupMarker](blockchainNode, context, config, state) {
+                               ) extends ValidatorBaseImpl[HighwayValidator.Config, ValidatorBaseImpl.State](blockchainNode, context, config, state) {
 
   def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: HighwayValidator.Config) =
     this(
@@ -264,7 +264,7 @@ class HighwayValidator private (
   private val onTimeBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
   private val perLaneOrphanRateGauge = new PerLaneOrphanRateGauge(state.finalizer.isKnownEquivocator, config.perLaneOrphanRateCalculationWindow, config.perLaneOrphanRateCalculationBufferSize)
 
-  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator[Highway.WakeupMarker] = {
+  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
     val validatorInstance = new HighwayValidator(bNode, vContext, config, state.createDetachedCopy())
     val nextRoundId: Tick = state.currentRoundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)
     validatorInstance.prepareForRound(nextRoundId, shouldPerformExponentAutoAdjustment = false)
@@ -275,8 +275,9 @@ class HighwayValidator private (
     prepareForRound(0L, shouldPerformExponentAutoAdjustment = false)
   }
 
-  override def onWakeUp(strategySpecificMarker: Highway.WakeupMarker): Unit = {
-    strategySpecificMarker match {
+  override def onWakeUp(strategySpecificMarker: Any): Unit = {
+    val marker = strategySpecificMarker.asInstanceOf[Highway.WakeupMarker]
+    marker match {
       case WakeupMarker.Lambda(roundId) => publishNewBrick(role = BrickRole.Lambda, roundId)
       case WakeupMarker.Omega(roundId) => publishNewBrick(role = BrickRole.Omega, roundId)
       case WakeupMarker.RoundWrapUp(roundId) => roundWrapUpProcessing()
@@ -490,9 +491,7 @@ class HighwayValidator private (
     }
 
     //true = we have green light for changing round exponent; false = red light (inertia period after last change is still in progress)
-    def exponentInertiaGreenLightCheck(): Boolean = {
-
-    }
+    def exponentInertiaGreenLightCheck(): Boolean = state.exponentInertiaCounter > config.exponentInertia
 
     //returns (lo,hi) interval defining currently "allowed" exponent values
     //if we are outside this interval now, we want to adjust the exponent so to go back to the allowed interval
