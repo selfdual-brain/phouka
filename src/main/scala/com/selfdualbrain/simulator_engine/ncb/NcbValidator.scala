@@ -59,7 +59,7 @@ class NcbValidator private (
                              context: ValidatorContext,
                              config: NcbValidator.Config,
                              state: NcbValidator.State
-                           ) extends ValidatorBaseImpl[NcbValidator.Config, NcbValidator.State](blockchainNode, context, config, state) {
+                           ) extends ValidatorBaseImpl[NcbValidator.Config, NcbValidator.State, Unit](blockchainNode, context, config, state) {
 
   def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: NcbValidator.Config) =
     this(
@@ -73,7 +73,7 @@ class NcbValidator private (
       }
     )
 
-  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
+  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator[Unit] = {
     val validatorInstance = new NcbValidator(bNode, vContext, config, state.createDetachedCopy())
     validatorInstance.scheduleNextWakeup()
     return validatorInstance
@@ -81,11 +81,12 @@ class NcbValidator private (
 
   //#################### PUBLIC API ############################
 
+
   override def startup(): Unit = {
     scheduleNextWakeup()
   }
 
-  override def onWakeUp(strategySpecificMarker: Any): Unit = {
+  override def onWakeUp(strategySpecificMarker: Unit): Unit = {
     state.blockVsBallot.select() match {
       case "block" => publishNewBrick(true)
       case "ballot" => publishNewBrick(false)

@@ -27,6 +27,7 @@ trait Finalizer extends CloningSupport[Finalizer]{
     panoramaOfWholeJdag.equivocators
   }
   def connectOutput(listener: Finalizer.Listener): Unit
+  def isKnownEquivocator(vid: ValidatorId): Boolean = equivocatorsRegistry.isKnownEquivocator(vid)
 }
 
 object Finalizer {

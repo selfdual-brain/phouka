@@ -57,8 +57,10 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
                                                       state: State
                            ) extends Finalizer with CloningSupport[BGamesDrivenFinalizerWithForkchoiceStartingAtLfb] {
 
+  //------- outside cloning -----------------------------------------
   var currentFinalityDetector: Option[ACC.FinalityDetector] = None
   var output: Option[Finalizer.Listener] = None
+  //-----------------------------------------------------------------
 
   //################################################## PUBLIC ###########################################################
 

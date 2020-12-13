@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.highway
 
-import com.selfdualbrain.blockchain_structure.{Block, ValidatorId}
+import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.data_structures.{CircularBufferWithPointerAndLabels, FastIntMap}
 
 import scala.annotation.tailrec
@@ -19,8 +19,10 @@ import scala.annotation.tailrec
   * - make the calculation performance-optimal
   * - offer clean API so that plugging the gauge into a validator class is straightforward
   */
-class PerLaneOrphanRateGauge(isEquivocator: ValidatorId => Boolean, calculationWindow: Int, laneBufferCapacity: Int) {
-  private val lane2buffer= new FastIntMap[CircularBufferWithPointerAndLabels[Block, Boolean]](20)
+class PerLaneOrphanRateGauge(isEquivocator: ValidatorId => Boolean, calculationWindow: Int, laneBufferCapacity: Int)  {
+  private val lane2buffer= new FastIntMap[CircularBufferWithPointerAndLabels[Highway.NormalBlock, Boolean]](20)
+
+//##################################### PUBLIC ###################################
 
   /**
     * To be called by the owning blockchain node every time a block is added to the local j-dag.
@@ -33,29 +35,34 @@ class PerLaneOrphanRateGauge(isEquivocator: ValidatorId => Boolean, calculationW
   def onBlockFinalized(block: Highway.NormalBlock): Unit = processFinalizationInfo(getLane(block.roundExponent), block)
 
   def orphanRateForLane(n: Int): Double = {
-    val iterator: Iterator[(Block, Option[Boolean])] = getLane(n).reverseIterator.takeWhile {case (block, finalityLabel) => finalityLabel.isDefined}
+    val iterator: Iterator[(Highway.NormalBlock, Option[Boolean])] = getLane(n).reverseIterator.takeWhile {case (block, finalityLabel) => finalityLabel.isDefined}
     var finalized: Int = 0
     var orphaned: Int = 0
-    for ((block, finalityLabel) <- iterator.take(calculationWindow)) {
+    for ((block, finalityLabel) <- iterator.take(calculationWindow) if ! isEquivocator(block.creator)) {
       finalityLabel.get match {
         case true => finalized += 1
         case false => orphaned += 1
       }
     }
-    return orphaned.toDouble / (finalized + orphaned)
+    return if (orphaned == 0)
+      0
+    else
+      orphaned.toDouble / (finalized + orphaned)
   }
 
-  private def getLane(n: Int): CircularBufferWithPointerAndLabels[Block, Boolean] =
+//##################################### PRIVATE ###################################
+
+  private def getLane(n: Int): CircularBufferWithPointerAndLabels[Highway.NormalBlock, Boolean] =
     lane2buffer.get(n) match {
       case Some(buf) => buf
       case None =>
-        val buf = new CircularBufferWithPointerAndLabels[Block, Boolean](laneBufferCapacity)
+        val buf = new CircularBufferWithPointerAndLabels[Highway.NormalBlock, Boolean](laneBufferCapacity)
         lane2buffer(n) = buf
         buf
     }
 
   @tailrec
-  private def processFinalizationInfo(lane: CircularBufferWithPointerAndLabels[Block, Boolean], finalizedBlock: Highway.NormalBlock): Unit = {
+  private def processFinalizationInfo(lane: CircularBufferWithPointerAndLabels[Highway.NormalBlock, Boolean], finalizedBlock: Highway.NormalBlock): Unit = {
     lane.readAtPointer() match {
       case (None, _) => throw new RuntimeException(s"pointed is none at getting $finalizedBlock finalized")
       case (Some(block), _) =>

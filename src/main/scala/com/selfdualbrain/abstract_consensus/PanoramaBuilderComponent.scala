@@ -23,9 +23,8 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] ex
           result
       }
 
-    //sums j-dags defined by two panoramas and represents the result as a panorama
-    //caution: this implementation relies on daglevels being correct
-    //so validation of daglevel must have happened before
+    //Sums j-dags defined by two panoramas and represents the result as a panorama.
+    //Caution: this implementation relies on daglevels being correct, so validation of daglevel must have happened before
     def mergePanoramas(p1: Panorama, p2: Panorama): Panorama = {
       val mergedTips = new mutable.HashMap[ValidatorId, ConsensusMessage]
       val mergedEquivocators = new mutable.HashSet[ValidatorId]()
@@ -48,10 +47,7 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] ex
             case (Some(m1), Some(m2)) =>
               if (m1 == m2)
                 mergedTips += (validatorId -> m1)
-              else if (cmApi.daglevel(m1) == cmApi.daglevel(m2)) {
-                mergedEquivocators += validatorId
-                mergedEvidences += validatorId -> (m1,m2)
-              } else {
+              else {
                 val higher: ConsensusMessage = if (cmApi.daglevel(m1) > cmApi.daglevel(m2)) m1 else m2
                 val lower: ConsensusMessage = if (cmApi.daglevel(m1) < cmApi.daglevel(m2)) m1 else m2
                 if (isEquivocation(higher, lower)) {
@@ -68,8 +64,8 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] ex
       return Panorama(mergedTips.toMap, mergedEquivocators.toSet, mergedEvidences.toMap)
     }
 
-    //tests if given messages pair from the same swimlane is an equivocation
-    //caution: we assume that msg.previous and msg.daglevel are correct (= were validated before)
+    //Tests if given messages pair from the same swimlane is an equivocation.
+    //Caution: we assume that msg.previous and msg.daglevel are correct (= were validated before)
     def isEquivocation(higher: ConsensusMessage, lower: ConsensusMessage): Boolean = {
       require(cmApi.creator(lower) == cmApi.creator(higher))
 

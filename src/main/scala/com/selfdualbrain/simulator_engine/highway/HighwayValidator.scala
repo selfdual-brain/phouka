@@ -1,8 +1,9 @@
 package com.selfdualbrain.simulator_engine.highway
 
-import com.selfdualbrain.blockchain_structure.{Block, BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{ACC, AbstractNormalBlock, Block, BlockchainNode, Brick, ValidatorId}
 import com.selfdualbrain.data_structures.{CloningSupport, DirectedGraphUtils, MovingWindowBeepsCounter}
 import com.selfdualbrain.simulator_engine._
+import com.selfdualbrain.simulator_engine.highway.Highway.WakeupMarker
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.transactions.BlockPayload
 
@@ -42,6 +43,15 @@ object HighwayValidator {
 
     /** For that many subsequent rounds after last "dropped bricks" alarm, the alarm will be suppressed. */
     var droppedBricksAlarmSuppressionPeriod: Int = _
+
+    /** See PerLaneOrphanRateGauge class for explanation. */
+    var perLaneOrphanRateCalculationWindow: Int = _
+
+    /** See PerLaneOrphanRateGauge class for explanation. */
+    var perLaneOrphanRateCalculationBufferSize: Int = _
+
+    /** If per-lane orphan rate exceeds this value, round exponent auto-adjustment will apply slowdown action.*/
+    var perLaneOrphanRateThreshold: Double = _
 
   }
 
@@ -186,12 +196,11 @@ object HighwayValidator {
   * 3. The number of rounds passed since last round exponent adjustment is less than 'slowdownInertia'.
   *
   * ### FOLLOW THE CROWD ###
-  * Whatever is set by previous rules, is filtered by the final check: the round exponent of a validator cannot be too far from the average (calculated
+  * Whatever is set by previous rules, is filtered by the final check: the round exponent of a validator should be too far from the average (calculated
   * for honest validators).
-  * The exact condition is: AVG - 2.5 < E < AVG + 2.5, where E is current exponent and AVG is weighted average round exponent over all honest validators
+  * By "not to far" we mean: AVG - 2.5 <= E <= AVG + 2.5, where E is current exponent and AVG is weighted average round exponent over all honest validators
   * (the node use latest message of each honest validator as the source of information on the current round exponent used by this validator).
-  * This condition enforces that at worst case, the set of round exponents used in the blockchain is a set of 5 consecutive integers, in other words
-  * the fastest node operates at most 32 times faster than the slowest node.
+  * When this condition is not met, a validator attempts to enter the interval by performing speedup or slowdown.
   *
   * ============= OMEGA WAITING MARGIN =============
   *
@@ -235,7 +244,7 @@ class HighwayValidator private (
                                  context: ValidatorContext,
                                  config: HighwayValidator.Config,
                                  state: HighwayValidator.State
-                               ) extends ValidatorBaseImpl[HighwayValidator.Config, ValidatorBaseImpl.State](blockchainNode, context, config, state) {
+                               ) extends ValidatorBaseImpl[HighwayValidator.Config, ValidatorBaseImpl.State, Highway.WakeupMarker](blockchainNode, context, config, state) {
 
   def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: HighwayValidator.Config) =
     this(
@@ -251,10 +260,11 @@ class HighwayValidator private (
 
   //========= transient state (= outside cloning) ====================
 
-  private var tooLateBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
-  private var onTimeBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
+  private val tooLateBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
+  private val onTimeBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
+  private val perLaneOrphanRateGauge = new PerLaneOrphanRateGauge(state.finalizer.isKnownEquivocator, config.perLaneOrphanRateCalculationWindow, config.perLaneOrphanRateCalculationBufferSize)
 
-  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
+  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator[Highway.WakeupMarker] = {
     val validatorInstance = new HighwayValidator(bNode, vContext, config, state.createDetachedCopy())
     val nextRoundId: Tick = state.currentRoundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)
     validatorInstance.prepareForRound(nextRoundId, shouldPerformExponentAutoAdjustment = false)
@@ -265,10 +275,8 @@ class HighwayValidator private (
     prepareForRound(0L, shouldPerformExponentAutoAdjustment = false)
   }
 
-  override def onWakeUp(strategySpecificMarker: Any): Unit = {
-    val marker = strategySpecificMarker.asInstanceOf[WakeupMarker]
-
-    marker match {
+  override def onWakeUp(strategySpecificMarker: Highway.WakeupMarker): Unit = {
+    strategySpecificMarker match {
       case WakeupMarker.Lambda(roundId) => publishNewBrick(role = BrickRole.Lambda, roundId)
       case WakeupMarker.Omega(roundId) => publishNewBrick(role = BrickRole.Omega, roundId)
       case WakeupMarker.RoundWrapUp(roundId) => roundWrapUpProcessing()
@@ -292,6 +300,13 @@ class HighwayValidator private (
         case x: Highway.Ballot =>
           //ignore
       }
+    }
+
+    brick match {
+      case x: Highway.NormalBlock =>
+        perLaneOrphanRateGauge.onBlockAccepted(x)
+      case other =>
+        //ignore
     }
   }
 
@@ -470,8 +485,8 @@ class HighwayValidator private (
     def roundTooShortInRelationToOmegaMarginCheck(roundExponent: Int): Boolean = state.effectiveOmegaMargin.toDouble / roundLengthAsNumberOfTicks(roundExponent) > 0.5
 
     //true = slowdown is needed
-    def orphanRateTooHighCheck(): Boolean = {
-      ???
+    def orphanRateTooHighCheck(exponent: Int): Boolean = {
+      perLaneOrphanRateGauge.orphanRateForLane(exponent) > config.perLaneOrphanRateThreshold
     }
 
     //true = we have green light for changing round exponent; false = red light (inertia period after last change is still in progress)
@@ -479,7 +494,22 @@ class HighwayValidator private (
 
     }
 
-    def followTheCrowdCheck():(Int, Int) = ???
+    //returns (lo,hi) interval defining currently "allowed" exponent values
+    //if we are outside this interval now, we want to adjust the exponent so to go back to the allowed interval
+    def followTheCrowdCheck():(Int, Int) = {
+      def roundExponentAt(brick: Brick): Int =
+        brick match {
+          case x: Highway.NormalBlock => x.roundExponent
+          case x: Highway.Ballot => x.roundExponent
+        }
+
+      val weightedSumOfLatestExponentsUsedByHonestValidators: Long =
+        state.finalizer.panoramaOfWholeJdag.honestSwimlanesTips.map{case (vid, brick) => config.weightsOfValidators(vid) * roundExponentAt(brick)}.sum
+      val average: Double = weightedSumOfLatestExponentsUsedByHonestValidators.toDouble / config.totalWeight
+      val lo = math.floor(average - 2.5).toInt
+      val hi = math.ceil(average + 2.5). toInt
+      return (lo, hi)
+    }
 
     //true = it is time to accelerate
     def generalAccelerationCheck(): Boolean = ???
@@ -510,7 +540,7 @@ class HighwayValidator private (
       return RoundExponentAdjustmentDecision.RunaheadSlowdown
 
     //decide to slowdown if moving-window orphan rate is too high
-    val orphanRateSlowdownSuggested: Boolean = orphanRateTooHighCheck()
+    val orphanRateSlowdownSuggested: Boolean = orphanRateTooHighCheck(state.currentRoundExponent)
     if (orphanRateSlowdownSuggested && state.currentRoundExponent + 1 <= hiLimit)
       return RoundExponentAdjustmentDecision.OrphanRateSlowdown
 
@@ -535,6 +565,10 @@ class HighwayValidator private (
     assert (exponent >= 0)
     assert (exponent <= 62)
     return 1L << exponent
+  }
+
+  override protected def onBlockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit): Unit = {
+    perLaneOrphanRateGauge.onBlockFinalized(finalizedBlock.asInstanceOf[Highway.NormalBlock])
   }
 
   //################## PUBLISHING OF NEW MESSAGES ############################

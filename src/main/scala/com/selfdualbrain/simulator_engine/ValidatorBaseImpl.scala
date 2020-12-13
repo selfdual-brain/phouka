@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure._
+import com.selfdualbrain.blockchain_structure.{ACC, _}
 import com.selfdualbrain.data_structures.{CloningSupport, MsgBuffer, MsgBufferImpl}
 import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator}
@@ -117,9 +117,33 @@ object ValidatorBaseImpl {
   * @tparam CF config type
   * @tparam ST state snapshot type
   */
-abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorBaseImpl.State](blockchainNode: BlockchainNode, context: ValidatorContext, config: CF, state: ST) extends Validator {
+abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorBaseImpl.State, M](
+                                                                                                blockchainNode: BlockchainNode,
+                                                                                                context: ValidatorContext,
+                                                                                                config: CF,
+                                                                                                state: ST) extends Validator[M] {
 
-  var currentFinalityDetector: Option[ACC.FinalityDetector] = None
+  //wiring finalizer instance to local processing
+  //caution: this is also crucial while cloning (cloned Finalizer has output in "not-connected" state
+  //and here we properly connect it to the cloned instance of validator)
+  state.finalizer.connectOutput(new Finalizer.Listener {
+    override def preFinality(bGameAnchor: Block, partialSummit: ACC.Summit): Unit = {
+      context.addOutputEvent(EventPayload.PreFinality(bGameAnchor, partialSummit))
+      onPreFinality(bGameAnchor, partialSummit)
+    }
+    override def blockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit): Unit = {
+      context.addOutputEvent(EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit))
+      onBlockFinalized(bGameAnchor, finalizedBlock, summit)
+    }
+    override def equivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit = {
+      context.addOutputEvent(EventPayload.EquivocationDetected(evilValidator, brick1, brick2))
+      onEquivocationDetected(evilValidator, brick1, brick2)
+    }
+    override def equivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double): Unit = {
+      context.addOutputEvent(EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy))
+      onEquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy)
+    }
+  })
 
   override def toString: String = s"Validator-${config.validatorId}"
 
@@ -136,12 +160,12 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     context.registerProcessingTime(state.msgValidationCostGenerator.next())
 
     if (missingDependencies.isEmpty) {
-      context.addOutputEvent(context.time(), EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
+      context.addOutputEvent(EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
       runBufferPruningCascadeFor(msg)
     } else {
       if (config.msgBufferSherlockMode) {
         val bufferSnapshot = doBufferOp {state.messagesBuffer.addMessage(msg, missingDependencies)}
-        context.addOutputEvent(context.time(), EventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferSnapshot))
+        context.addOutputEvent(EventPayload.AddedIncomingBrickToMsgBuffer(msg, missingDependencies, bufferSnapshot))
       } else {
         state.messagesBuffer.addMessage(msg, missingDependencies)
       }
@@ -163,7 +187,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
         if (config.msgBufferSherlockMode) {
           val bufferSnapshotAfter = doBufferOp {state.messagesBuffer.fulfillDependency(nextBrick)}
           if (nextBrick != msg)
-            context.addOutputEvent(context.time(), EventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferSnapshotAfter))
+            context.addOutputEvent(EventPayload.AcceptedIncomingBrickAfterBuffering(nextBrick, bufferSnapshotAfter))
         } else {
           state.messagesBuffer.fulfillDependency(nextBrick)
         }
@@ -184,10 +208,26 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
       emptyBufferSnapshot
     }
 
-  //########################## J-DAG ##########################################
+  //########################## EXTENSION POINTS ##########################################
 
   //subclasses can override this method to introduce special processing every time local jdag is updated
   protected def onBrickAddedToLocalJdag(brick: Brick, isLocallyCreated: Boolean): Unit = {
+    //by default - do nothing
+  }
+
+  protected def onPreFinality(bGameAnchor: Block, partialSummit: ACC.Summit): Unit = {
+    //by default - do nothing
+  }
+
+  protected def onBlockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit): Unit = {
+    //by default - do nothing
+  }
+
+  protected def onEquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit = {
+    //by default - do nothing
+  }
+
+  protected def onEquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double): Unit = {
     //by default - do nothing
   }
 
