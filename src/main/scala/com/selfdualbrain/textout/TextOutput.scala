@@ -2,10 +2,9 @@ package com.selfdualbrain.textout
 
 import java.io.Writer
 
-class TextOutput(provider: TextOutputProvider, indentSize: Int) extends AbstractTextOutput {
+class TextOutput(provider: TextOutputProvider, indentSize: Int, indentChar: Char) extends AbstractTextOutput {
   assert (indentSize > 0)
   private var currentIndent: Int = 0
-  private val indentChar: Char = ' '
   private val indentString: String = indentChar.toString * indentSize
 
   override def print(s: Any): Unit = {
@@ -66,10 +65,10 @@ object TextOutput {
     override def newLine(): Unit = builder.append("\n")
   }
 
-  def overConsole(indentSize: Int): AbstractTextOutput = new TextOutput(new ConsoleAdapter, indentSize)
+  def overConsole(indentSize: Int, indentChar: Char): AbstractTextOutput = new TextOutput(new ConsoleAdapter, indentSize, indentChar)
 
-  def overWriter(writer: Writer, indentSize: Int): AbstractTextOutput = new TextOutput(new WriterAdapter(writer), indentSize)
+  def overWriter(writer: Writer, indentSize: Int, indentChar: Char): AbstractTextOutput = new TextOutput(new WriterAdapter(writer), indentSize, indentChar)
 
-  def overStringBuilder(builder: StringBuilder, indentSize: Int): AbstractTextOutput = new TextOutput(new StringBuilderAdapter(builder), indentSize)
+  def overStringBuilder(builder: StringBuilder, indentSize: Int, indentChar: Char): AbstractTextOutput = new TextOutput(new StringBuilderAdapter(builder), indentSize, indentChar)
 
 }

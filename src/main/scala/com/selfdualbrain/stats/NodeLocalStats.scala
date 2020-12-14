@@ -152,9 +152,9 @@ trait NodeLocalStats {
   //as seconds
   def blockchainLatency: Double
 
-  //as seconds
   def blockchainRunahead: TimeDelta
 
+  //as fraction
   def blockchainOrphanRate: Double
 
   //within all data transmitted so far, tells the fraction that is not part of transactions in finalized blocks

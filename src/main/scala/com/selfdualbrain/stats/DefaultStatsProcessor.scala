@@ -1,7 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractNormalBlock, Block, BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval, MovingWindowBeepsCounterWithHistory}
 import com.selfdualbrain.des.{Event, SimulationEngine, SimulationObserver}
 import com.selfdualbrain.simulator_engine.EventPayload
@@ -25,7 +25,7 @@ class DefaultStatsProcessor(
                              latencyMovingWindow: Int, //number of lfb-chain elements
                              throughputMovingWindow: Int, //in seconds
                              throughputCheckpointsDelta: Int, //in seconds
-                             numberOfValidators: Int,
+                             val numberOfValidators: Int,
                              weightsMap: ValidatorId => Ether,
                              absoluteFTT: Ether,
                              totalWeightOfValidators: Ether,
@@ -265,8 +265,6 @@ class DefaultStatsProcessor(
 //#################################################################################################################################################
 //                                                          STATISTICS ACCESSING
 //#################################################################################################################################################
-
-  override def numberOfValidators: ValidatorId = numberOfValidators
 
   override def numberOfBlockchainNodes: ValidatorId = node2stats.size
 
