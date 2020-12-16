@@ -112,7 +112,9 @@ object ValidatorBaseImpl {
 
 /**
   * Base class for validator implementations.
-  * Most of the stuff is implemented here. Only the bricks proposing logic is left as subclass responsibility.
+  *
+  * Implementation remark: Local j-dag, handling incoming bricks, fork-choice and finality is generally implemented here.
+  * Handling of rounds and leaders, bricks creation and proposing logic - these are left as subclass responsibility.
   *
   * @tparam CF config type
   * @tparam ST state snapshot type
@@ -148,6 +150,10 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
   override def toString: String = s"Validator-${config.validatorId}"
 
   //#################### PUBLIC API ############################
+
+  override def validatorId: ValidatorId = config.validatorId
+
+  override def blockchainNodeId: BlockchainNode = blockchainNode
 
   def onNewBrickArrived(msg: Brick): Unit = {
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! state.finalizer.knowsAbout(j))

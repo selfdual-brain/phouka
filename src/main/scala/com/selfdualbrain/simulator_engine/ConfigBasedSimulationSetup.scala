@@ -80,7 +80,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         computingPowersGenerator,
         config.msgBufferSherlockMode,
         roundLength,
-        new LeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap)
+        new NaiveLeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap)
       )
 
     case c: ProposeStrategyConfig.Highway =>
@@ -97,7 +97,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.brickCreationCostModel,
         computingPowersGenerator,
         config.msgBufferSherlockMode,
-        new LeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap),
+        new NaiveLeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap),
         c.initialRoundExponent,
         c.exponentAccelerationPeriod,
         c.runaheadTolerance,

@@ -11,7 +11,7 @@ object LeadersSeqValidator {
 
   class Config extends ValidatorBaseImpl.Config {
     var roundLength: TimeDelta = _
-    var leadersSequencer: LeaderSequencer = _
+    var leadersSequencer: NaiveLeaderSequencer = _
   }
 
 }

@@ -1,17 +1,17 @@
 package com.selfdualbrain.gui
 
-import java.awt.{BorderLayout, Color, Dimension}
-
-import com.selfdualbrain.blockchain_structure.ValidatorId
+import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
 import com.selfdualbrain.des.Event
-import com.selfdualbrain.gui.SimulationDisplayModel.Ev
 import com.selfdualbrain.gui.model.SimulationDisplayModel
+import com.selfdualbrain.gui.model.SimulationDisplayModel.Ev
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.ColumnDefinition
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartTable}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
-import com.selfdualbrain.simulator_engine.{EventTag, MessagePassingEventPayload, SemanticEventPayload}
+import com.selfdualbrain.simulator_engine.EventTag
 import com.selfdualbrain.time.SimTimepoint
+
+import java.awt.{BorderLayout, Color, Dimension}
 
 /**
   * Shows history of a simulation (as list of events).
@@ -106,9 +106,22 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         preferredWidth = 80,
         maxWidth = 80
       ),
+      ColumnDefinition[Int](
+        name = "Node",
+        headerTooltip = "Id of involved blockchain node",
+        runtimeClassOfValues = classOf[Int],
+        cellValueFunction = (rowIndex: Int) => {
+          val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
+          event.loggingAgent.get.address
+        },
+        textAlignment = TextAlignment.RIGHT,
+        cellBackgroundColorFunction = None,
+        preferredWidth = 30,
+        maxWidth = 40
+      ),
       ColumnDefinition[ValidatorId](
         name = "Vid",
-        headerTooltip = "Id of involved validator",
+        headerTooltip = "Validator id this node is acting in behalf of",
         runtimeClassOfValues = classOf[ValidatorId],
         cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)

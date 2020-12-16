@@ -1,7 +1,8 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue, SimulationEngine}
+import com.selfdualbrain.data_structures.FastMapOnIntInterval
+import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue}
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.NetworkModel
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -33,7 +34,7 @@ class PhoukaEngine(
                     disruptionModel: DisruptionModel,
                     networkModel: NetworkModel[BlockchainNode,Brick],
                     genesis: AbstractGenesis
-                ) extends SimulationEngine[BlockchainNode,EventPayload] {
+                ) extends BlockchainSimulationEngine {
 
   engine =>
 
@@ -73,11 +74,15 @@ class PhoukaEngine(
   //initialize nodes
   //at startup we just create nodes which are 1-1 with validators
   private val nodes: ArrayBuffer[NodeBox] = new ArrayBuffer[NodeBox](numberOfValidators)
+  //agent id ---> validator id (which is non-trivial only because of our approach to simulating equivocators)
+  private val nodeId2validatorId = new FastMapOnIntInterval[Int](numberOfValidators)
+
   for (i <- 0 until numberOfValidators) {
     val nodeId = BlockchainNode(i)
     lastNodeIdAllocated = i
     val context = new ValidatorContextImpl(nodeId, SimTimepoint.zero)
     val newValidator = validatorsFactory.create(BlockchainNode(i), i, context)
+    nodeId2validatorId(i) = i
     val newBox = new NodeBox(nodeId, i, newValidator, context)
     nodes.append(newBox)
     context.moveForwardLocalClockToAtLeast(desQueue.currentTime)
@@ -115,7 +120,10 @@ class PhoukaEngine(
 
   override def totalProcessingTimeOfAgent(agent: BlockchainNode): TimeDelta = nodes(agent.address).totalProcessingTime
 
+  override def validatorIdUsedBy(node: BlockchainNode): ValidatorId = nodeId2validatorId(node.address)
+
   //###################################### PRIVATE ########################################
+
 
   //returns None if subsequent event is "masked" - i.e. should not be emitted outside the engine
   private def processNextEventFromQueue(): Option[Event[BlockchainNode,EventPayload]] = {
@@ -166,6 +174,7 @@ class PhoukaEngine(
           val newValidator = box.validatorInstance.clone(newNodeId, context)
           val newBox = new NodeBox(newNodeId, box.validatorId, newValidator, context)
           nodes.append(newBox)
+          nodeId2validatorId(newValidator.blockchainNodeId.address) = newValidator.validatorId
           desQueue.addEngineEvent(
             timepoint = context.time(),
             agent = Some(newNodeId),

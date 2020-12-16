@@ -323,10 +323,9 @@ class SimulationDisplayModel(
     trigger(Ev.FilterChanged)
   }
 
-//  def displayStepByDisplayPosition(positionInFilteredEventsCollection: Int): Unit = {
-//    val stepId = filteredEvents(positionInFilteredEventsCollection)._1
-//    this.displayStep(stepId)
-//  }
+  def displayStepByDisplayPosition(positionInFilteredEventsCollection: Int): Unit = {
+    selectedStep = filteredEvents(positionInFilteredEventsCollection)._1
+  }
 
   //--------------------- GRAPHICAL JDAG -------------------------
 

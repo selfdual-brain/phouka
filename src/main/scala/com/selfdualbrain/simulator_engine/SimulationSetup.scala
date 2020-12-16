@@ -13,7 +13,7 @@ import scala.util.Random
   * Encapsulates the knowledge on creating a simulation engine instance with all the surrounding stuff.
   * In other words, it materializes the ExperimentConfiguration into a runnable setup of engine + cooperating objects.
   */
-abstract class SimulationSetup {
+trait SimulationSetup {
   def actualRandomSeed: Long
   def randomGenerator: Random
   def networkModel: NetworkModel[BlockchainNode, Brick]

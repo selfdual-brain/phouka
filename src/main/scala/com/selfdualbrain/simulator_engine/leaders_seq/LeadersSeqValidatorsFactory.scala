@@ -3,7 +3,7 @@ package com.selfdualbrain.simulator_engine.leaders_seq
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
 import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator}
-import com.selfdualbrain.simulator_engine.{LeaderSequencer, Validator, ValidatorContext, ValidatorsFactory}
+import com.selfdualbrain.simulator_engine.{NaiveLeaderSequencer, Validator, ValidatorContext, ValidatorsFactory}
 import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.transactions.BlockPayloadBuilder
 
@@ -21,7 +21,7 @@ class LeadersSeqValidatorsFactory(
                                    computingPowersGenerator: LongSequenceGenerator,
                                    msgBufferSherlockMode: Boolean,
                                    roundLength: TimeDelta,
-                                   leadersSequencer: LeaderSequencer
+                                   leadersSequencer: NaiveLeaderSequencer
                                  ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator = {

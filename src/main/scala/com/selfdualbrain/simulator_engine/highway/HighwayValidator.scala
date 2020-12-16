@@ -12,7 +12,7 @@ object HighwayValidator {
   class Config extends ValidatorBaseImpl.Config {
 
     /** Pseudorandom sequence of leaders. */
-    var leadersSequencer: LeaderSequencer = _
+    var leadersSequencer: NaiveLeaderSequencer = _
 
     /** Round exponent used on startup. */
     var bootstrapRoundExponent: Int = _

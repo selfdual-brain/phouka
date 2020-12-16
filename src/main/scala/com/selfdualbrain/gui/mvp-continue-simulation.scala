@@ -1,8 +1,7 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.gui.SimulationDisplayModel.SimulationEngineStopCondition
-import com.selfdualbrain.gui.SimulationDisplayModel.SimulationEngineStopCondition.NextNumberOfSteps
 import com.selfdualbrain.gui.model.SimulationDisplayModel
+import com.selfdualbrain.gui.model.SimulationDisplayModel.SimulationEngineStopCondition
 import com.selfdualbrain.gui_framework.MvpView.{AbstractButtonOps, JTextComponentOps}
 import com.selfdualbrain.gui_framework._
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
@@ -27,14 +26,7 @@ class ContinueSimulationPresenter extends Presenter[SimulationDisplayModel,Simul
   }
 
   def continueSimulation(): Unit = {
-    model.getEngineStopCondition match {
-      case NextNumberOfSteps(n) =>
-        model.advanceTheSimulationBy(n)
-      case other =>
-        //todo: add support for all stop conditions
-        throw new RuntimeException("not supported")
-    }
-
+    model.advanceTheSimulation(model.engineStopCondition)
   }
 }
 
@@ -67,7 +59,7 @@ class ContinueSimulationView(val guiLayoutConfig: GuiLayoutConfig) extends Stati
     SimulationEngineStopCondition.parse(caseTag = stopConditionMode_Panel.selectedItem, inputString = targetValue_Field.getText) match {
       case Left(error) => ??? //todo: show error dialog
       case Right(stopCondition) =>
-        model.setEngineStopCondition(stopCondition)
+        model.engineStopCondition = stopCondition
         presenter.continueSimulation()
     }
   }
@@ -77,8 +69,8 @@ class ContinueSimulationView(val guiLayoutConfig: GuiLayoutConfig) extends Stati
   this.surroundWithTitledBorder("Continue simulation")
 
   override def afterModelConnected(): Unit = {
-    stopConditionMode_Panel.selectItem(model.getEngineStopCondition.caseTag)
-    targetValue_Field <-- model.getEngineStopCondition.render()
+    stopConditionMode_Panel.selectItem(model.engineStopCondition.caseTag)
+    targetValue_Field <-- model.engineStopCondition.render()
   }
 
 }
