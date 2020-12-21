@@ -1,16 +1,15 @@
 package com.selfdualbrain.gui
 
-import java.awt.{BorderLayout, Dimension, GridBagConstraints, GridBagLayout, Insets}
-
-import com.selfdualbrain.blockchain_structure.ValidatorId
+import com.selfdualbrain.blockchain_structure.BlockchainNode
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.MvpView.JCheckBoxOps
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, RibbonPanel, StaticSplitPanel}
 import com.selfdualbrain.gui_framework.{MvpViewWithSealedModel, Orientation, PanelEdge, Presenter}
 import com.selfdualbrain.simulator_engine.EventTag
-import javax.swing.JCheckBox
 
+import java.awt._
+import javax.swing.JCheckBox
 import scala.collection.mutable
 
 /**
@@ -30,22 +29,22 @@ class FilterEditorPresenter extends Presenter[SimulationDisplayModel, Simulation
     //do nothing
   }
 
-  def toggleSingleValidator(vid: ValidatorId, newState: Boolean): Unit = {
+  def toggleSingleNode(node: BlockchainNode, newState: Boolean): Unit = {
     val oldFilter: EventsFilter.Standard = model.getFilter.asInstanceOf[EventsFilter.Standard]
     val newFilter: EventsFilter.Standard = EventsFilter.Standard(
-      validators = if (newState) oldFilter.validators + vid else oldFilter.validators - vid,
-      takeAllValidatorsFlag = oldFilter.takeAllValidatorsFlag,
+      nodes = if (newState) oldFilter.nodes + node else oldFilter.nodes - node,
+      takeAllNodesFlag = oldFilter.takeAllNodesFlag,
       eventTags = oldFilter.eventTags,
       takeAllEventsFlag = oldFilter.takeAllEventsFlag
     )
     model.setFilter(newFilter)
   }
 
-  def toggleAllValidatorsSwitch(newState: Boolean): Unit = {
+  def toggleAllNodesSwitch(newState: Boolean): Unit = {
     val oldFilter: EventsFilter.Standard = model.getFilter.asInstanceOf[EventsFilter.Standard]
     val newFilter: EventsFilter.Standard = EventsFilter.Standard(
-      validators = oldFilter.validators,
-      takeAllValidatorsFlag = newState,
+      nodes = oldFilter.nodes,
+      takeAllNodesFlag = newState,
       eventTags = oldFilter.eventTags,
       takeAllEventsFlag = oldFilter.takeAllEventsFlag
     )
@@ -55,8 +54,8 @@ class FilterEditorPresenter extends Presenter[SimulationDisplayModel, Simulation
   def toggleSingleEventType(tag: Int, newState: Boolean): Unit = {
     val oldFilter: EventsFilter.Standard = model.getFilter.asInstanceOf[EventsFilter.Standard]
     val newFilter: EventsFilter.Standard = EventsFilter.Standard(
-      validators = oldFilter.validators,
-      takeAllValidatorsFlag = oldFilter.takeAllValidatorsFlag,
+      nodes = oldFilter.nodes,
+      takeAllNodesFlag = oldFilter.takeAllNodesFlag,
       eventTags = if (newState) oldFilter.eventTags + tag else oldFilter.eventTags - tag,
       takeAllEventsFlag = oldFilter.takeAllEventsFlag
     )
@@ -66,8 +65,8 @@ class FilterEditorPresenter extends Presenter[SimulationDisplayModel, Simulation
   def toggleAllEventsSwitch(newState: Boolean): Unit = {
     val oldFilter: EventsFilter.Standard = model.getFilter.asInstanceOf[EventsFilter.Standard]
     val newFilter: EventsFilter.Standard = EventsFilter.Standard(
-      validators = oldFilter.validators,
-      takeAllValidatorsFlag = oldFilter.takeAllValidatorsFlag,
+      nodes = oldFilter.nodes,
+      takeAllNodesFlag = oldFilter.takeAllNodesFlag,
       eventTags = oldFilter.eventTags,
       takeAllEventsFlag = newState
     )
@@ -79,31 +78,31 @@ class FilterEditorPresenter extends Presenter[SimulationDisplayModel, Simulation
 class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model: SimulationDisplayModel)
   extends StaticSplitPanel(guiLayoutConfig, PanelEdge.EAST) with MvpViewWithSealedModel[SimulationDisplayModel, FilterEditorPresenter] {
 
-  private val validator2checkbox = new mutable.HashMap[ValidatorId, JCheckBox]
-  private val eventTag2checkbox = new mutable.HashMap[ValidatorId, JCheckBox]
-  private val allValidatorsCheckbox = new JCheckBox("show all")
+  private val node2checkbox = new mutable.HashMap[BlockchainNode, JCheckBox]
+  private val eventTag2checkbox = new mutable.HashMap[Int, JCheckBox]
+  private val allNodesCheckbox = new JCheckBox("show all")
   private val allEventsCheckbox = new JCheckBox("show all")
   private var checkboxHandlersEnabled: Boolean = true
 
-  private val allValidatorsSwitchPanel = new PlainPanel(guiLayoutConfig)
-  private val validatorsSelectionPanel = this.buildValidatorsSelectionPanel()
+  private val allNodesSwitchPanel = new PlainPanel(guiLayoutConfig)
+  private val nodesSelectionPanel = this.buildValidatorsSelectionPanel()
   private val allEventsSwitchPanel = new PlainPanel(guiLayoutConfig)
   private val eventTypesSelectionPanel = this.buildEventTypesSelectionPanel()
-  private val validatorsContainerPanel = new StaticSplitPanel(guiLayoutConfig, PanelEdge.NORTH)
+  private val nodesContainerPanel = new StaticSplitPanel(guiLayoutConfig, PanelEdge.NORTH)
   private val eventsContainerPanel = new StaticSplitPanel(guiLayoutConfig, PanelEdge.NORTH)
 
-  validatorsContainerPanel.mountChildPanels(validatorsSelectionPanel, allValidatorsSwitchPanel)
-  validatorsContainerPanel.surroundWithTitledBorder("Filter validators")
+  nodesContainerPanel.mountChildPanels(nodesSelectionPanel, allNodesSwitchPanel)
+  nodesContainerPanel.surroundWithTitledBorder("Filter validators")
   eventsContainerPanel.mountChildPanels(eventTypesSelectionPanel, allEventsSwitchPanel)
   eventsContainerPanel.surroundWithTitledBorder("Filter event types")
   eventsContainerPanel.setPreferredSize(new Dimension(170, -1))
-  allValidatorsSwitchPanel.add(allValidatorsCheckbox, BorderLayout.WEST)
+  allNodesSwitchPanel.add(allNodesCheckbox, BorderLayout.WEST)
   allEventsSwitchPanel.add(allEventsCheckbox, BorderLayout.WEST)
-  this.mountChildPanels(validatorsContainerPanel, eventsContainerPanel)
+  this.mountChildPanels(nodesContainerPanel, eventsContainerPanel)
 
-  allValidatorsCheckbox ~~> {
+  allNodesCheckbox ~~> {
     if (checkboxHandlersEnabled)
-      presenter.toggleAllValidatorsSwitch(allValidatorsCheckbox.isSelected)
+      presenter.toggleAllNodesSwitch(allNodesCheckbox.isSelected)
   }
 
   allEventsCheckbox ~~> {
@@ -133,13 +132,13 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
       gbc.weighty = 0.0
       gbc.fill = GridBagConstraints.NONE
       gbc.insets = new Insets(0, 0, 0, 0)
-      val validatorId = col * numberOfRows + row
-      val checkbox = new JCheckBox(validatorId.toString)
-      validator2checkbox += validatorId -> checkbox
+      val nodeId = col * numberOfRows + row
+      val checkbox = new JCheckBox(nodeId.toString)
+      node2checkbox += BlockchainNode(nodeId) -> checkbox
       panel.add(checkbox, gbc)
       checkbox ~~> {
         if (checkboxHandlersEnabled)
-          presenter.toggleSingleValidator(validatorId, checkbox.isSelected)
+          presenter.toggleSingleNode(BlockchainNode(nodeId), checkbox.isSelected)
       }
     }
 
@@ -184,14 +183,14 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
     checkboxHandlersEnabled = false
 
     //validators filter
-    if (filter.takeAllValidatorsFlag) {
-      allValidatorsCheckbox.setSelected(true)
-      validatorsSelectionPanel.setVisible(false)
+    if (filter.takeAllNodesFlag) {
+      allNodesCheckbox.setSelected(true)
+      nodesSelectionPanel.setVisible(false)
     } else {
-      allValidatorsCheckbox.setSelected(false)
-      validatorsSelectionPanel.setVisible(true)
-      for (vid <- 0 until model.experimentConfig.numberOfValidators)
-        validator2checkbox(vid).setSelected(filter.validators.contains(vid))
+      allNodesCheckbox.setSelected(false)
+      nodesSelectionPanel.setVisible(true)
+      for (node <- model.engine.agents)
+        node2checkbox(node).setSelected(filter.nodes.contains(node))
     }
 
     //event types filter

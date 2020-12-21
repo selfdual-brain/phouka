@@ -9,6 +9,7 @@ import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.ArraySeq
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
@@ -74,8 +75,10 @@ class PhoukaEngine(
   //initialize nodes
   //at startup we just create nodes which are 1-1 with validators
   private val nodes: ArrayBuffer[NodeBox] = new ArrayBuffer[NodeBox](numberOfValidators)
-  //agent id ---> validator id (which is non-trivial only because of our approach to simulating equivocators)
+  //node id ---> validator id (which is non-trivial only because of our approach to simulating equivocators)
   private val nodeId2validatorId = new FastMapOnIntInterval[Int](numberOfValidators)
+  //cloned node id ---> progenitor node id
+  private val clone2progenitor = new mutable.HashMap[BlockchainNode, BlockchainNode]
 
   for (i <- 0 until numberOfValidators) {
     val nodeId = BlockchainNode(i)
@@ -114,7 +117,9 @@ class PhoukaEngine(
 
   override def currentTime: SimTimepoint = desQueue.currentTime
 
-  override def numberOfAgents: Int = lastNodeIdAllocated + 1
+  override def numberOfAgents: Int = nodes.size
+
+  override def agents: Iterable[BlockchainNode] = nodes.toSeq.map {box => box.nodeId}
 
   override def localClockOfAgent(agent: BlockchainNode): SimTimepoint = nodes(agent.address).context.time()
 
@@ -122,8 +127,9 @@ class PhoukaEngine(
 
   override def validatorIdUsedBy(node: BlockchainNode): ValidatorId = nodeId2validatorId(node.address)
 
-  //###################################### PRIVATE ########################################
+  override def progenitorOf(node: BlockchainNode): Option[BlockchainNode] = clone2progenitor.get(node)
 
+  //###################################### PRIVATE ########################################
 
   //returns None if subsequent event is "masked" - i.e. should not be emitted outside the engine
   private def processNextEventFromQueue(): Option[Event[BlockchainNode,EventPayload]] = {
@@ -175,6 +181,7 @@ class PhoukaEngine(
           val newBox = new NodeBox(newNodeId, box.validatorId, newValidator, context)
           nodes.append(newBox)
           nodeId2validatorId(newValidator.blockchainNodeId.address) = newValidator.validatorId
+          clone2progenitor += newNodeId -> destination
           desQueue.addEngineEvent(
             timepoint = context.time(),
             agent = Some(newNodeId),

@@ -166,6 +166,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         throughputCheckpointsDelta,
         config.numberOfValidators,
         weightsOfValidatorsAsFunction,
+        relativeWeightsOfValidators,
         absoluteFTT,
         totalWeight,
         genesis,

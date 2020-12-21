@@ -26,9 +26,10 @@ class DefaultStatsProcessor(
                              throughputMovingWindow: Int, //in seconds
                              throughputCheckpointsDelta: Int, //in seconds
                              val numberOfValidators: Int,
-                             weightsMap: ValidatorId => Ether,
-                             absoluteFTT: Ether,
-                             totalWeightOfValidators: Ether,
+                             val absoluteWeightsMap: ValidatorId => Ether,
+                             val relativeWeightsMap: ValidatorId => Double,
+                             val absoluteFTT: Ether,
+                             val totalWeight: Ether,
                              genesis: Block,
                              engine: SimulationEngine[BlockchainNode, EventPayload]
                          ) extends SimulationObserver[BlockchainNode, EventPayload] with BlockchainSimulationStats {
@@ -107,9 +108,9 @@ class DefaultStatsProcessor(
             agentId2validatorId(newNodeAddress) = vid
             node2stats(newNodeAddress) = progenitor match {
               //creating per-node stats processor for new node
-              case None => new NodeLocalStatsProcessor(vid, BlockchainNode(newNodeAddress), basicStats = this, weightsMap, genesis, engine)
+              case None => new NodeLocalStatsProcessor(vid, BlockchainNode(newNodeAddress), basicStats = this, absoluteWeightsMap, genesis, engine)
               //cloning per-node stats processor after bifurcation
-              case Some(p) => node2stats(p.address).createDetachedCopy(agent.get)
+              case Some(p) => node2stats(p.address).createDetachedCopy(agent.get, p)
             }
 
           case EventPayload.BroadcastBrick(brick) =>
@@ -194,7 +195,7 @@ class DefaultStatsProcessor(
       case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
         if (! observedEquivocators.contains(evilValidator)) {
           observedEquivocators += evilValidator
-          weightOfObservedEquivocatorsX += weightsMap(evilValidator)
+          weightOfObservedEquivocatorsX += absoluteWeightsMap(evilValidator)
         }
 
       case other =>
@@ -297,7 +298,7 @@ class DefaultStatsProcessor(
 
   override def weightOfObservedEquivocators: Ether = weightOfObservedEquivocatorsX
 
-  override def weightOfObservedEquivocatorsAsPercentage: Double = weightOfObservedEquivocators.toDouble / totalWeightOfValidators * 100
+  override def weightOfObservedEquivocatorsAsPercentage: Double = weightOfObservedEquivocators.toDouble / totalWeight * 100
 
   override def isFttExceeded: Boolean = weightOfObservedEquivocators > absoluteFTT
 

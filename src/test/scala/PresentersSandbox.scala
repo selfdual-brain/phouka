@@ -121,7 +121,7 @@ object PresentersSandbox {
         p.model = simulationDisplayModel
         p
       case 7 =>
-        val p = new ValidatorsStatsPresenter
+        val p = new NodeStatsPresenter
         p.model = simulationDisplayModel
         p
       case 8 =>

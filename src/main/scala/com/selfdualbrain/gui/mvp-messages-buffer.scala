@@ -40,7 +40,10 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
   }
 
   private def refreshDataSnapshot(): Unit = {
-    rawBufferSnapshot = model.stateOfObservedValidator.currentMsgBufferSnapshot
+    rawBufferSnapshot = model.stateSnapshotForSelectedNodeAndStep match {
+      case Some(snapshot) => snapshot.msgBufferSnapshot
+      case None => Map.empty
+    }
     sortedSeqOfWaitingBricks = rawBufferSnapshot.keys.toSeq.sortBy(brick => brick.id)
   }
 

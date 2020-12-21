@@ -12,4 +12,8 @@ trait BlockchainSimulationEngine extends SimulationEngine[BlockchainNode, EventP
 
   def validatorIdUsedBy(node: BlockchainNode): ValidatorId
 
+  def progenitorOf(node: BlockchainNode): Option[BlockchainNode]
+
+  def computingPowerOf(node: BlockchainNode): Long
+
 }

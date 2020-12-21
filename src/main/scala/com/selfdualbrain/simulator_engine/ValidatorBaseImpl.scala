@@ -155,6 +155,8 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
 
   override def blockchainNodeId: BlockchainNode = blockchainNode
 
+  override def computingPower: Long = config.computingPower
+
   def onNewBrickArrived(msg: Brick): Unit = {
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! state.finalizer.knowsAbout(j))
 

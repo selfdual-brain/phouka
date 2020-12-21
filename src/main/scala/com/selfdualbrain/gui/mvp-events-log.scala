@@ -8,7 +8,7 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.ColumnDefinition
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartTable}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
-import com.selfdualbrain.simulator_engine.EventTag
+import com.selfdualbrain.simulator_engine.{EventPayload, EventTag}
 import com.selfdualbrain.time.SimTimepoint
 
 import java.awt.{BorderLayout, Color, Dimension}
@@ -119,13 +119,16 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         preferredWidth = 30,
         maxWidth = 40
       ),
-      ColumnDefinition[ValidatorId](
+      ColumnDefinition[String](
         name = "Vid",
         headerTooltip = "Validator id this node is acting in behalf of",
         runtimeClassOfValues = classOf[ValidatorId],
         cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
-          event.loggingAgent
+          event.loggingAgent match {
+            case Some(agentId) => simulationDisplayModel.engine.validatorIdUsedBy(agentId).toString
+            case None => ""
+          }
         },
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
@@ -175,32 +178,32 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     override def calculateNumberOfRows: Int = simulationDisplayModel.eventsAfterFiltering.length
 
     private val EMPTY: String = ""
-    private def eventDetails(event: Event[ValidatorId]): String = event match {
+    private def eventDetails(event: Event[BlockchainNode, EventPayload]): String = event match {
       case Event.External(id, timepoint, destination, payload) => EMPTY
       case Event.Transport(id, timepoint, source, destination, payload) =>
         payload match {
-          case MessagePassingEventPayload.WakeUpForCreatingNewBrick => EMPTY
-          case MessagePassingEventPayload.BrickDelivered(block) => s"$block"
+          case EventPayload.WakeUp(marker) => EMPTY
+          case EventPayload.BrickDelivered(block) => s"$block"
         }
       case Event.Semantic(id, timepoint, source, payload) =>
         payload match {
-          case SemanticEventPayload.BrickProposed(forkChoiceWinner, brick) => s"$brick"
-          case SemanticEventPayload.AcceptedIncomingBrickWithoutBuffering(brick) => s"$brick"
-          case SemanticEventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) => s"$brick (missing dependency: $dependency)"
-          case SemanticEventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) => s"$brick"
-          case SemanticEventPayload.PreFinality(bGameAnchor, partialSummit) => s"level ${partialSummit.level}"
-          case SemanticEventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
-          case SemanticEventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"
-          case SemanticEventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) => s"absolute ftt exceeded by $absoluteFttExceededBy"
+          case EventPayload.BroadcastBrick(brick) => s"$brick"
+          case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) => s"$brick"
+          case EventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) => s"$brick (missing dependency: $dependency)"
+          case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) => s"$brick"
+          case EventPayload.PreFinality(bGameAnchor, partialSummit) => s"level ${partialSummit.level}"
+          case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
+          case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"
+          case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) => s"absolute ftt exceeded by $absoluteFttExceededBy"
         }
     }
 
     //handling data change events emitted by simulation display model
     simulationDisplayModel.subscribe(this) {
       case Ev.FilterChanged => trigger(SmartTable.DataEvent.GeneralDataChange)
-      case Ev.SimulationAdvanced(numberOfSteps, lastStep, firstInsertedRow, lastInsertedRow) =>
-        if (firstInsertedRow.isDefined)
-          trigger(SmartTable.DataEvent.RowsAdded(firstInsertedRow.get, lastInsertedRow.get))
+      case Ev.SimulationAdvanced(numberOfSteps, lastStep, eventsCollectionInsertedInterval, agentsSpawnedInterval) =>
+        if (eventsCollectionInsertedInterval.isDefined)
+          trigger(SmartTable.DataEvent.RowsAdded(eventsCollectionInsertedInterval.get._1, eventsCollectionInsertedInterval.get._2))
       case other => //ignore
     }
 

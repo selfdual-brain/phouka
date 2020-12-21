@@ -29,6 +29,9 @@ trait SimulationEngine[A,P] extends Iterator[(Long, Event[A,P])] {
   //Caution: this number can change over time, as the simulation framework supports agents to be created on-the-fly.
   def numberOfAgents: Int
 
+  //Current collection of agents
+  def agents: Iterable[A]
+
   //Every agent maintains its own clock (so to be able to simulate processing times).
   def localClockOfAgent(agent: A): SimTimepoint
 

@@ -94,7 +94,7 @@ import scala.collection.mutable.ArrayBuffer
   */
 class SimulationDisplayModel(
                               val experimentConfig: ExperimentConfig,
-                              val engine: SimulationEngine[BlockchainNode, EventPayload],
+                              val engine: BlockchainSimulationEngine,
                               stats: BlockchainSimulationStats,
                               genesis: AbstractGenesis,
                               expectedNumberOfBricks: Int,
@@ -200,6 +200,7 @@ class SimulationDisplayModel(
   def advanceTheSimulation(stopCondition: SimulationEngineStopCondition): Unit = {
     val stopConditionChecker: EngineStopConditionChecker = stopCondition.createNewChecker(engine)
     val eventsTableInsertedRowsBuffer = new ArrayBuffer[Int]
+    val initialNumberOfAgents: Int = engine.numberOfAgents
 
     RepeatUntilExitCondition {
       //pull next step from the engine and store it in the master collection
@@ -252,7 +253,26 @@ class SimulationDisplayModel(
     }
 
     //announce to listeners that we just advanced the simulation
-    trigger(Ev.SimulationAdvanced(eventsTableInsertedRowsBuffer.size, engine.lastStepExecuted.toInt, eventsTableInsertedRowsBuffer.headOption, eventsTableInsertedRowsBuffer.lastOption))
+    val newEventsRowsInterval: Option[(Int, Int)] =
+      if (eventsTableInsertedRowsBuffer.isEmpty)
+        None
+      else
+        Some((eventsTableInsertedRowsBuffer.head, eventsTableInsertedRowsBuffer.last))
+
+    val newAgentsInterval: Option[(Int, Int)] =
+      if (engine.numberOfAgents == initialNumberOfAgents)
+        None
+      else
+        Some((initialNumberOfAgents, engine.numberOfAgents - 1))
+
+    trigger(
+      Ev.SimulationAdvanced(
+        numberOfSteps = eventsTableInsertedRowsBuffer.size,
+        lastStep = engine.lastStepExecuted.toInt,
+        eventsCollectionInsertedInterval = newEventsRowsInterval,
+        agentsSpawnedInterval = newAgentsInterval
+      )
+    )
   }
 
   def engineStopCondition: SimulationEngineStopCondition = simulationEngineStopConditionX
@@ -410,8 +430,13 @@ object SimulationDisplayModel {
       * @param lastStep last step produced by the sim engine
       * @param firstInsertedRow position of first added item in filteredEvents collection
       * @param lastInsertedRow position of first added item in filteredEvents collection
+      * @param newAgentsSpawned true if among just added simulation steps at least one "new agent creation" was there
       */
-    case class SimulationAdvanced(numberOfSteps: Int, lastStep: Int, firstInsertedRow: Option[Int], lastInsertedRow: Option[Int]) extends Ev //firstInsertedRow, lastInsertedRow
+    case class SimulationAdvanced(
+                                   numberOfSteps: Int,
+                                   lastStep: Int,
+                                   eventsCollectionInsertedInterval: Option[(Int,Int)], //(fromRow, toRow) in events table
+                                   agentsSpawnedInterval: Option[(Int, Int)]) extends Ev ////(fromRow, toRow) in agents table
 
     /**
       * Fired after the selection of which blockchain node is the "currently observed node" has changed.

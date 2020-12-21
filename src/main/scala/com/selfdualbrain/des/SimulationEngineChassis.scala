@@ -25,6 +25,8 @@ class SimulationEngineChassis[A,P](engine: SimulationEngine[A,P]) extends Observ
 
   override def numberOfAgents: Int = engine.numberOfAgents
 
+  override def agents: Iterable[A] = engine.agents
+
   override def localClockOfAgent(agent: A): SimTimepoint = engine.localClockOfAgent(agent)
 
   override def totalProcessingTimeOfAgent(agent: A): TimeDelta = engine.totalProcessingTimeOfAgent(agent)

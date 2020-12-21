@@ -7,8 +7,15 @@ import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 trait NodeLocalStats {
 
-  //creates a clone of this stats that will handle node bifurcation
-  def createDetachedCopy(blockchainNode: BlockchainNode): NodeLocalStats
+  /**
+    * Create a cloned copy of this stats.
+    * This is for handling stats of bifurcated nodes.
+    *
+    * @param node node-id that cloned stats are to be attached to
+    * @param progenitor progenitor of the cloned node
+    * @return clone of stats calculator
+    */
+  def createDetachedCopy(node: BlockchainNode, progenitor: BlockchainNode): NodeLocalStats
 
   def handleEvent(eventTimepoint: SimTimepoint, payload: EventPayload): Unit
 

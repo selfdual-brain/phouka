@@ -1,14 +1,13 @@
 package com.selfdualbrain.gui
 
-import java.awt.Dimension
-
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.MvpView.JTextComponentOps
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{FieldsLadderPanel, RibbonPanel}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, PresentersTreeVertex}
-import com.selfdualbrain.simulator_engine.PhoukaEngine
 import com.selfdualbrain.stats.BlockchainSimulationStats
+
+import java.awt.Dimension
 import javax.swing.JTextField
 
 /**
@@ -33,7 +32,7 @@ class SimulationStatsPresenter extends Presenter[SimulationDisplayModel, Blockch
     //do nothing
   }
 
-  override def viewModel: BlockchainSimulationStats = model.engine.asInstanceOf[PhoukaEngine].stats
+  override def viewModel: BlockchainSimulationStats = model.simulationStatistics
 }
 
 class SimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadderPanel(guiLayoutConfig) with MvpView[BlockchainSimulationStats, PresentersTreeVertex] {
@@ -122,8 +121,8 @@ class SimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLa
     throughputMovingWindowPerSecond_TextField <-- f"${model.movingWindowThroughput(model.totalTime)}%.4f"
     throughputMovingWindowPerMinute_TextField <-- f"${model.movingWindowThroughput(model.totalTime) * 60}%.3f"
     throughputMovingWindowPerHour_TextField <-- f"${model.movingWindowThroughput(model.totalTime) * 3600}%.2f"
-    totalWeightOfValidators_TextField <-- model.experimentSetup.totalWeight
-    absoluteFtt_TextField <-- model.experimentSetup.absoluteFtt
+    totalWeightOfValidators_TextField <-- model.totalWeight
+    absoluteFtt_TextField <-- model.absoluteFTT
     numberOfObservedEquivocators_TextField <-- model.numberOfObservedEquivocators
     absoluteWeightOfEquivocators_TextField <-- model.weightOfObservedEquivocators
     normalizedWeightOfEquivocators_TextField <-- model.weightOfObservedEquivocatorsAsPercentage

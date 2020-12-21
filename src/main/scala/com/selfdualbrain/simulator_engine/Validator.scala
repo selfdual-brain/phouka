@@ -28,6 +28,11 @@ trait Validator {
   def blockchainNodeId: BlockchainNode
 
   /**
+    * Computing power of this node [gas/second].
+    */
+  def computingPower: Long
+
+  /**
     * Called by the engine at the beginning of the simulation.
     * Gives this agent the chance to self-initialize.
     */

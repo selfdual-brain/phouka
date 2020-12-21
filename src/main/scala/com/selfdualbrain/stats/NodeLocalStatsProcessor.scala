@@ -344,7 +344,7 @@ class NodeLocalStatsProcessor(
   //                                             CLONING
   //#####################################################################################################################################
 
-  override def createDetachedCopy(blockchainNode: BlockchainNode): NodeLocalStats = {
+  override def createDetachedCopy(node: BlockchainNode, progenitor: BlockchainNode): NodeLocalStats = {
     val copy = new NodeLocalStatsProcessor(vid, node, basicStats, weightsMap, genesis, engine)
 
     copy.ownBlocksCounter = ownBlocksCounter

@@ -78,7 +78,7 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
   override def afterModelConnected(): Unit = ???
 
   private def refresh(): Unit = {
-    step_TextField <-- model.stateOfObservedValidator.currentStep
+    step_TextField <-- model.selectedStep
 //    jdagSize_TextField <-- model.stateOfObservedValidator.
 
   }

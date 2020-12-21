@@ -84,6 +84,14 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   def numberOfBlockchainNodes: Int
 
+  def totalWeight: Ether
+
+  def absoluteWeightsMap: ValidatorId => Ether
+
+  def relativeWeightsMap: ValidatorId => Double
+
+  def absoluteFTT: Ether
+
   def isFaulty(vid: ValidatorId): Boolean
 
   def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint]
