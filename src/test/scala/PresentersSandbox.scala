@@ -2,46 +2,22 @@ import com.selfdualbrain.blockchain_structure.AbstractGenesis
 import com.selfdualbrain.gui._
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.SwingSessionManager
-import com.selfdualbrain.randomness.IntSequenceConfig
-import com.selfdualbrain.simulator_engine.ncb.NcbValidatorsFactory
-import com.selfdualbrain.simulator_engine.{ConfigBasedSimulationSetup, ExperimentConfig, PhoukaEngine, StatsProcessorConfig}
+import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, ConfigBasedSimulationSetup, ExperimentConfig, SimulationSetup}
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
-import com.selfdualbrain.time.TimeUnit
-import javax.swing.UIManager
 import org.slf4j.LoggerFactory
 
-import scala.util.Random
+import javax.swing.UIManager
 
 object PresentersSandbox {
   private val log = LoggerFactory.getLogger(s"presenter-sandbox")
 
 //  val defaultFont = new Font("Ubuntu", Font.PLAIN, 13)
 
-//  val config = ExperimentConfig.default
-
-  val config: ExperimentConfig = ExperimentConfig(
-    cyclesLimit = Long.MaxValue,
-    randomSeed = Some(new Random(42).nextLong()),
-    numberOfValidators = 10,
-    numberOfEquivocators = 2,
-    equivocationChanceAsPercentage = Some(2.0),
-    validatorsWeights = IntSequenceConfig.Fixed(1),
-    simLogDir = None,
-    validatorsToBeLogged = Seq.empty,
-    finalizerAckLevel = 3,
-    relativeFtt = 0.30,
-    brickProposeDelays = IntSequenceConfig.PoissonProcess(lambda = 5, unit = TimeUnit.MINUTES),
-    blocksFractionAsPercentage = 10,
-    networkDelays = IntSequenceConfig.PseudoGaussian(min = 30000, max = 60000),
-    runForkChoiceFromGenesis = true,
-    statsProcessor = Some(StatsProcessorConfig(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15))
-  )
-
-  val expSetup = new ConfigBasedSimulationSetup(config)
-  val validatorsFactory = new NcbValidatorsFactory(expSetup)
-  val engine = new PhoukaEngine(expSetup, validatorsFactory)
-  val genesis: AbstractGenesis = engine.genesis
+  val config: ExperimentConfig = ExperimentConfig.default
+  val simulationSetup: SimulationSetup = new ConfigBasedSimulationSetup(config)
+  val engine: BlockchainSimulationEngine = simulationSetup.engine
+  val genesis: AbstractGenesis = simulationSetup.genesis
 
   def main(args: Array[String]): Unit = {
     for(lf <- UIManager.getInstalledLookAndFeels)
@@ -76,7 +52,16 @@ object PresentersSandbox {
     log.info("engine initialized")
 
     //initialize display model
-    val simulationDisplayModel: SimulationDisplayModel = new SimulationDisplayModel(config, engine, genesis)
+    val simulationDisplayModel: SimulationDisplayModel = new SimulationDisplayModel(
+      experimentConfig = config,
+      engine,
+      stats = simulationSetup.guiCompatibleStats.get,
+      genesis,
+      expectedNumberOfBricks = 10000,
+      expectedNumberOfEvents = 100000,
+      maxNumberOfAgents = 100,
+      lfbChainMaxLengthEstimation = 1000
+    )
 
     //run short simulation
     log.info("starting the simulation")
@@ -89,7 +74,7 @@ object PresentersSandbox {
     log.info("selecting last step (this involves updating the rendered state of validator 0)")
 
     val t2 = measureExecutionTime {
-      simulationDisplayModel.displayStep(simulationDisplayModel.engine.lastStepExecuted.toInt)
+      simulationDisplayModel.selectedStep = simulationDisplayModel.engine.lastStepExecuted.toInt
     }
     log.info(s"selection of last step completed ($t2 millis)")
 
@@ -139,9 +124,9 @@ object PresentersSandbox {
   }
 
   def printStatsToConsole(): Unit = {
-    val statsPrinter = new StatsPrinter(TextOutput.overConsole(4), config.numberOfValidators)
+    val statsPrinter = new StatsPrinter(TextOutput.overConsole(4, '.'))
     println("========================== STATISTICS ==========================")
-    statsPrinter.print(engine.stats)
+    statsPrinter.print(simulationSetup.guiCompatibleStats.get)
   }
 
   def measureExecutionTime(block: => Unit): Long = {

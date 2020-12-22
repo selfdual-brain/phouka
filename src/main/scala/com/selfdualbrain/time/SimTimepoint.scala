@@ -12,7 +12,7 @@ case class SimTimepoint(micros: Long) extends AnyVal with Ordered[SimTimepoint] 
 
   def -(delta: TimeDelta): SimTimepoint = SimTimepoint(micros - delta)
 
-  def -(other: SimTimepoint): TimeDelta = this.micros - other.micros
+  def timePassedSince(other: SimTimepoint): TimeDelta = this.micros - other.micros
 
   override def toString: String = SimTimepoint.render(micros)
 
@@ -50,7 +50,7 @@ object SimTimepoint {
         if (digitGroups.length != 2)
           Left(s"expected a number with one decimal point but got this: $s")
         else {
-          if (digitGroups(0).length == 0 || digitGroups(1).length > 6)
+          if (digitGroups(0).isEmpty || digitGroups(1).length > 6)
             Left(s"expected a number in #.###### format (6 decimal digits)")
           else {
             val merged: String = digitGroups(0) + digitGroups(1).padTo(6, '0')

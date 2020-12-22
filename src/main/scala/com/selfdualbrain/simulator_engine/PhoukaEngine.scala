@@ -67,7 +67,7 @@ class PhoukaEngine(
     def executeAndRecordProcessingTimeConsumption(block: => Unit): Unit = {
       val processingStartTimepoint: SimTimepoint = context.time()
       block
-      val timeConsumedForProcessing: TimeDelta = context.time() - processingStartTimepoint
+      val timeConsumedForProcessing: TimeDelta = context.time().timePassedSince(processingStartTimepoint)
       totalProcessingTime += timeConsumedForProcessing
     }
   }
@@ -128,6 +128,8 @@ class PhoukaEngine(
   override def validatorIdUsedBy(node: BlockchainNode): ValidatorId = nodeId2validatorId(node.address)
 
   override def progenitorOf(node: BlockchainNode): Option[BlockchainNode] = clone2progenitor.get(node)
+
+  override def computingPowerOf(node: BlockchainNode): TimeDelta = nodes(node.address).validatorInstance.computingPower
 
   //###################################### PRIVATE ########################################
 
@@ -215,7 +217,7 @@ class PhoukaEngine(
     payload match {
       case EventPayload.WakeUp(strategySpecificMarker) =>
         box.context.moveForwardLocalClockToAtLeast(timepoint)
-        desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedWakeUp(eventId, box.context.time() - timepoint, strategySpecificMarker))
+        desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedWakeUp(eventId, box.context.time() timePassedSince timepoint, strategySpecificMarker))
         box executeAndRecordProcessingTimeConsumption {
           box.validatorInstance.onWakeUp(strategySpecificMarker)
         }
@@ -260,7 +262,7 @@ class PhoukaEngine(
     desQueue.addOutputEvent(
       timepoint = destinationAgentBox.context.time(),
       source = destinationAgentBox.nodeId,
-      payload = EventPayload.ConsumedBrickDelivery(eventId, destinationAgentBox.context.time() - brickDeliveryTimepoint, brick)
+      payload = EventPayload.ConsumedBrickDelivery(eventId, destinationAgentBox.context.time() timePassedSince  brickDeliveryTimepoint, brick)
     )
     destinationAgentBox executeAndRecordProcessingTimeConsumption {
       destinationAgentBox.validatorInstance.onNewBrickArrived(brick)

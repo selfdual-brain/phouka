@@ -23,9 +23,9 @@ class AsteroidImpact(
   private val events: Set[ExtEventIngredients[BlockchainNode, EventPayload]] =
     subset map (vid => ExtEventIngredients(disasterTimepoint, BlockchainNode(vid), EventPayload.NodeCrash))
   //... and running an iterator over this collection
-  private val iterator: Iterator[ExtEventIngredients[BlockchainNode, EventPayload]] = events.iterator
+  private val iter: Iterator[ExtEventIngredients[BlockchainNode, EventPayload]] = events.iterator
 
-  override def hasNext: Boolean = iterator.hasNext
+  override def hasNext: Boolean = iter.hasNext
 
-  override def next(): Disruption = iterator.next
+  override def next(): Disruption = iter.next
 }

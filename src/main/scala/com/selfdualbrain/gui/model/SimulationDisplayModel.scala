@@ -196,6 +196,8 @@ class SimulationDisplayModel(
   //the number of last event generated from the engine
   def simulationHorizon: Int = engine.lastStepExecuted.toInt //for the GUI, we must assume that the number of steps in within Int range (this limitation is not present in the engine itself)
 
+  def advanceTheSimulationBy(numberOfSteps: Int): Unit = advanceTheSimulation(SimulationEngineStopCondition.NextNumberOfSteps(numberOfSteps))
+
   //runs the engine to produce requested portion of steps, i.e. we extend the "simulation horizon"
   def advanceTheSimulation(stopCondition: SimulationEngineStopCondition): Unit = {
     val stopConditionChecker: EngineStopConditionChecker = stopCondition.createNewChecker(engine)
@@ -225,6 +227,8 @@ class SimulationDisplayModel(
             case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
               agent2bricksHistory(agent.get.address) = new JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks, expectedNumberOfEvents)
               summits(agent.get.address) = new FastMapOnIntInterval[ACC.Summit](lfbChainMaxLengthEstimation)
+            case other =>
+              //ignore
           }
 
         case Event.Semantic(id, timepoint, source, payload) =>
@@ -236,10 +240,10 @@ class SimulationDisplayModel(
             case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshotAfter) =>
               agent2bricksHistory(source.address).onBrickAddedToJdag(stepAsInt, brick)
             case other =>
-            //ignore
+              //ignore
           }
         case _ =>
-        //ignore
+          //ignore
       }
 
       //store agent state snapshot (if possible)

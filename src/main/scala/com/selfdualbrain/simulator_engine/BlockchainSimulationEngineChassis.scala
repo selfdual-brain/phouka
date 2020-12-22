@@ -11,4 +11,7 @@ import com.selfdualbrain.des.SimulationEngineChassis
   */
 class BlockchainSimulationEngineChassis(engine: BlockchainSimulationEngine) extends SimulationEngineChassis[BlockchainNode, EventPayload](engine) with BlockchainSimulationEngine {
   override def validatorIdUsedBy(node: BlockchainNode): ValidatorId = engine.validatorIdUsedBy(node)
+  override def progenitorOf(node: BlockchainNode): Option[BlockchainNode] = engine.progenitorOf(node)
+  override def computingPowerOf(node: BlockchainNode): Long = engine.computingPowerOf(node)
+
 }

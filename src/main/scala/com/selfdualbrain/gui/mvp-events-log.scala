@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Block, BlockchainNode, ValidatorId}
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui.model.SimulationDisplayModel.Ev
@@ -9,7 +9,7 @@ import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.ColumnDe
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartTable}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
 import com.selfdualbrain.simulator_engine.{EventPayload, EventTag}
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import java.awt.{BorderLayout, Color, Dimension}
 
@@ -179,15 +179,37 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
     private val EMPTY: String = ""
     private def eventDetails(event: Event[BlockchainNode, EventPayload]): String = event match {
-      case Event.External(id, timepoint, destination, payload) => EMPTY
-      case Event.Transport(id, timepoint, source, destination, payload) =>
+
+      case Event.External(id, timepoint, destination, payload) =>
         payload match {
-          case EventPayload.WakeUp(marker) => EMPTY
-          case EventPayload.BrickDelivered(block) => s"$block"
+          case EventPayload.Bifurcation(numberOfClones) => s"number of clones: $numberOfClones"
+          case EventPayload.NodeCrash => EMPTY
+          case EventPayload.NetworkDisruptionBegin(period) => s"period = ${TimeDelta.toString(period)} [sec]"
+          case other => throw new RuntimeException(s"unexpected payload: $payload")
         }
-      case Event.Semantic(id, timepoint, source, payload) =>
+
+      case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
           case EventPayload.BroadcastBrick(brick) => s"$brick"
+          case EventPayload.NetworkDisruptionEnd(disruptionEventId) => s"disruption-begin = event $disruptionEventId"
+          case EventPayload.NewAgentSpawned(validatorId, progenitor) => if (progenitor.isEmpty) s"validator-id=$validatorId" else s"cloned from node $progenitor (validator-id=$validatorId)"
+          case other => throw new RuntimeException(s"unexpected payload: $payload")
+        }
+
+      case Event.Transport(id, timepoint, source, destination, payload) =>
+        payload match {
+          case EventPayload.BrickDelivered(block) => s"$block"
+          case other => throw new RuntimeException(s"unexpected payload: $payload")
+        }
+
+      case Event.Loopback(id, timepoint, agent, payload) =>
+        payload match {
+          case EventPayload.WakeUp(marker) => marker.toString
+          case other => throw new RuntimeException(s"unexpected payload: $payload")
+        }
+
+      case Event.Semantic(id, timepoint, source, payload) =>
+        payload match {
           case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) => s"$brick"
           case EventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) => s"$brick (missing dependency: $dependency)"
           case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) => s"$brick"
@@ -195,6 +217,15 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
           case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"
           case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) => s"absolute ftt exceeded by $absoluteFttExceededBy"
+          case EventPayload.ConsumedBrickDelivery(consumedEventId, consumptionDelay, brick) =>
+            val desc = if (brick.isInstanceOf[Block]) "block" else "ballot"
+            s"$desc=${brick.id} delay=${TimeDelta.toString(consumptionDelay)} delivery-event=$consumedEventId"
+          case EventPayload.ConsumedWakeUp(consumedEventId, consumptionDelay, strategySpecificMarker) =>
+            s"marker=$strategySpecificMarker delay=${TimeDelta.toString(consumptionDelay)} delivery-event=$consumedEventId"
+          case EventPayload.NetworkConnectionLost => EMPTY
+          case EventPayload.NetworkConnectionRestored => EMPTY
+          case EventPayload.StrategySpecificOutput(cargo) => cargo.toString
+          case other => throw new RuntimeException(s"unexpected payload: $payload")
         }
     }
 

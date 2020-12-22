@@ -1,19 +1,18 @@
 package com.selfdualbrain.simulator_engine
 
-import java.io.File
-
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.des.{ObservableSimulationEngine, SimulationEngineChassis, SimulationObserver}
+import com.selfdualbrain.des.{ObservableSimulationEngine, SimulationObserver}
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelays, NetworkModel, SymmetricLatencyBandwidthGraphNetwork}
 import com.selfdualbrain.randomness.{IntSequenceGenerator, LongSequenceGenerator}
-import com.selfdualbrain.simulator_engine.highway.HighwayValidatorsFactory
-import com.selfdualbrain.simulator_engine.leaders_seq.LeadersSeqValidatorsFactory
+import com.selfdualbrain.simulator_engine.highway.{Highway, HighwayValidatorsFactory}
+import com.selfdualbrain.simulator_engine.leaders_seq.{LeadersSeq, LeadersSeqValidatorsFactory}
 import com.selfdualbrain.simulator_engine.ncb.{Ncb, NcbValidatorsFactory}
 import com.selfdualbrain.stats.{BlockchainSimulationStats, DefaultStatsProcessor}
 import com.selfdualbrain.transactions.{BlockPayloadBuilder, TransactionsStream}
 
+import java.io.File
 import scala.util.Random
 
 /**
@@ -112,8 +111,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   val genesis: AbstractGenesis = config.bricksProposeStrategy match {
     case x: ProposeStrategyConfig.NaiveCasper => Ncb.Genesis(0)
-    case x: ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds => ???
-    case x: ProposeStrategyConfig.Highway => ???
+    case x: ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds => LeadersSeq.Genesis(0)
+    case x: ProposeStrategyConfig.Highway => Highway.Genesis(0)
   }
 
   private val coreEngine = new PhoukaEngine(
@@ -125,8 +124,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
     genesis
   )
 
-  private val chassis = new SimulationEngineChassis(coreEngine)
-  override val engine: ObservableSimulationEngine[BlockchainNode, EventPayload] = chassis
+  private val chassis = new BlockchainSimulationEngineChassis(coreEngine)
+  override val engine: BlockchainSimulationEngine with ObservableSimulationEngine[BlockchainNode, EventPayload] = chassis
 
   private var guiCompatibleStatsX: Option[BlockchainSimulationStats] = None
 
@@ -142,8 +141,6 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   override def relativeWeightOf(vid: ValidatorId): Double = relativeWeightsOfValidators(vid)
 
   override def guiCompatibleStats: Option[BlockchainSimulationStats] = guiCompatibleStatsX
-
-  override def node2validator(node: BlockchainNode): ValidatorId = ???
 
   //###################################################################################
 

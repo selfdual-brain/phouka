@@ -153,11 +153,11 @@ class LeadersSeqValidator private (
     val earliestRoundWeStillHaveChancesToCatch: Long = timeNow.micros / config.roundLength
     if (beAggressive) {
       val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch)
-      val wakeUpPoint: Long = timeNow.micros + (context.random.nextDouble() * (stop - timeNow) / 2).toLong
+      val wakeUpPoint: Long = timeNow.micros + (context.random.nextDouble() * (stop timePassedSince timeNow) / 2).toLong
       context.scheduleWakeUp(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch)
     } else {
       val (start, stop) = roundBoundary(earliestRoundWeStillHaveChancesToCatch + 1)
-      val wakeUpPoint: Long = start.micros + (context.random.nextDouble() * (stop - start) / 2).toLong
+      val wakeUpPoint: Long = start.micros + (context.random.nextDouble() * (stop timePassedSince start) / 2).toLong
       context.scheduleWakeUp(SimTimepoint(wakeUpPoint), earliestRoundWeStillHaveChancesToCatch + 1)
     }
   }

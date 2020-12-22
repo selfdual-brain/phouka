@@ -64,7 +64,7 @@ class LfbElementInfo(val block: AbstractNormalBlock, numberOfValidators: Int) {
         faultyValidatorsSnapshot = faultyValidatorsMap.clone()
       }
 
-      val finalityDelay: TimeDelta = timepoint - block.timepoint
+      val finalityDelay: TimeDelta = timepoint timePassedSince block.timepoint
       sumOfFinalityDelaysAsMicrosecondsX += finalityDelay
       val finalityDelayAsSeconds: Double = finalityDelay.toDouble / 1000000
       sumOfFinalityDelaysScaledToSeconds += finalityDelayAsSeconds

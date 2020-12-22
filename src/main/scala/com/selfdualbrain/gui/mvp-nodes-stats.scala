@@ -113,16 +113,12 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         name = "C-Power",
         headerTooltip = "Computing power (in sprocket units, 1 sprocket = 1 million gas/sec)",
         runtimeClassOfValues = classOf[Double],
-        cellValueFunction = (rowIndex: Int) => model.engine.
-        {
-          val vid = model.engine.validatorIdUsedBy(BlockchainNode(rowIndex))
-          model.simulationStatistics.relativeWeightsMap(vid) * 100
-        },
+        cellValueFunction = (rowIndex: Int) => model.engine.computingPowerOf(BlockchainNode(rowIndex)).toDouble / 1000000,
         decimalRounding = Some(4),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
         preferredWidth = 60,
-        maxWidth = 100
+        maxWidth = 60
       ),
       ColumnDefinition[Double](
         name = "CP-Util",
@@ -339,6 +335,5 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     }
 
   }
-
 
 }

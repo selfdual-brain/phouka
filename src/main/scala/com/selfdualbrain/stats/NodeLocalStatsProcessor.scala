@@ -103,10 +103,10 @@ class NodeLocalStatsProcessor(
       case EventPayload.BrickDelivered(brick) =>
         if (brick.isInstanceOf[AbstractNormalBlock]) {
           receivedBlocksCounter += 1
-          sumOfReceivedBlocksNetworkDelays += eventTimepoint - brick.timepoint
+          sumOfReceivedBlocksNetworkDelays += eventTimepoint timePassedSince brick.timepoint
         } else {
           receivedBallotsCounter += 1
-          sumOfReceivedBallotsNetworkDelays += eventTimepoint - brick.timepoint
+          sumOfReceivedBallotsNetworkDelays += eventTimepoint timePassedSince brick.timepoint
         }
 
       //=========ENGINE=========
@@ -178,7 +178,7 @@ class NodeLocalStatsProcessor(
       case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
         if (vid == finalizedBlock.creator) {
           ownBlocksFinalizedCounter += 1
-          sumOfLatenciesForOwnBlocks += eventTimepoint - finalizedBlock.timepoint
+          sumOfLatenciesForOwnBlocks += eventTimepoint timePassedSince finalizedBlock.timepoint
           transactionsInMyFinalizedBlocksCounter += finalizedBlock.numberOfTransactions
           totalGasInMyFinalizedBlocksCounter == finalizedBlock.totalGas
         }
@@ -187,7 +187,7 @@ class NodeLocalStatsProcessor(
         lastPartialSummitForCurrentBGameX = None
         lastFinalizedBlockGeneration = finalizedBlock.generation
         currentBGameStatusX = None
-        sumOfLatenciesForAllFinalizedBlocks += eventTimepoint - finalizedBlock.timepoint
+        sumOfLatenciesForAllFinalizedBlocks += eventTimepoint timePassedSince finalizedBlock.timepoint
         transactionsInAllFinalizedBlocksCounter += finalizedBlock.numberOfTransactions
         totalGasInAllFinalizedBlocksCounter += finalizedBlock.totalGas
 
@@ -325,7 +325,7 @@ class NodeLocalStatsProcessor(
     else
       sumOfLatenciesForAllFinalizedBlocks.toDouble / 1000000 / lastFinalizedBlock.generation //scaling to seconds
 
-  override def blockchainRunahead: TimeDelta = basicStats.totalTime - lastFinalizedBlock.timepoint
+  override def blockchainRunahead: TimeDelta = basicStats.totalTime timePassedSince lastFinalizedBlock.timepoint
 
   override def blockchainOrphanRate: Double = {
     val allBlocksUpToLfbGeneration: Int = allBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt)
@@ -344,7 +344,7 @@ class NodeLocalStatsProcessor(
   //                                             CLONING
   //#####################################################################################################################################
 
-  override def createDetachedCopy(node: BlockchainNode, progenitor: BlockchainNode): NodeLocalStats = {
+  override def createDetachedCopy(node: BlockchainNode): NodeLocalStats = {
     val copy = new NodeLocalStatsProcessor(vid, node, basicStats, weightsMap, genesis, engine)
 
     copy.ownBlocksCounter = ownBlocksCounter

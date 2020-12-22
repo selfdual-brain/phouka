@@ -460,7 +460,7 @@ class HighwayValidator private (
     //true = slowdown is needed
     def runaheadSlowdownCheck(roundExponent: Int): Boolean = state.myLastMessagePublished match {
       case Some(msg) =>
-        val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint - state.finalizer.lastFinalizedBlock.timepoint
+        val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint.timePassedSince(state.finalizer.lastFinalizedBlock.timepoint)
         val tolerance: TimeDelta = config.runaheadTolerance * roundLengthAsNumberOfTicks(roundExponent)
         currentRunahead > tolerance
       case None =>
@@ -511,7 +511,24 @@ class HighwayValidator private (
     }
 
     //true = it is time to accelerate
-    def generalAccelerationCheck(): Boolean = ???
+    def generalAccelerationCheck(): Boolean = {
+      if (state.speedUpCounter >= config.exponentAccelerationPeriod && state.currentRoundExponent > 0) {
+        //ok, so we are about to consider speed-up now ... (unless something stops us from doing so)
+
+        //potential issue 1: if such a speed up would immediately trigger runahead slowdown condition, we give up
+        if (runaheadSlowdownCheck(state.currentRoundExponent - 1))
+          return false //speed-up makes no sense at this point; we are just at the optimal round length now
+
+        //potential issue 2: if after a speed up, effective omega margin would consume more than half of the round length, we give up
+        if (roundTooShortInRelationToOmegaMarginCheck(state.currentRoundExponent - 1))
+          return false //this blockchain node does not have enough computing power to use shorter rounds
+
+        //ready to accelerate
+        return true
+      }
+
+      return false
+    }
 
     //================= ROUND EXPONENT AUTO-ADJUSTMENT DECISION MAKING CIRCUIT =================
 
@@ -521,8 +538,8 @@ class HighwayValidator private (
 
     //performance stress is our hard limit anyway, even if this violates "follow the crowd" rule
     //after all, a node cannot operate faster than its processor is able to
-    val weAttemptToProcessStuffTooFast = performanceStressSlowdownCheck()
-    if (weAttemptToProcessStuffTooFast)
+    val itLooksLikeWeAreHittingComputingPowerLimitsOfThisNode = performanceStressSlowdownCheck()
+    if (itLooksLikeWeAreHittingComputingPowerLimitsOfThisNode)
       return RoundExponentAdjustmentDecision.PerformanceStressSlowdown
 
     //check current limits implied by "follow the crowd rule"
@@ -550,6 +567,8 @@ class HighwayValidator private (
 
     //reaching this point means that all reasons for changing the round exponent now were rejected
     return RoundExponentAdjustmentDecision.KeepAsIs
+
+    //================================ CIRCUIT ENDS HERE ==========================================
   }
 
   /**
@@ -583,7 +602,15 @@ class HighwayValidator private (
       onTimeBricksCounter.beep(brick.id, context.time().micros)
     } else {
       tooLateBricksCounter.beep(brick.id, context.time().micros)
-      context.addOutputEvent(EventPayload.StrategySpecificOutput(Highway.CustomOutput.BrickDropped(brick, state.currentRoundEnd, state.currentRoundEnd - context.time())))
+      context.addOutputEvent(
+        EventPayload.StrategySpecificOutput(
+          Highway.CustomOutput.BrickDropped(
+            brick,
+            missedDeadline = state.currentRoundEnd,
+            howMuchMissed = state.currentRoundEnd.timePassedSince(context.time())
+          )
+        )
+      )
     }
   }
 
@@ -673,7 +700,7 @@ class HighwayValidator private (
     //result = true means that LFB chain is too far behind the front of the blockchain (i.e. slowdown is needed)
     def runaheadSlowdownConditionCheck(exponent: Int): Boolean = state.myLastMessagePublished match {
       case Some(msg) =>
-        val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint - state.finalizer.lastFinalizedBlock.timepoint
+        val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint.timePassedSince(state.finalizer.lastFinalizedBlock.timepoint)
         val tolerance: TimeDelta = config.runaheadTolerance * roundLengthAsNumberOfTicks(exponent)
         currentRunahead > tolerance
       case None =>

@@ -23,10 +23,9 @@ trait SimulationSetup {
   def absoluteFTT: Ether
   def disruptionModel: DisruptionModel
   def validatorsFactory: ValidatorsFactory
-  def engine: ObservableSimulationEngine[BlockchainNode, EventPayload]
+  def engine: BlockchainSimulationEngine with ObservableSimulationEngine[BlockchainNode, EventPayload]
   def guiCompatibleStats: Option[BlockchainSimulationStats]
   def genesis: AbstractGenesis
-  def node2validator(node: BlockchainNode): ValidatorId
 }
 
 

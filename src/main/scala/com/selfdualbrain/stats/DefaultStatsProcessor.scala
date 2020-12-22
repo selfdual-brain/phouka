@@ -110,7 +110,7 @@ class DefaultStatsProcessor(
               //creating per-node stats processor for new node
               case None => new NodeLocalStatsProcessor(vid, BlockchainNode(newNodeAddress), basicStats = this, absoluteWeightsMap, genesis, engine)
               //cloning per-node stats processor after bifurcation
-              case Some(p) => node2stats(p.address).createDetachedCopy(agent.get, p)
+              case Some(p) => node2stats(p.address).createDetachedCopy(agent.get)
             }
 
           case EventPayload.BroadcastBrick(brick) =>
