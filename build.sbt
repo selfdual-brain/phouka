@@ -2,7 +2,7 @@ name := "phouka"
 
 version := "0.1"
 
-scalaVersion := "2.13.3"
+scalaVersion := "2.13.4"
 
 libraryDependencies ++= {
   Seq(
@@ -12,6 +12,6 @@ libraryDependencies ++= {
     "com.intellij" % "forms_rt" % "7.0.3",
     "org.jfree" % "jfreechart" % "1.5.0",
     "org.json4s" %% "json4s-native" % "3.6.9",
-    "org.scalatest" %% "scalatest" % "3.2.0" % Test
+    "org.scalatest" %% "scalatest" % "3.2.3" % Test
   )
 }

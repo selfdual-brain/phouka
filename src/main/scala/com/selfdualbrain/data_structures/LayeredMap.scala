@@ -1,11 +1,16 @@
 package com.selfdualbrain.data_structures
 
-import scala.annotation.tailrec
 import scala.collection.mutable
 
 /**
   * Map-like mutable data structure with keys having "level".
-  * The distinctive feature of this map is ability to prune whole levels.
+  * The distinctive feature of this map is an ability to prune whole levels.
+  * Caution: once given level is pruned, keys at this level are no longer allowed to be added.
+  *
+  * Levels are identified with subsequent integers. Lowest level allowed is 0.
+  * Any key->value pair in this map is automatically assigned to certain level. This assignment is based
+  * on a function K => Int (keys ---> levels) that is passed in the constructor.
+  * Hence, the map is functionally looks like a normal mutable map. Assignment to level happens automagically.
   */
 class LayeredMap[K,V] private (
                        levelIdExtractor: K => Int,
@@ -20,6 +25,11 @@ class LayeredMap[K,V] private (
   private var lowestLevelAllowed: Int = pLowestLevelAllowed
   private var highestLevelInUse: Int = pHighestLevelInUse
 
+  /**
+    * Creates new LayeredMap instance.
+    *
+    * @param levelIdExtractor a function that given a key, assigns it to some level
+    */
   def this(levelIdExtractor: K => Int) =
     this(
       levelIdExtractor,
@@ -45,15 +55,16 @@ class LayeredMap[K,V] private (
   override def addOne(elem: (K, V)): this.type = {
     val (key, value) = elem
     val level = levelIdExtractor(key)
-    assert(level >= lowestLevelAllowed)
+    assert(level >= lowestLevelAllowed, s"attempted to insert key with level=$level which is below lowest level allowed at the moment: $lowestLevelAllowed")
     levels.get(level) match {
       case None =>
         val newLevelMap = new mutable.HashMap[K,V]
         levels += level -> newLevelMap
         newLevelMap += elem
+        counterOfElements += 1
       case Some(levelMap) =>
         val oldValue = levelMap.put(key, value)
-        if (oldValue.isDefined)
+        if (oldValue.isEmpty)
           counterOfElements += 1
     }
     highestLevelInUse = math.max(level, highestLevelInUse)
@@ -97,29 +108,30 @@ class LayeredMap[K,V] private (
 
   override def iterator: Iterator[(K, V)] = {
     val traversal: PseudoIterator[(K,V)] = new PseudoIterator[(K,V)] {
-      var currentLevel: Int = lowestLevelAllowed
-      var currentLevelIterator: Option[Iterator[(K,V)]] = None
+      var levelUnderIteration: Int = lowestLevelAllowed
+      var levelIterator: Option[Iterator[(K,V)]] = None
 
       override def next(): Option[(K, V)] = firstAvailableNonEmptyLevelIterator() map (it => it.next())
 
       def firstAvailableNonEmptyLevelIterator(): Option[Iterator[(K,V)]] =
-        if (currentLevelIterator.isDefined && currentLevelIterator.get.hasNext)
-          currentLevelIterator
-        else {
-          val success = moveToNextLevel(currentLevel + 1)
-          if (success)
-            currentLevelIterator
-          else
-            None
+        levelIterator match {
+          case Some(it) =>
+            if (it.hasNext)
+              levelIterator
+            else
+              getNextNonemptyLevelIterator(levelToStartSearchFrom = levelUnderIteration + 1)
+          case None =>
+            getNextNonemptyLevelIterator(levelToStartSearchFrom = levelUnderIteration)
         }
 
-      def moveToNextLevel(startFrom: Int): Boolean =
-        findNextInitializedNonemptyLevel(startFrom) match {
+      def getNextNonemptyLevelIterator(levelToStartSearchFrom: Int): Option[Iterator[(K,V)]] =
+        findNextInitializedNonemptyLevel(levelToStartSearchFrom) match {
           case Some(n) =>
-            currentLevelIterator = Some(levels(n).iterator)
-            true
+            levelUnderIteration = n
+            levelIterator = Some(levels(n).iterator)
+            levelIterator
           case None =>
-            false
+            None
         }
 
       def findNextInitializedNonemptyLevel(startAt: Int): Option[Int] = {

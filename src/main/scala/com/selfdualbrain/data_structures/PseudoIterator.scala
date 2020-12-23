@@ -15,7 +15,7 @@ trait PseudoIterator[+E] {
       tmp match {
         case Some(a) =>
           tmp = self.next()
-          return a
+          a
         case None =>
           throw new NoSuchElementException("next on empty iterator")
       }

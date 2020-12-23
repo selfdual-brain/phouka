@@ -5,7 +5,7 @@ import com.selfdualbrain.time.TimeDelta
 
 import scala.util.Random
 
-class MovingWindowBeepsCounterSpec extends BaseSpec {
+class MovingWindowBeepsCounterWithHistorySpec extends BaseSpec {
   //test params
   val testIntervalLength: Long = TimeDelta.seconds(10000)
   val movingWindowLength: Long = TimeDelta.seconds(100)
