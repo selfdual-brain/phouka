@@ -161,9 +161,11 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
         return
       case b: AbstractNormalBlock =>
         val p = b.parent
-        val bgame: BGame = state.block2bgame(p)
-        bgame.addVote(vote, b)
-        applyNewVoteToBGamesChain(vote, p)
+        if (p.generation >= state.lastFinalizedBlock.generation) {
+          val bgameAnchoredAtParent: BGame = state.block2bgame(p)
+          bgameAnchoredAtParent.addVote(vote, b)
+          applyNewVoteToBGamesChain(vote, p)
+        }
     }
   }
 

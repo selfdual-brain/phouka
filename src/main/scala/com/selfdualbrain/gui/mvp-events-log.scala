@@ -107,7 +107,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 80
       ),
       ColumnDefinition[Int](
-        name = "Node",
+        name = "Nid",
         headerTooltip = "Id of involved blockchain node",
         runtimeClassOfValues = classOf[Int],
         cellValueFunction = (rowIndex: Int) => {
@@ -153,7 +153,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
             None
         },
         preferredWidth = 130,
-        maxWidth = 130
+        maxWidth = 160
       ),
       ColumnDefinition(
         name = "Details",

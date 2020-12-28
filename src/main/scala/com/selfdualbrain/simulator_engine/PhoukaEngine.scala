@@ -311,7 +311,7 @@ class PhoukaEngine(
     override def random: Random = engine.random
 
     override def broadcast(timepointOfPassingTheBrickToCommsLayer: SimTimepoint, brick: Brick): Unit = {
-      desQueue.addLoopbackEvent(timepointOfPassingTheBrickToCommsLayer, nodeId, EventPayload.BroadcastBrick(brick))
+      desQueue.addEngineEvent(timepointOfPassingTheBrickToCommsLayer, Some(nodeId), EventPayload.BroadcastBrick(brick))
     }
 
     override def scheduleWakeUp(wakeUpTimepoint: SimTimepoint, strategySpecificMarker: Any): Unit = {

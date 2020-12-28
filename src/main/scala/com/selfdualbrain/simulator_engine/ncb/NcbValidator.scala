@@ -154,6 +154,7 @@ class NcbValidator private (
   }
 
   protected def scheduleNextWakeup(): Unit = {
-    context.scheduleWakeUp(context.time() + state.brickProposeDelaysGenerator.next(), ())
+    val delay = state.brickProposeDelaysGenerator.next()
+    context.scheduleWakeUp(context.time() + delay, ())
   }
 }

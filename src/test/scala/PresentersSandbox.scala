@@ -107,7 +107,7 @@ object PresentersSandbox {
     //run short simulation
     log.info("starting the simulation")
     val t1 = measureExecutionTime {
-      simulationDisplayModel.advanceTheSimulationBy(100)
+      simulationDisplayModel.advanceTheSimulationBy(1000)
     }
     log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepExecuted}")
 

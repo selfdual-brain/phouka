@@ -64,7 +64,7 @@ object IntSequenceGenerator {
       var x: Double = 0
       do {
         x = random.nextGaussian() * sd + mean
-      } while (x < 0 || x >= length)
+      } while (x < 0 || x >= intervalLength)
       return min + x.toInt
     }
   }
@@ -74,7 +74,7 @@ object IntSequenceGenerator {
   }
 
   class PoissonProcessGen(random: Random, lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends IntSequenceGenerator {
-    val scaledLambda: Double = lambda * (outputUnit.oneUnitAsTimeDelta / lambdaUnit.oneUnitAsTimeDelta)
+    val scaledLambda: Double = lambda * (outputUnit.oneUnitAsTimeDelta.toDouble / lambdaUnit.oneUnitAsTimeDelta)
     override def next(): Int = (- math.log(random.nextDouble()) / scaledLambda).toInt
   }
 
