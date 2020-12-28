@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.highway
 
-import com.selfdualbrain.blockchain_structure.{ACC, AbstractNormalBlock, Block, BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{CloningSupport, DirectedGraphUtils, MovingWindowBeepsCounter}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.simulator_engine.highway.Highway.WakeupMarker
@@ -46,9 +46,6 @@ object HighwayValidator {
 
     /** See PerLaneOrphanRateGauge class for explanation. */
     var perLaneOrphanRateCalculationWindow: Int = _
-
-    /** See PerLaneOrphanRateGauge class for explanation. */
-    var perLaneOrphanRateCalculationBufferSize: Int = _
 
     /** If per-lane orphan rate exceeds this value, round exponent auto-adjustment will apply slowdown action.*/
     var perLaneOrphanRateThreshold: Double = _
@@ -262,7 +259,11 @@ class HighwayValidator private (
 
   private val tooLateBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
   private val onTimeBricksCounter = new MovingWindowBeepsCounter(config.droppedBricksMovingAverageWindow)
-  private val perLaneOrphanRateGauge = new PerLaneOrphanRateGauge(state.finalizer.isKnownEquivocator, config.perLaneOrphanRateCalculationWindow, config.perLaneOrphanRateCalculationBufferSize)
+  private val perLaneOrphanRateGauge = new PerLaneOrphanRateGauge(
+    isEquivocator = state.finalizer.isKnownEquivocator,
+    calculationWindow = config.perLaneOrphanRateCalculationWindow,
+    leaderSeq = config.leadersSequencer.findLeaderForRound
+  )
 
   override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
     val validatorInstance = new HighwayValidator(bNode, vContext, config, state.createDetachedCopy())
@@ -575,7 +576,7 @@ class HighwayValidator private (
     * Calculates the length of a round for a given round exponent.
     * Returns round length as number of ticks.
     * Internally we just do integer exponentiation with base 2, implemented with bitwise shift.
-    *k
+    *
     * @param exponent must be within 0..62 interval
     * @return 2 ^^ exponent (as Long value)
     */
