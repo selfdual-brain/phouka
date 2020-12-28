@@ -1,20 +1,61 @@
-import com.selfdualbrain.blockchain_structure.AbstractGenesis
+import com.selfdualbrain.blockchain_structure.{AbstractGenesis, BlockchainNode}
 import com.selfdualbrain.gui._
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.SwingSessionManager
-import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, ConfigBasedSimulationSetup, ExperimentConfig, SimulationSetup}
+import com.selfdualbrain.randomness.{IntSequenceConfig, LongSequenceConfig}
+import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
+import com.selfdualbrain.time.{TimeDelta, TimeUnit}
 import org.slf4j.LoggerFactory
 
+import java.io.File
 import javax.swing.UIManager
+import scala.util.Random
 
 object PresentersSandbox {
   private val log = LoggerFactory.getLogger(s"presenter-sandbox")
 
 //  val defaultFont = new Font("Ubuntu", Font.PLAIN, 13)
 
-  val config: ExperimentConfig = ExperimentConfig.default
+  private val headerSize: Int =
+    32 + //message id
+      32 + //creator
+      8 +  //round id
+      1 +  //ballot type
+      32 + //era id
+      32 + //prev msg
+      32 + //target block
+      32   //signature
+
+  val config: ExperimentConfig = ExperimentConfig(
+    randomSeed = Some(new Random(42).nextLong()),
+    networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequenceConfig.PseudoGaussian(TimeDelta.seconds(1), TimeDelta.seconds(10))),
+    nodesComputingPowerModel = LongSequenceConfig.Pareto(minValue = 10000, 1000000),
+    numberOfValidators = 5,
+    validatorsWeights = IntSequenceConfig.Fixed(1),
+    finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
+    forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
+    bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
+      brickProposeDelays = LongSequenceConfig.PoissonProcess(lambda = 2, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS), //on average a validator proposes 2 blocks per minute
+      blocksFractionAsPercentage = 20 //blocks fraction as if in perfect round-robin (in every round there is one leader producing a block and others produce one ballot each)
+    ),
+    disruptionModel = DisruptionModelConfig.VanillaBlockchain,
+    transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
+      sizeDistribution = IntSequenceConfig.Pareto(100, 2500),//in bytes
+      costDistribution = LongSequenceConfig.Pareto(1, 1000)   //in gas
+    ),
+    blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
+    brickCreationCostModel = LongSequenceConfig.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
+    brickValidationCostModel = LongSequenceConfig.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
+    brickHeaderCoreSize = headerSize,
+    singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
+    msgBufferSherlockMode = true,
+    observers = Seq(
+      ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
+      ObserverConfig.FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Some(Seq(BlockchainNode(0))))
+    )
+  )
   val simulationSetup: SimulationSetup = new ConfigBasedSimulationSetup(config)
   val engine: BlockchainSimulationEngine = simulationSetup.engine
   val genesis: AbstractGenesis = simulationSetup.genesis
@@ -66,7 +107,7 @@ object PresentersSandbox {
     //run short simulation
     log.info("starting the simulation")
     val t1 = measureExecutionTime {
-      simulationDisplayModel.advanceTheSimulationBy(12345)
+      simulationDisplayModel.advanceTheSimulationBy(100)
     }
     log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepExecuted}")
 

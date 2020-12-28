@@ -14,7 +14,7 @@ class ClassicDesQueue[A,P](extStreams: IndexedSeq[Iterator[ExtEventIngredients[A
   private val queue = new mutable.PriorityQueue[Event[A,P]]()(Ordering[Event[A,P]].reverse)
   private val numberOfExtStreams: Int = extStreams.size
   private val extStreamEofFlags: Array[Boolean] = Array.fill(numberOfExtStreams)(false)
-  private val extStreamsClocks: Array[SimTimepoint] = new Array[SimTimepoint](numberOfExtStreams)
+  private val extStreamsClocks: Array[SimTimepoint] = Array.fill[SimTimepoint](numberOfExtStreams)(SimTimepoint.zero)
   private var highestTimepointOfMessagePassingEvent: SimTimepoint = SimTimepoint.zero
   private var currentExtEventsHorizon: SimTimepoint = SimTimepoint.zero
 
@@ -59,7 +59,7 @@ class ClassicDesQueue[A,P](extStreams: IndexedSeq[Iterator[ExtEventIngredients[A
 
   private def addEvent(f: Long => Event[A,P]): Event[A,P] = {
     val newEvent = f(lastEventId+1)
-    if (newEvent.timepoint <= clock)
+    if (newEvent.timepoint < clock)
       throw new RuntimeException(s"travelling back in time not allowed: current time is $clock, attempted to schedule new event $newEvent")
     lastEventId += 1
     queue.enqueue(newEvent)

@@ -230,6 +230,9 @@ class PhoukaEngine(
   //results: true = mask this event; false = emit this event
   protected def handleEngine(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: Option[BlockchainNode], payload: EventPayload): Boolean = {
     payload match {
+      case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
+        false
+
       case EventPayload.BroadcastBrick(brick) =>
         box.status match {
           case NodeStatus.CRASHED =>

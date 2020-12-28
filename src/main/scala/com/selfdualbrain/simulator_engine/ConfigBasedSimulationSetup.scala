@@ -131,7 +131,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   for (observerCfg <- config.observers) {
     val observer = buildObserver(observerCfg)
-    engine.addObserver(buildObserver(observerCfg))
+    engine.addObserver(observer)
     if (guiCompatibleStatsX.isEmpty && observer.isInstanceOf[BlockchainSimulationStats])
       guiCompatibleStatsX = Some(observer.asInstanceOf[BlockchainSimulationStats])
   }
