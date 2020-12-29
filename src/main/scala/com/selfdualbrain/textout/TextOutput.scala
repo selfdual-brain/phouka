@@ -16,6 +16,10 @@ class TextOutput(provider: TextOutputProvider, indentSize: Int, indentChar: Char
     this.append(s.toString)
   }
 
+  override def newLine(): Unit = {
+    provider.newLine()
+  }
+
   override def withIndentDo(block: => Unit): Unit = {
     increaseIndent()
     block

@@ -133,6 +133,14 @@ class PhoukaEngine(
 
   //###################################### PRIVATE ########################################
 
+  sealed abstract class EventMaskingDecision {}
+  object EventMaskingDecision {
+    case object EMIT_EVENT extends EventMaskingDecision
+    case object MASK_EVENT extends EventMaskingDecision
+  }
+
+  import EventMaskingDecision._
+
   //returns None if subsequent event is "masked" - i.e. should not be emitted outside the engine
   private def processNextEventFromQueue(): Option[Event[BlockchainNode,EventPayload]] = {
     val event: Event[BlockchainNode,EventPayload] = desQueue.next()
@@ -141,38 +149,37 @@ class PhoukaEngine(
     return if (box.status == NodeStatus.CRASHED)
       None //dead node is supposed to be silent; hence after the crash we "magically" delete all events scheduled for this node
     else {
-      val shouldBeMasked: Boolean = event match {
+      val eventMaskingDecision: EventMaskingDecision = event match {
         case Event.External(id, timepoint, destination, payload) => handleExternal(box, id, timepoint, destination, payload)
         case Event.Transport(id, timepoint, source, destination, payload) => handleTransport(box, id, timepoint, source, destination, payload.asInstanceOf[EventPayload])
         case Event.Loopback(id, timepoint, agent, payload) => handleLoopback(box, id, timepoint, agent, payload)
         case Event.Engine(id, timepoint, agent, payload) => handleEngine(box, id, timepoint, agent, payload)
-        case Event.Semantic(id, timepoint, source, payload) => false //semantic events are never masked, but also no extra processing of them within the engine is needed, because they are just "output"
+        case Event.Semantic(id, timepoint, source, payload) =>
+          EMIT_EVENT //semantic events are never masked, but also no extra processing of them within the engine is needed, because they are just "output"
       }
 
-      if (shouldBeMasked)
-        None
-      else
-        Some(event)
+      eventMaskingDecision match {
+        case EMIT_EVENT => Some(event)
+        case MASK_EVENT => None
+      }
     }
   }
 
-  //results: true = mask this event; false = emit this event
-  protected def handleTransport(box: NodeBox, eventId: Long, timepoint: SimTimepoint, source: BlockchainNode, destination: BlockchainNode, payload: EventPayload): Boolean =
+  protected def handleTransport(box: NodeBox, eventId: Long, timepoint: SimTimepoint, source: BlockchainNode, destination: BlockchainNode, payload: EventPayload): EventMaskingDecision =
     payload match {
       case EventPayload.BrickDelivered(brick) =>
         if (box.status == NodeStatus.NETWORK_OUTAGE) {
           box.receivedBricksBuffer.append(brick)
-          true
+          MASK_EVENT
         } else {
           performBrickConsumption(box, eventId, brick, timepoint)
-          false
+          EMIT_EVENT
         }
       case other =>
         throw new RuntimeException(s"not supported: $other")
     }
 
-  //results: true = mask this event; false = emit this event
-  protected def handleExternal(box: NodeBox, eventId: Long, timepoint: SimTimepoint, destination: BlockchainNode, payload: EventPayload): Boolean = {
+  protected def handleExternal(box: NodeBox, eventId: Long, timepoint: SimTimepoint, destination: BlockchainNode, payload: EventPayload): EventMaskingDecision = {
     payload match {
       case EventPayload.Bifurcation(numberOfClones) =>
         for (i <- 1 to numberOfClones) {
@@ -190,11 +197,11 @@ class PhoukaEngine(
             payload = EventPayload.NewAgentSpawned(validatorId = box.validatorId, progenitor = Some(destination))
           )
         }
-        true
+        EMIT_EVENT
 
       case EventPayload.NodeCrash =>
         box.status = NodeStatus.CRASHED
-        true
+        EMIT_EVENT
 
       case EventPayload.NetworkDisruptionBegin(period) =>
         if (box.status == NodeStatus.NORMAL)
@@ -205,15 +212,14 @@ class PhoukaEngine(
           box.networkOutageGoingToBeFixedAt = end
           desQueue.addLoopbackEvent(end, box.nodeId, EventPayload.NetworkDisruptionEnd(eventId))
         }
-        true
+        EMIT_EVENT
 
       case other =>
         throw new RuntimeException(s"not supported: $other")
     }
   }
 
-  //results: true = mask this event; false = emit this event
-  protected def handleLoopback(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: BlockchainNode, payload: EventPayload): Boolean = {
+  protected def handleLoopback(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: BlockchainNode, payload: EventPayload): EventMaskingDecision = {
     payload match {
       case EventPayload.WakeUp(strategySpecificMarker) =>
         box.context.moveForwardLocalClockToAtLeast(timepoint)
@@ -221,29 +227,28 @@ class PhoukaEngine(
         box executeAndRecordProcessingTimeConsumption {
           box.validatorInstance.onWakeUp(strategySpecificMarker)
         }
-        true
+        EMIT_EVENT
       case other =>
         throw new RuntimeException(s"not supported: $other")
     }
   }
 
-  //results: true = mask this event; false = emit this event
-  protected def handleEngine(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: Option[BlockchainNode], payload: EventPayload): Boolean = {
+  protected def handleEngine(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: Option[BlockchainNode], payload: EventPayload): EventMaskingDecision = {
     payload match {
       case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
-        false
+        EMIT_EVENT
 
       case EventPayload.BroadcastBrick(brick) =>
         box.status match {
           case NodeStatus.CRASHED =>
             //do nothing
-            false
+            MASK_EVENT
           case NodeStatus.NETWORK_OUTAGE =>
             box.broadcastBuffer += brick
-            false
+            MASK_EVENT
           case NodeStatus.NORMAL =>
-            broadcast(agent.get, timepoint, brick)
-            true
+            executeBrickBroadcastByCreatingDeliveryEvents(agent.get, timepoint, brick)
+            EMIT_EVENT
         }
 
       case EventPayload.NetworkDisruptionEnd(disruptionEventId) =>
@@ -251,12 +256,12 @@ class PhoukaEngine(
           box.status = NodeStatus.NORMAL
           desQueue.addOutputEvent(timepoint, box.nodeId, EventPayload.NetworkConnectionRestored)
           for (brick <- box.broadcastBuffer)
-            broadcast(box.nodeId, timepoint, brick)
+            executeBrickBroadcastByCreatingDeliveryEvents(box.nodeId, timepoint, brick)
           for (brick <- box.receivedBricksBuffer)
             performBrickConsumption(box, eventId, brick, timepoint)
-          true
-        } else false
-
+          EMIT_EVENT
+        } else
+          MASK_EVENT
     }
   }
 
@@ -279,8 +284,8 @@ class PhoukaEngine(
 
   /**
     * Simulates transporting given brick over the network. The brick will be delivered to all nodes with the exception of sending node.
-    * The delivery will always happen, but the delay is (in general) arbitrary long.
-    * The actual delay is derived from the network model configured for the current simulation.
+    * The delivery is technically guaranteed, although it will be masked if the target node turns dead by the time of delivery. The delivery delay
+    * is derived from the network model configured for the current simulation.
     *
     * Remark: Please notice that conceptually we cover here the whole comms stack: physical network, IP protocol and gossip (with retransmissions). All this
     * effectively looks like "broadcast service with delivery guarantee".
@@ -289,7 +294,7 @@ class PhoukaEngine(
     * @param sendingTimepoint sending timepoint
     * @param brick payload
     */
-  protected  def broadcast(sender: BlockchainNode, sendingTimepoint: SimTimepoint, brick: Brick): Unit = {
+  protected def executeBrickBroadcastByCreatingDeliveryEvents(sender: BlockchainNode, sendingTimepoint: SimTimepoint, brick: Brick): Unit = {
     for (i <- 0 to lastNodeIdAllocated if i != sender.address) {
       val effectiveDelay: Long = math.max(1, networkModel.calculateMsgDelay(brick, sender, BlockchainNode(i), sendingTimepoint)) // we enforce minimum delay = 1 microsecond
       val targetTimepoint: SimTimepoint = sendingTimepoint + effectiveDelay

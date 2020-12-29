@@ -16,4 +16,6 @@ trait AbstractTextOutput {
     print(name)
     withIndentDo(block)
   }
+
+  def newLine(): Unit
 }

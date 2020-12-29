@@ -7,7 +7,7 @@ import com.selfdualbrain.time.TimeDelta
 class StatsPrinter(out: AbstractTextOutput) {
 
   def print(stats: BlockchainSimulationStats): Unit = {
-    out.section("General") {
+    out.section("****** General ******") {
       out.print(s"...............total time [sec]: ${stats.totalTime} (${stats.totalTime.asHumanReadable.toStringCutToSeconds})")
       out.print(s"...........number of validators: ${stats.numberOfValidators}")
       out.print(s".....number of blockchain nodes: ${stats.numberOfBlockchainNodes}")
@@ -20,14 +20,14 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(s"number of observed equivocators: ${stats.numberOfObservedEquivocators}")
     }
 
-    out.section("Latency (= delay between block creation and its observed finality)") {
+    out.section("****** Latency ******") {
       out.print(f"..overall average [seconds]: ${stats.cumulativeLatency}%.2f")
       val av = stats.movingWindowLatencyAverage(stats.numberOfCompletelyFinalizedBlocks.toInt)
       val sd = stats.movingWindowLatencyStandardDeviation(stats.numberOfCompletelyFinalizedBlocks.toInt)
       out.print(f"....moving window [seconds]: average = $av%.2f, standard deviation = $sd%.2f")
     }
 
-    out.section("Throughput (= speed of finalizing blocks)") {
+    out.section("****** Throughput ******") {
       val ps = stats.cumulativeThroughput
       val pm = stats.cumulativeThroughput * 60
       val ph = stats.cumulativeThroughput * 3600
@@ -39,9 +39,10 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(f"..moving window [number of blocks]: per second = $movingWindow_ps%.4f, per minute = $movingWindow_pm%.3f, per per hour = $movingWindow_ph%.2f")
     }
 
-    out.section("Per-node stats") {
+    out.newLine()
+    out.section("****** Per-node stats ******") {
       for (node <- 0 until stats.numberOfBlockchainNodes) {
-        out.section(s"node $node") {
+        out.section(s"=============== node $node ===============") {
           printNodeStats(stats.perNodeStats(BlockchainNode(node)))
         }
       }
@@ -50,7 +51,7 @@ class StatsPrinter(out: AbstractTextOutput) {
   }
 
   private def printNodeStats(stats: NodeLocalStats): Unit = {
-    out.section("state") {
+    out.section("*** state ***") {
       out.print(s"...........................j-dag: size ${stats.jdagSize} depth ${stats.jdagDepth}")
       out.print(s"........bricks in message buffer: ${stats.numberOfBricksInTheBuffer}")
       out.print(s"................LFB chain length: ${stats.lengthOfLfbChain}")
@@ -67,7 +68,7 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(s"......equivocation catastrophe ?: [${if (stats.isAfterObservingEquivocationCatastrophe) "x" else " "}]")
     }
 
-    out.section("local performance stats") {
+    out.section("*** local performance stats ***") {
       out.print(s"................published bricks: ${stats.ownBricksPublished} (${stats.ownBlocksPublished} blocks, ${stats.ownBallotsPublished} ballots)")
       out.print(s".................received bricks: ${stats.allBricksReceived} (${stats.allBlocksReceived} blocks, ${stats.allBallotsReceived} ballots)")
       val accepted = stats.allBlocksAccepted + stats.allBallotsAccepted
@@ -85,7 +86,7 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(f".computing power utilization [%%]: ${stats.averageComputingPowerUtilization * 100}%.5f")
     }
 
-    out.section("global performance stats (calculated from local information only)") {
+    out.section("*** global performance stats ***") {
       out.print(f"......................throughput: [blocks/h] ${stats.blockchainThroughputBlocksPerSecond * 3600}%.2f [trans/sec] ${stats.blockchainThroughputTransactionsPerSecond}%.2f [gas/sec] ${stats.blockchainThroughputGasPerSecond}%.2f")
       out.print(f"...................latency [sec]: ${stats.blockchainLatency}%.2f")
       out.print(f"..................runahead [sec]: ${TimeDelta.toString(stats.blockchainRunahead)}")
