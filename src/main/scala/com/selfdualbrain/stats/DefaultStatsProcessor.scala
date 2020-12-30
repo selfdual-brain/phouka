@@ -60,6 +60,7 @@ class DefaultStatsProcessor(
   private var weightOfObservedEquivocatorsX: Long = 0
   //counters of "blocks below generation"
   private val blocksByGenerationCounters = new TreeNodesByGenerationCounter
+  blocksByGenerationCounters.nodeAdded(0) //counting genesis
   //metainfo+stats we attach to LFB chain elements
   private val finalityMap = new FastIntMap[LfbElementInfo](numberOfValidators)
   //exact sum of finality delays (as microseconds) for all completely finalized blocks

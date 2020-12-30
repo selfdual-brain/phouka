@@ -27,6 +27,8 @@ class Picker[T](random: Random, freqMap: Map[T, Double])(implicit tag: ClassTag[
     if (freqMap.isEmpty)
       throw new RuntimeException("Empty frequencies map")
 
+    assert (freqMap.values.forall(value => value >= 0), s"negative value passed to frequency map: $freqMap")
+
     val pairsOrderedByDescendingFreq: Array[(T, Double)] = freqMap.toArray.sortBy(pair => pair._2).reverse
     val items: Array[T] = pairsOrderedByDescendingFreq.map(pair => pair._1).toArray[T]
     val frequenciesTable: Seq[Double] = pairsOrderedByDescendingFreq.map(pair => pair._2)

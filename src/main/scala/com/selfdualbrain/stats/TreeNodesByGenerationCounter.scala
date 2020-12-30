@@ -17,16 +17,13 @@ class TreeNodesByGenerationCounter private (countersStack: ArrayBuffer[Int]) ext
 
   def this() = this(new ArrayBuffer[Int])
 
-  //keeping the stack non-empty saves some corner cases
-  countersStack.addOne(1) //counting root node here
-
   def nodeAdded(generation: Int): Unit = {
-    assert (generation > 0)
+    assert (generation >= 0)
     //ensuring that enough counters were initialized
     if (countersStack.length < generation + 1) {
-      val currentValueOnTop = countersStack.last
+      val valueToBeUsedForInitializingNewLevels = if (countersStack.isEmpty) 0 else countersStack.last
       while (countersStack.length < generation + 1)
-        countersStack += currentValueOnTop
+        countersStack += valueToBeUsedForInitializingNewLevels
     }
 
     //incrementing counters for relevant levels
@@ -34,11 +31,14 @@ class TreeNodesByGenerationCounter private (countersStack: ArrayBuffer[Int]) ext
       countersStack(gen) += 1
   }
 
-  def numberOfNodesWithGenerationUpTo(n: Int): Int =
-    if (countersStack.length < n + 1)
+  def numberOfNodesWithGenerationUpTo(n: Int): Int = {
+    if (countersStack.isEmpty)
+      0
+    else if (countersStack.length < n + 1)
       countersStack.last
     else
       countersStack(n)
+  }
 
   override def createDetachedCopy(): TreeNodesByGenerationCounter = new TreeNodesByGenerationCounter(countersStack.clone())
 }

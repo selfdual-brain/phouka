@@ -88,6 +88,7 @@ class NodeLocalStatsProcessor(
   private var totalGasInAllFinalizedBlocksCounter: Long = 0L
   private var sumOfLatenciesForAllFinalizedBlocks: TimeDelta = 0L
   private var allBlocksByGenerationCounters = new TreeNodesByGenerationCounter
+  allBlocksByGenerationCounters.nodeAdded(0) //counting genesis
   private var allBricksCumulativeBinarySize: Long = 0L
   private var transactionsDataCounter: Long = 0L
 
@@ -300,11 +301,11 @@ class NodeLocalStatsProcessor(
 
   override def averageBufferingChanceForIncomingBricks: Double = numberOfBricksThatLeftMsgBuffer.toDouble / (allBlocksAccepted + allBallotsAccepted)
 
-  override def averageNetworkDelayForBlocks: Double = sumOfReceivedBlocksNetworkDelays.toDouble / receivedBlocksCounter
+  override def averageNetworkDelayForBlocks: Double = sumOfReceivedBlocksNetworkDelays.toDouble / 1000000 / receivedBlocksCounter
 
-  override def averageNetworkDelayForBallots: Double = sumOfReceivedBallotsNetworkDelays.toDouble / receivedBallotsCounter
+  override def averageNetworkDelayForBallots: Double = sumOfReceivedBallotsNetworkDelays.toDouble / 1000000 / receivedBallotsCounter
 
-  override def averageConsumptionDelay: Double = sumOfConsumptionDelays.toDouble / eventConsumptionsCounter
+  override def averageConsumptionDelay: Double = sumOfConsumptionDelays.toDouble / 1000000 / eventConsumptionsCounter
 
   override def averageComputingPowerUtilization: Double = engine.totalProcessingTimeOfAgent(node).toDouble / basicStats.totalTime.asSeconds
 

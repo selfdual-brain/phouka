@@ -15,6 +15,7 @@ import scala.util.Random
 
 object PresentersSandbox {
   private val log = LoggerFactory.getLogger(s"presenter-sandbox")
+  private val NUMBER_OF_STEPS: Int = 5000
 
 //  val defaultFont = new Font("Ubuntu", Font.PLAIN, 13)
 
@@ -30,7 +31,9 @@ object PresentersSandbox {
 
   val config: ExperimentConfig = ExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
-    networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequenceConfig.PseudoGaussian(TimeDelta.seconds(1), TimeDelta.seconds(10))),
+    networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
+      delaysGenerator = LongSequenceConfig.PseudoGaussian(min = TimeDelta.seconds(1), max = TimeDelta.seconds(10))
+    ),
     nodesComputingPowerModel = LongSequenceConfig.Pareto(minValue = 10000, 1000000),
     numberOfValidators = 5,
     validatorsWeights = IntSequenceConfig.Fixed(1),
@@ -107,7 +110,7 @@ object PresentersSandbox {
     //run short simulation
     log.info("starting the simulation")
     val t1 = measureExecutionTime {
-      simulationDisplayModel.advanceTheSimulationBy(1000)
+      simulationDisplayModel.advanceTheSimulationBy(NUMBER_OF_STEPS)
     }
     log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepExecuted}")
 
