@@ -77,13 +77,13 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(s".................accepted bricks: $accepted ($acceptedBlocks blocks, $acceptedBallots ballots)")
       out.print(s".............own blocks finality: uncertain ${stats.ownBlocksUncertain} finalized ${stats.ownBlocksFinalized} orphaned ${stats.ownBlocksOrphaned}")
       out.print(f"own blocks average latency [sec]: ${stats.ownBlocksAverageLatency}%.2f")
-      out.print(f"...........own blocks throughput: [blocks/h] ${stats.ownBlocksThroughputBlocksPerSecond * 3600}%.2f [trans/sec] ${stats.ownBlocksThroughputTransactionsPerSecond}%.2f [gas/sec] ${stats.ownBlocksThroughputGasPerSecond}%.2f")
+      out.print(f"...........own blocks throughput: [blocks/h] ${stats.ownBlocksThroughputBlocksPerSecond * 3600}%.4f [trans/sec] ${stats.ownBlocksThroughputTransactionsPerSecond}%.4f [gas/sec] ${stats.ownBlocksThroughputGasPerSecond}%.4f")
       out.print(f"......own blocks orphan rate [%%]: ${stats.ownBlocksOrphanRate * 100}%.3f")
       out.print(f"....average buffering time [sec]: over bricks that left the buffer ${stats.averageBufferingTimeOverBricksThatWereBuffered}%.3f over all accepted bricks ${stats.averageBufferingTimeOverAllBricksAccepted}%.3f")
       out.print(f"....average buffering chance [%%]: ${stats.averageBufferingChanceForIncomingBricks * 100}%.3f")
       out.print(f".....average network delay [sec]: blocks ${stats.averageNetworkDelayForBlocks}%.4f ballots ${stats.averageNetworkDelayForBallots}%.4f")
-      out.print(f".average consumption delay [sec]: ${stats.averageConsumptionDelay}%.5f")
-      out.print(f".computing power utilization [%%]: ${stats.averageComputingPowerUtilization * 100}%.5f")
+      out.print(f".average consumption delay [sec]: ${stats.averageConsumptionDelay}%.8f")
+      out.print(f".................computing power: nominal [gas/sec] ${stats.configuredComputingPower} utilization [%%] ${stats.averageComputingPowerUtilization * 100}%.5f")
     }
 
     out.section("*** global performance stats ***") {

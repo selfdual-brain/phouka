@@ -140,6 +140,9 @@ trait NodeLocalStats {
   //as seconds
   def averageConsumptionDelay: Double
 
+  //as gas/sec
+  def configuredComputingPower: Long
+
   //as fraction
   def averageComputingPowerUtilization: Double
 

@@ -4,7 +4,7 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval, MovingWindowBeepsCounterWithHistory}
 import com.selfdualbrain.des.{Event, SimulationEngine, SimulationObserver}
-import com.selfdualbrain.simulator_engine.EventPayload
+import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, EventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.util.RepeatUntilExitCondition
 
@@ -31,7 +31,7 @@ class DefaultStatsProcessor(
                              val absoluteFTT: Ether,
                              val totalWeight: Ether,
                              genesis: Block,
-                             engine: SimulationEngine[BlockchainNode, EventPayload]
+                             engine: BlockchainSimulationEngine
                          ) extends SimulationObserver[BlockchainNode, EventPayload] with BlockchainSimulationStats {
 
   assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
@@ -75,7 +75,7 @@ class DefaultStatsProcessor(
   //per-validator frozen statistics
   private val validator2frozenStats = new FastIntMap[NodeLocalStats](numberOfValidators)
   //counter of visibly finalized blocks; this counter is used for blockchain throughput calculation
-  private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounterWithHistory(throughputMovingWindow, throughputCheckpointsDelta)
+  private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounterWithHistory(TimeDelta.seconds(throughputMovingWindow), TimeDelta.seconds(throughputCheckpointsDelta))
   //flags marking faulty validators
   private val faultyValidatorsMap = new Array[Boolean](numberOfValidators)
   //when a validator goes faulty, we free per-validator stats for this one

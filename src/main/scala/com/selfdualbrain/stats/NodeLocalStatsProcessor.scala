@@ -3,7 +3,7 @@ package com.selfdualbrain.stats
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{ACC, _}
 import com.selfdualbrain.des.{SimulationEngine, SimulationStats}
-import com.selfdualbrain.simulator_engine.{EventPayload, MsgBufferSnapshot}
+import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, EventPayload, MsgBufferSnapshot}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -17,7 +17,7 @@ class NodeLocalStatsProcessor(
                                basicStats: SimulationStats,
                                weightsMap: ValidatorId => Ether,
                                genesis: Block,
-                               engine: SimulationEngine[BlockchainNode, EventPayload]) extends NodeLocalStats {
+                               engine: BlockchainSimulationEngine) extends NodeLocalStats {
 
   //blocks that I published
   private var ownBlocksCounter: Long = 0
@@ -307,8 +307,9 @@ class NodeLocalStatsProcessor(
 
   override def averageConsumptionDelay: Double = sumOfConsumptionDelays.toDouble / 1000000 / eventConsumptionsCounter
 
-  override def averageComputingPowerUtilization: Double = engine.totalProcessingTimeOfAgent(node).toDouble / basicStats.totalTime.asSeconds
+  override def averageComputingPowerUtilization: Double = engine.totalProcessingTimeOfAgent(node).toDouble / 1000000 / basicStats.totalTime.asSeconds
 
+  override def configuredComputingPower: TimeDelta = engine.computingPowerOf(node)
 
 //#####################################################################################################################################
 //                                             BLOCKCHAIN STATISTICS

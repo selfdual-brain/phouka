@@ -72,7 +72,7 @@ trait AbstractNormalBlock extends Block with Brick {
   override val generation: ValidatorId = parent.generation + 1
 
   override lazy val toString: String =
-    s"Block-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,parent=${parent.id},j=[${justifications.map(_.id).mkString(",")}])"
+    s"Block-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,parent=${parent.id},payload=$payloadSize,trans=$numberOfTransactions,gas=$totalGas,j=[${justifications.map(_.id).mkString(",")}])"
 }
 
 trait AbstractGenesis extends Block {

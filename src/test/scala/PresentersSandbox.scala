@@ -34,7 +34,7 @@ object PresentersSandbox {
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequenceConfig.PseudoGaussian(min = TimeDelta.seconds(1), max = TimeDelta.seconds(10))
     ),
-    nodesComputingPowerModel = LongSequenceConfig.Pareto(minValue = 10000, 1000000),
+    nodesComputingPowerModel = LongSequenceConfig.Pareto(minValue = 100, mean = 200),
     numberOfValidators = 5,
     validatorsWeights = IntSequenceConfig.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
@@ -55,8 +55,8 @@ object PresentersSandbox {
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,
     observers = Seq(
-      ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
-      ObserverConfig.FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Some(Seq(BlockchainNode(0))))
+      ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15)
+//      ObserverConfig.FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Some(Seq(BlockchainNode(0))))
     )
   )
   val simulationSetup: SimulationSetup = new ConfigBasedSimulationSetup(config)
