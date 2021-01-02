@@ -24,7 +24,9 @@ class NcbValidatorsFactory(
                             msgValidationCostModel: LongSequenceConfig,
                             msgCreationCostModel: LongSequenceConfig,
                             computingPowersGenerator: LongSequenceGenerator,
-                            msgBufferSherlockMode: Boolean
+                            msgBufferSherlockMode: Boolean,
+                            brickHeaderCoreSize: Int,
+                            singleJustificationSize: Int
                             ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator = {
@@ -42,6 +44,8 @@ class NcbValidatorsFactory(
     conf.msgValidationCostModel = msgValidationCostModel
     conf.msgCreationCostModel = msgCreationCostModel
     conf.msgBufferSherlockMode = msgBufferSherlockMode
+    conf.brickHeaderCoreSize = brickHeaderCoreSize
+    conf.singleJustificationSize = singleJustificationSize
     conf.blocksFraction = blocksFraction
     conf.brickProposeDelaysConfig = brickProposeDelaysGeneratorConfig
     return new NcbValidator(node, context, conf)

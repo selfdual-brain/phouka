@@ -20,6 +20,8 @@ class HighwayValidatorsFactory(
                                 msgCreationCostModel: LongSequenceConfig,
                                 computingPowersGenerator: LongSequenceGenerator,
                                 msgBufferSherlockMode: Boolean,
+                                brickHeaderCoreSize: Int,
+                                singleJustificationSize: Int,
                                 leadersSequencer: NaiveLeaderSequencer,
                                 bootstrapRoundExponent: Int,
                                 exponentAccelerationPeriod: Int,
@@ -47,6 +49,8 @@ class HighwayValidatorsFactory(
     conf.msgValidationCostModel = msgValidationCostModel
     conf.msgCreationCostModel = msgCreationCostModel
     conf.msgBufferSherlockMode = msgBufferSherlockMode
+    conf.brickHeaderCoreSize = brickHeaderCoreSize
+    conf.singleJustificationSize = singleJustificationSize
     conf.leadersSequencer = leadersSequencer
     conf.bootstrapRoundExponent = bootstrapRoundExponent
     conf.exponentAccelerationPeriod  = exponentAccelerationPeriod

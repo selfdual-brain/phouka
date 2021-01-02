@@ -61,7 +61,9 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.brickValidationCostModel,
         config.brickCreationCostModel,
         computingPowersGenerator,
-        config.msgBufferSherlockMode
+        config.msgBufferSherlockMode,
+        config.brickHeaderCoreSize,
+        config.singleJustificationSize
       )
 
     case ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds(roundLength) =>
@@ -78,6 +80,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.brickCreationCostModel,
         computingPowersGenerator,
         config.msgBufferSherlockMode,
+        config.brickHeaderCoreSize,
+        config.singleJustificationSize,
         roundLength,
         new NaiveLeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap)
       )
@@ -96,6 +100,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.brickCreationCostModel,
         computingPowersGenerator,
         config.msgBufferSherlockMode,
+        config.brickHeaderCoreSize,
+        config.singleJustificationSize,
         new NaiveLeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap),
         c.initialRoundExponent,
         c.exponentAccelerationPeriod,

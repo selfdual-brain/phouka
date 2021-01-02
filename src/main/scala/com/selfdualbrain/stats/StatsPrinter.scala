@@ -92,7 +92,7 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(f"...................latency [sec]: ${stats.blockchainLatency}%.2f")
       out.print(f"..................runahead [sec]: ${TimeDelta.toString(stats.blockchainRunahead)}")
       out.print(f".................orphan rate [%%]: ${stats.blockchainOrphanRate * 100}%.3f")
-      out.print(f"...........protocol overhead [%%]: ${stats.protocolOverhead % 100}%.2f")
+      out.print(f"...........protocol overhead [%%]: ${stats.protocolOverhead * 100}%.2f")
     }
 
   }

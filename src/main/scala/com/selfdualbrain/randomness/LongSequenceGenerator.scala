@@ -86,7 +86,7 @@ object LongSequenceGenerator {
   class ParetoGen(random: Random, minValue: Double, mean: Double) extends LongSequenceGenerator {
     private val alpha: Double = mean / (mean - minValue)
     private val reciprocalOfAlpha: Double = 1 / alpha
-    override def next(): Long = (minValue / math.pow(random.nextDouble(), reciprocalOfAlpha)).toLong
+    override def next(): Long = math.round(minValue / math.pow(random.nextDouble(), reciprocalOfAlpha)).toLong
   }
 
 }

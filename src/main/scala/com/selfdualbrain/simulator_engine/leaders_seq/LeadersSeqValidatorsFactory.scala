@@ -20,6 +20,8 @@ class LeadersSeqValidatorsFactory(
                                    msgCreationCostModel: LongSequenceConfig,
                                    computingPowersGenerator: LongSequenceGenerator,
                                    msgBufferSherlockMode: Boolean,
+                                   brickHeaderCoreSize: Int,
+                                   singleJustificationSize: Int,
                                    roundLength: TimeDelta,
                                    leadersSequencer: NaiveLeaderSequencer
                                  ) extends ValidatorsFactory {
@@ -39,6 +41,8 @@ class LeadersSeqValidatorsFactory(
     conf.msgValidationCostModel = msgValidationCostModel
     conf.msgCreationCostModel = msgCreationCostModel
     conf.msgBufferSherlockMode = msgBufferSherlockMode
+    conf.brickHeaderCoreSize = brickHeaderCoreSize
+    conf.singleJustificationSize = singleJustificationSize
     conf.roundLength = roundLength
     conf.leadersSequencer = leadersSequencer
     return new LeadersSeqValidator(node, context, conf)

@@ -33,7 +33,7 @@ object PresentersSandbox {
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequenceConfig.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(10))
     ),
-    nodesComputingPowerModel = LongSequenceConfig.Pareto(minValue = 3000, mean = 20000),
+    nodesComputingPowerModel = LongSequenceConfig.Pareto(minValue = 5000, mean = 20000),
     numberOfValidators = 10,
     validatorsWeights = IntSequenceConfig.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
@@ -44,8 +44,8 @@ object PresentersSandbox {
     ),
     disruptionModel = DisruptionModelConfig.VanillaBlockchain,
     transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
-      sizeDistribution = IntSequenceConfig.Pareto(100, 2500),//in bytes
-      costDistribution = LongSequenceConfig.Pareto(1, 1000)   //in gas
+      sizeDistribution = IntSequenceConfig.PoissonProcess(lambda = 1.0 / 1500, lambdaUnit = TimeUnit.SECONDS, outputUnit = TimeUnit.SECONDS) ,//in bytes
+      costDistribution = LongSequenceConfig.PoissonProcess(lambda = 1.0 / 1000, lambdaUnit = TimeUnit.SECONDS, outputUnit = TimeUnit.SECONDS)   //in gas
     ),
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
     brickCreationCostModel = LongSequenceConfig.PseudoGaussian(TimeDelta.millis(5), TimeDelta.millis(20)), //this is in microseconds (for a node with computing power = 1 sprocket)
