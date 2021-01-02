@@ -84,6 +84,7 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(f".....average network delay [sec]: blocks ${stats.averageNetworkDelayForBlocks}%.4f ballots ${stats.averageNetworkDelayForBallots}%.4f")
       out.print(f".average consumption delay [sec]: ${stats.averageConsumptionDelay}%.8f")
       out.print(f".................computing power: nominal [gas/sec] ${stats.configuredComputingPower} utilization [%%] ${stats.averageComputingPowerUtilization * 100}%.5f")
+      out.print(f".....total processing time [sec]: ${TimeDelta.toString(stats.totalComputingTimeUsed)}")
     }
 
     out.section("*** global performance stats ***") {

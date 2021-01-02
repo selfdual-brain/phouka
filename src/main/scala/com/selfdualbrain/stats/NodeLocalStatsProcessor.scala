@@ -2,7 +2,7 @@ package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{ACC, _}
-import com.selfdualbrain.des.{SimulationEngine, SimulationStats}
+import com.selfdualbrain.des.SimulationStats
 import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, EventPayload, MsgBufferSnapshot}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
@@ -307,13 +307,19 @@ class NodeLocalStatsProcessor(
 
   override def averageConsumptionDelay: Double = sumOfConsumptionDelays.toDouble / 1000000 / eventConsumptionsCounter
 
-  override def averageComputingPowerUtilization: Double = engine.totalProcessingTimeOfAgent(node).toDouble / 1000000 / basicStats.totalTime.asSeconds
+  override def averageComputingPowerUtilization: Double = {
+    val effectiveLocalTimeOfThisNodeAsSeconds: Double = math.max(engine.localClockOfAgent(node).asSeconds, basicStats.totalTime.asSeconds)
+    engine.totalConsumedProcessingTimeOfAgent(node).toDouble / 1000000 / effectiveLocalTimeOfThisNodeAsSeconds
+  }
 
   override def configuredComputingPower: TimeDelta = engine.computingPowerOf(node)
+
+  override def totalComputingTimeUsed: TimeDelta = engine.totalConsumedProcessingTimeOfAgent(node)
 
 //#####################################################################################################################################
 //                                             BLOCKCHAIN STATISTICS
 //#####################################################################################################################################
+
 
   override def blockchainThroughputBlocksPerSecond: Double = lastFinalizedBlock.generation.toDouble / basicStats.totalTime.asSeconds
 

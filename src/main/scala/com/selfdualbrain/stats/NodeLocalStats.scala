@@ -146,6 +146,9 @@ trait NodeLocalStats {
   //as fraction
   def averageComputingPowerUtilization: Double
 
+  //the amount of time that the virtual processor of this node was busy
+  def totalComputingTimeUsed: TimeDelta
+
   //############################ BLOCKCHAIN STATISTICS ################################################
 
   //Average blocks-per-second calculated for all blocks

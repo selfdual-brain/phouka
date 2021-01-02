@@ -35,5 +35,5 @@ trait SimulationEngine[A,P] extends Iterator[(Long, Event[A,P])] {
   //Every agent maintains its own clock (so to be able to simulate processing times).
   def localClockOfAgent(agent: A): SimTimepoint
 
-  def totalProcessingTimeOfAgent(agent: A): TimeDelta
+  def totalConsumedProcessingTimeOfAgent(agent: A): TimeDelta
 }

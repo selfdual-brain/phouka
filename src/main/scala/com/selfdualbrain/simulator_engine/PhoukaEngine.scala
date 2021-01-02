@@ -85,6 +85,7 @@ class PhoukaEngine(
     lastNodeIdAllocated = i
     val context = new ValidatorContextImpl(nodeId, SimTimepoint.zero)
     val newValidator = validatorsFactory.create(BlockchainNode(i), i, context)
+    context.validatorInstance = newValidator
     nodeId2validatorId(i) = i
     val newBox = new NodeBox(nodeId, i, newValidator, context)
     nodes.append(newBox)
@@ -123,7 +124,7 @@ class PhoukaEngine(
 
   override def localClockOfAgent(agent: BlockchainNode): SimTimepoint = nodes(agent.address).context.time()
 
-  override def totalProcessingTimeOfAgent(agent: BlockchainNode): TimeDelta = nodes(agent.address).totalProcessingTime
+  override def totalConsumedProcessingTimeOfAgent(agent: BlockchainNode): TimeDelta = nodes(agent.address).totalProcessingTime
 
   override def validatorIdUsedBy(node: BlockchainNode): ValidatorId = nodeId2validatorId(node.address)
 
@@ -187,6 +188,7 @@ class PhoukaEngine(
           val newNodeId = BlockchainNode(lastNodeIdAllocated)
           val context = new ValidatorContextImpl(newNodeId, box.context.time())
           val newValidator = box.validatorInstance.clone(newNodeId, context)
+          context.validatorInstance = newValidator
           val newBox = new NodeBox(newNodeId, box.validatorId, newValidator, context)
           nodes.append(newBox)
           nodeId2validatorId(newValidator.blockchainNodeId.address) = newValidator.validatorId
@@ -304,6 +306,7 @@ class PhoukaEngine(
 
   private class ValidatorContextImpl(nodeId: BlockchainNode, initialTimepointOfLocalClock: SimTimepoint) extends ValidatorContext {
     private var localClock: SimTimepoint = initialTimepointOfLocalClock
+    private[PhoukaEngine] var validatorInstance: Validator = _
 
     private[PhoukaEngine] def moveForwardLocalClockToAtLeast(timepoint: SimTimepoint): Unit = {
       localClock = SimTimepoint.max(timepoint, localClock)
@@ -334,7 +337,10 @@ class PhoukaEngine(
     override def time(): SimTimepoint = localClock
 
     override def registerProcessingTime(t: TimeDelta): Unit = {
-      localClock += t
+      if (t > 0) {
+        val effectiveTime = math.max(1L, t * 1000000 / validatorInstance.computingPower)
+        localClock += effectiveTime
+      }
     }
   }
 

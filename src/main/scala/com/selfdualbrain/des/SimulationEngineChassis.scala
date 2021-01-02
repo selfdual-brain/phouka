@@ -29,7 +29,7 @@ class SimulationEngineChassis[A,P](engine: SimulationEngine[A,P]) extends Observ
 
   override def localClockOfAgent(agent: A): SimTimepoint = engine.localClockOfAgent(agent)
 
-  override def totalProcessingTimeOfAgent(agent: A): TimeDelta = engine.totalProcessingTimeOfAgent(agent)
+  override def totalConsumedProcessingTimeOfAgent(agent: A): TimeDelta = engine.totalConsumedProcessingTimeOfAgent(agent)
 
   override def next(): (Long, Event[A,P]) = {
     val pair = engine.next() //no pattern matching here so to reuse the same tuple instance (= minimize overhead if there is no observers)
