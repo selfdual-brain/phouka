@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.highway
 
-import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractGenesis, AbstractNormalBlock, Block, BlockdagVertexId, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, AbstractGenesis, AbstractNormalBlock, Block, BlockdagVertexId, Brick, ValidatorId}
 import com.selfdualbrain.hashing.Hash
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
@@ -18,7 +18,7 @@ object Highway {
                   targetBlock: Block,
                   isOmega: Boolean,
                   binarySize: Int
-             ) extends AbstractBallot
+             ) extends com.selfdualbrain.blockchain_structure.Ballot
 
   case class NormalBlock(
                   id: BlockdagVertexId,

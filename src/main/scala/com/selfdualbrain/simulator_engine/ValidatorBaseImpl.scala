@@ -163,7 +163,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     //simulation of incoming message processing time
     val payloadValidationTime: TimeDelta = msg match {
       case x: AbstractNormalBlock => (x.totalGas.toDouble * 1000000 / config.computingPower).toLong
-      case x: AbstractBallot => 0L
+      case x: Ballot => 0L
     }
     context.registerProcessingTime(state.msgValidationCostGenerator.next())
 

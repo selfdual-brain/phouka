@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.leaders_seq
 
-import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractGenesis, AbstractNormalBlock, Block, BlockdagVertexId, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, AbstractGenesis, AbstractNormalBlock, Block, BlockdagVertexId, Brick, ValidatorId}
 import com.selfdualbrain.hashing.Hash
 import com.selfdualbrain.time.SimTimepoint
 
@@ -16,7 +16,7 @@ object LeadersSeq {
                   prevInSwimlane: Option[Brick],
                   targetBlock: Block,
                   binarySize: Int
-             ) extends AbstractBallot
+             ) extends com.selfdualbrain.blockchain_structure.Ballot
 
   case class NormalBlock(
                   id: BlockdagVertexId,

@@ -120,7 +120,7 @@ class NodeLocalStatsProcessor(
             allBlocksByGenerationCounters.nodeAdded(block.generation)
             lastForkChoiceWinnerX = block.parent
             transactionsDataCounter += block.payloadSize
-          case ballot: AbstractBallot =>
+          case ballot: Ballot =>
             ownBallotsCounter += 1
             lastForkChoiceWinnerX = ballot.targetBlock
         }
@@ -141,7 +141,7 @@ class NodeLocalStatsProcessor(
             acceptedBlocksCounter += 1
             allBlocksByGenerationCounters.nodeAdded(block.generation)
             transactionsDataCounter += block.payloadSize
-          case ballot: AbstractBallot =>
+          case ballot: Ballot =>
             acceptedBallotsCounter += 1
           case other => throw new RuntimeException(s"unsupported brick type: $brick")
         }
@@ -163,7 +163,7 @@ class NodeLocalStatsProcessor(
             acceptedBlocksCounter += 1
             allBlocksByGenerationCounters.nodeAdded(block.generation)
             transactionsDataCounter += block.payloadSize
-          case ballot: AbstractBallot =>
+          case ballot: Ballot =>
             acceptedBallotsCounter += 1
           case other => throw new RuntimeException(s"unsupported brick type: $brick")
         }
@@ -181,7 +181,7 @@ class NodeLocalStatsProcessor(
           ownBlocksFinalizedCounter += 1
           sumOfLatenciesForOwnBlocks += eventTimepoint timePassedSince finalizedBlock.timepoint
           transactionsInMyFinalizedBlocksCounter += finalizedBlock.numberOfTransactions
-          totalGasInMyFinalizedBlocksCounter == finalizedBlock.totalGas
+          totalGasInMyFinalizedBlocksCounter += finalizedBlock.totalGas
         }
         lastFinalizedBlockX = finalizedBlock
         summitForLastFinalizedBlockX = Some(summit)

@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.blockchain_structure.{Block, BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, Block, BlockchainNode, Brick, ValidatorId}
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui.model.SimulationDisplayModel.Ev
@@ -51,7 +51,10 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
   class TableDef(simulationDisplayModel: SimulationDisplayModel) extends SmartTable.Model {
 
+    private val PRE_FINALITY_COLOR = new Color(103, 238, 238, 40)
     private val FINALITY_COLOR = new Color(150, 200, 255)
+    private val BLOCK_PROPOSE_COLOR = new Color(232, 240, 161)
+
 
     override val columns: Array[ColumnDefinition[_]] = Array(
       ColumnDefinition[Int](
@@ -147,10 +150,12 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         textAlignment = TextAlignment.LEFT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: String) =>
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
-          if (EventTag.of(event) == EventTag.FINALITY)
-            Some(FINALITY_COLOR)
-          else
-            None
+          EventTag.of(event) match {
+            case EventTag.PRE_FINALITY => Some(PRE_FINALITY_COLOR)
+            case EventTag.FINALITY => Some(FINALITY_COLOR)
+            case EventTag.BROADCAST_BLOCK => Some(BLOCK_PROPOSE_COLOR)
+            case other => None
+          }
         },
         preferredWidth = 130,
         maxWidth = 160
@@ -177,6 +182,13 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
     override def calculateNumberOfRows: Int = simulationDisplayModel.eventsAfterFiltering.length
 
+    private def dependenciesListAsString(dep: Iterable[Brick]): String = {
+      val coll = dep map {
+        case block: Block => s"block-${block.id}"
+        case ballot: Ballot => s"ballot-${ballot.id}"
+      }
+      return coll.mkString(",")
+    }
     private val EMPTY: String = ""
     private def eventDetails(event: Event[BlockchainNode, EventPayload]): String = event match {
 
@@ -211,9 +223,9 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       case Event.Semantic(id, timepoint, source, payload) =>
         payload match {
           case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) => s"$brick"
-          case EventPayload.AddedIncomingBrickToMsgBuffer(brick, dependency, snapshot) => s"$brick (missing dependency: $dependency)"
+          case EventPayload.AddedIncomingBrickToMsgBuffer(brick, dependencies, snapshot) => s"$brick (missing dependencies: ${dependenciesListAsString(dependencies)})"
           case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) => s"$brick"
-          case EventPayload.PreFinality(bGameAnchor, partialSummit) => s"level ${partialSummit.level}"
+          case EventPayload.PreFinality(bGameAnchor, partialSummit) => s"level ${partialSummit.level} on block ${partialSummit.consensusValue.id}"
           case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
           case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"
           case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) => s"absolute ftt exceeded by $absoluteFttExceededBy"

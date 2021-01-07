@@ -36,7 +36,7 @@ object NodeStatsPresenter {
 
 class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, NodeStatsPresenter] {
   private val events_Table = new SmartTable(guiLayoutConfig)
-  this.setPreferredSize(new Dimension(1000,500))
+  this.setPreferredSize(new Dimension(1300,500))
   this.add(events_Table, BorderLayout.CENTER)
   this.surroundWithTitledBorder("Per-validator simulation statistics")
 
@@ -48,7 +48,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
     override val columns: Array[ColumnDefinition[_]] = Array(
       ColumnDefinition[Int](
-        name = "Node",
+        name = "Nid",
         headerTooltip = "Node id",
         runtimeClassOfValues = classOf[Int],
         cellValueFunction = (rowIndex: Int) => rowIndex,
@@ -68,7 +68,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 50
       ),
       ColumnDefinition[String](
-        name = "Prog",
+        name = "Prg",
         headerTooltip = "Progenitor id (not-empty only for cloned nodes",
         runtimeClassOfValues = classOf[String],
         cellValueFunction = (rowIndex: Int) => {
@@ -83,8 +83,8 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 30
       ),
       ColumnDefinition[Ether](
-        name = "Weight",
-        headerTooltip = "Absolute weight",
+        name = "W",
+        headerTooltip = "Absolute weight [ether]",
         runtimeClassOfValues = classOf[Ether],
         cellValueFunction = (rowIndex: Int) => {
           val vid = model.engine.validatorIdUsedBy(BlockchainNode(rowIndex))
@@ -96,8 +96,8 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 100
       ),
       ColumnDefinition[Double](
-        name = "Weight%",
-        headerTooltip = "Relative weight",
+        name = "W%",
+        headerTooltip = "Relative weight [%]",
         runtimeClassOfValues = classOf[Double],
         cellValueFunction = (rowIndex: Int) => {
           val vid = model.engine.validatorIdUsedBy(BlockchainNode(rowIndex))
@@ -111,7 +111,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ),
       ColumnDefinition[Double](
         name = "C-Power",
-        headerTooltip = "Computing power (in sprocket units, 1 sprocket = 1 million gas/sec)",
+        headerTooltip = "Computing power [sprockets]",
         runtimeClassOfValues = classOf[Double],
         cellValueFunction = (rowIndex: Int) => model.engine.computingPowerOf(BlockchainNode(rowIndex)).toDouble / 1000000,
         decimalRounding = Some(4),
@@ -141,9 +141,43 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         preferredWidth = 50,
         maxWidth = 100
       ),
+      ColumnDefinition[Double](
+        name = "ND-BL",
+        headerTooltip = "Network transport average delay for blocks received [sec]",
+        runtimeClassOfValues = classOf[Double],
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).averageNetworkDelayForBlocks,
+        decimalRounding = Some(4),
+        textAlignment = TextAlignment.RIGHT,
+        cellBackgroundColorFunction = None,
+        preferredWidth = 60,
+        maxWidth = 100
+      ),
+      ColumnDefinition[Double](
+        name = "ND-BA",
+        headerTooltip = "Network transport average delay for ballots received [sec]",
+        runtimeClassOfValues = classOf[Double],
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).averageNetworkDelayForBallots,
+        decimalRounding = Some(4),
+        textAlignment = TextAlignment.RIGHT,
+        cellBackgroundColorFunction = None,
+        preferredWidth = 60,
+        maxWidth = 100
+      ),
+      ColumnDefinition[Double](
+        name = "Cons",
+        headerTooltip = "Consumption delay [sec] (average delay between brick arrival and it being picked up from comms buffer for processing)",
+        runtimeClassOfValues = classOf[Double],
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).averageConsumptionDelay,
+        decimalRounding = Some(4),
+        textAlignment = TextAlignment.RIGHT,
+        cellBackgroundColorFunction = None,
+        preferredWidth = 50,
+        maxWidth = 100
+      ),
+
       ColumnDefinition[Long](
         name = "Lag",
-        headerTooltip = "Finalization lag, i.e. number of generations this validator is behind the best validator in terms of LFB chain length. For best validator f-lag=0",
+        headerTooltip = "Finalization lag (number of generations this validator is behind the best validator in terms of LFB chain length. For best validator f-lag=0)",
         runtimeClassOfValues = classOf[Long],
         cellValueFunction = (rowIndex: Int) => model.simulationStatistics.numberOfVisiblyFinalizedBlocks - model.perNodeStats(BlockchainNode(rowIndex)).lengthOfLfbChain,
         textAlignment = TextAlignment.RIGHT,
@@ -158,7 +192,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).ownBlocksPublished,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 40,
+        preferredWidth = 50,
         maxWidth = 100
       ),
       ColumnDefinition[Long](
@@ -168,11 +202,11 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).ownBallotsPublished,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 40,
+        preferredWidth = 50,
         maxWidth = 100
       ),
       ColumnDefinition[Long](
-        name = "Fin(own)",
+        name = "Fin",
         headerTooltip = "Number of own blocks that are locally seen as finalized",
         runtimeClassOfValues = classOf[Long],
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).ownBlocksFinalized,
@@ -182,8 +216,8 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 100
       ),
       ColumnDefinition[Double](
-        name = "Part%",
-        headerTooltip = "LFB chain participation (as percentage), i.e. how many blocks in LFB chain were created by this node",
+        name = "FP%",
+        headerTooltip = "Finality participation [%], i.e. how many blocks in LFB chain were created by this node",
         runtimeClassOfValues = classOf[Long],
         cellValueFunction = (rowIndex: Int) => {
           val stats = model.perNodeStats(BlockchainNode(rowIndex))
@@ -207,7 +241,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 100
       ),
       ColumnDefinition[Double](
-        name = "BL/h",
+        name = "Bph",
         headerTooltip = "Own blocks throughput [blocks/hour] (= average number of own blocks that get locally finalized per hour)",
         runtimeClassOfValues = classOf[Double],
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).ownBlocksThroughputBlocksPerSecond * 3600,
@@ -218,29 +252,29 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 100
       ),
       ColumnDefinition[Double](
-        name = "TR/h",
-        headerTooltip = "Own blocks throughput [transactions/hour] (= average number of transactions finalized per hour)",
+        name = "Tps",
+        headerTooltip = "Own blocks throughput [transactions/sec] (= average number of transactions per second in own blocks that get locally finalized)",
         runtimeClassOfValues = classOf[Double],
-        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).ownBlocksThroughputTransactionsPerSecond * 3600,
-        decimalRounding = Some(3),
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).ownBlocksThroughputTransactionsPerSecond,
+        decimalRounding = Some(4),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
         preferredWidth = 60,
         maxWidth = 100
       ),
       ColumnDefinition[Double](
-        name = "Gas/h",
-        headerTooltip = "Own blocks throughput [gas/hour] (= average gas per hour consumed in finalized transactions)",
+        name = "Gas/sec",
+        headerTooltip = "Own blocks throughput [gas/sec] (= average gas per second consumed own blocks that get locally finalized)",
         runtimeClassOfValues = classOf[Double],
-        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).ownBlocksThroughputTransactionsPerSecond * 3600,
-        decimalRounding = Some(3),
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).ownBlocksThroughputGasPerSecond,
+        decimalRounding = Some(1),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
         preferredWidth = 60,
         maxWidth = 100
       ),
       ColumnDefinition[Double](
-        name = "Orphan%",
+        name = "Orph%",
         headerTooltip = "Fraction of own blocks that got orphaned",
         runtimeClassOfValues = classOf[Double],
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).ownBlocksOrphanRate * 100,
@@ -255,10 +289,10 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         headerTooltip = "How many incoming bricks undergo buffering phase, i.e. waiting for dependencies (expressed as percentage)",
         runtimeClassOfValues = classOf[Double],
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNode(rowIndex)).averageBufferingChanceForIncomingBricks * 100,
-        decimalRounding = Some(2),
+        decimalRounding = Some(3),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 60,
+        preferredWidth = 50,
         maxWidth = 60
       ),
       ColumnDefinition[Double](

@@ -128,13 +128,16 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
         val newBGame = new BGame(x, config.weightsOfValidators, state.equivocatorsRegistry)
         state.block2bgame += x -> newBGame
         applyNewVoteToBGamesChain(brick, x)
-      case x: AbstractBallot =>
+      case x: Ballot =>
         applyNewVoteToBGamesChain(brick, x.targetBlock)
     }
 
     brick.prevInSwimlane match {
-      case Some(prev) => state.brick2nextBrickInTheSwimlane += prev -> brick
-      case None => //do nothing
+      case Some(prev) =>
+        if (prev.daglevel >= state.lastFinalizedBlock.daglevel)
+          state.brick2nextBrickInTheSwimlane += prev -> brick
+      case None =>
+        //do nothing
     }
 
     advanceLfbChainAsManyStepsAsPossible()

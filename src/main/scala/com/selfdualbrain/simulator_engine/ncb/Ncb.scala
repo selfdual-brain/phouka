@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.ncb
 
-import com.selfdualbrain.blockchain_structure.{AbstractBallot, AbstractGenesis, AbstractNormalBlock, Block, BlockdagVertexId, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, AbstractGenesis, AbstractNormalBlock, Block, BlockdagVertexId, Brick, ValidatorId}
 import com.selfdualbrain.hashing.Hash
 import com.selfdualbrain.time.SimTimepoint
 
@@ -15,7 +15,7 @@ object Ncb {
                 prevInSwimlane: Option[Brick],
                 targetBlock: NormalBlock,
                 binarySize: Int
-            ) extends AbstractBallot
+            ) extends com.selfdualbrain.blockchain_structure.Ballot
 
   case class NormalBlock(
                 id: BlockdagVertexId,

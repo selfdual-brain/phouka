@@ -119,7 +119,7 @@ class DefaultStatsProcessor(
               case block: AbstractNormalBlock =>
                 publishedBlocksCounter += 1
                 blocksByGenerationCounters.nodeAdded(block.generation)
-              case ballot: AbstractBallot =>
+              case ballot: Ballot =>
                 publishedBallotsCounter += 1
             }
         }

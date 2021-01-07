@@ -42,7 +42,7 @@ trait Block extends BlockchainVertex {
   def payloadSize: Int
 }
 
-trait AbstractBallot extends Brick {
+trait Ballot extends Brick {
   def id: BlockdagVertexId
   def positionInSwimlane: Int
   def timepoint: SimTimepoint
