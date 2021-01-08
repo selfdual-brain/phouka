@@ -125,9 +125,11 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
 
     brick match {
       case x: AbstractNormalBlock =>
-        val newBGame = new BGame(x, config.weightsOfValidators, state.equivocatorsRegistry)
-        state.block2bgame += x -> newBGame
-        applyNewVoteToBGamesChain(brick, x)
+        if (x.generation >= state.lastFinalizedBlock.generation) {
+          val newBGame = new BGame(x, config.weightsOfValidators, state.equivocatorsRegistry)
+          state.block2bgame += x -> newBGame
+          applyNewVoteToBGamesChain(brick, x)
+        }
       case x: Ballot =>
         applyNewVoteToBGamesChain(brick, x.targetBlock)
     }
