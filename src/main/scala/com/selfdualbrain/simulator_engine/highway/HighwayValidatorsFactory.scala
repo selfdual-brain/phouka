@@ -2,7 +2,7 @@ package com.selfdualbrain.simulator_engine.highway
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
-import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator}
+import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.simulator_engine.{NaiveLeaderSequencer, Validator, ValidatorContext, ValidatorsFactory}
 import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.transactions.BlockPayloadBuilder
@@ -16,9 +16,9 @@ class HighwayValidatorsFactory(
                                 absoluteFTT: Ether,
                                 ackLevel: Int,
                                 blockPayloadBuilder: BlockPayloadBuilder,
-                                msgValidationCostModel: LongSequenceConfig,
-                                msgCreationCostModel: LongSequenceConfig,
-                                computingPowersGenerator: LongSequenceGenerator,
+                                msgValidationCostModel: LongSequence.Config,
+                                msgCreationCostModel: LongSequence.Config,
+                                computingPowersGenerator: LongSequence.Generator,
                                 msgBufferSherlockMode: Boolean,
                                 brickHeaderCoreSize: Int,
                                 singleJustificationSize: Int,

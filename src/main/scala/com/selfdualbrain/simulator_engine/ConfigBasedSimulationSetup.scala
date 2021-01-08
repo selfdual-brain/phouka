@@ -5,7 +5,7 @@ import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{ObservableSimulationEngine, SimulationObserver}
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelays, NetworkModel, SymmetricLatencyBandwidthGraphNetwork}
-import com.selfdualbrain.randomness.{IntSequenceGenerator, LongSequenceGenerator}
+import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine.highway.{Highway, HighwayValidatorsFactory}
 import com.selfdualbrain.simulator_engine.leaders_seq.{LeadersSeq, LeadersSeqValidatorsFactory}
 import com.selfdualbrain.simulator_engine.ncb.{Ncb, NcbValidatorsFactory}
@@ -21,7 +21,7 @@ import scala.util.Random
 class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends SimulationSetup {
   val actualRandomSeed: Long = config.randomSeed.getOrElse(new Random().nextLong())
   val randomGenerator: Random = new Random(actualRandomSeed)
-  private val weightsGenerator: IntSequenceGenerator = IntSequenceGenerator.fromConfig(config.validatorsWeights, randomGenerator)
+  private val weightsGenerator: IntSequence.Generator = IntSequence.Generator.fromConfig(config.validatorsWeights, randomGenerator)
   private val weightsArray: Array[Ether] = new Array[Ether](config.numberOfValidators)
   for (i <- weightsArray.indices)
     weightsArray(i) = weightsGenerator.next()
@@ -38,7 +38,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   private val blockPayloadGenerator: BlockPayloadBuilder = BlockPayloadBuilder.fromConfig(config.blocksBuildingStrategy, transactionsStream)
   val networkModel: NetworkModel[BlockchainNode, Brick] = buildNetworkModel()
   val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(config.disruptionModel, randomGenerator, absoluteFTT, weightsOfValidatorsAsFunction, config.numberOfValidators)
-  private val computingPowersGenerator: LongSequenceGenerator = LongSequenceGenerator.fromConfig(config.nodesComputingPowerModel, randomGenerator)
+  private val computingPowersGenerator: LongSequence.Generator = LongSequence.Generator.fromConfig(config.nodesComputingPowerModel, randomGenerator)
   private val runForkChoiceFromGenesis: Boolean = config.forkChoiceStrategy match {
     case ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized => false
     case ForkChoiceStrategy.IteratedBGameStartingAtGenesis => true
@@ -152,12 +152,12 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   private def buildNetworkModel(): NetworkModel[BlockchainNode, Brick] = config.networkModel match {
     case NetworkConfig.HomogenousNetworkWithRandomDelays(delaysConfig) =>
-      val delaysGenerator = LongSequenceGenerator.fromConfig(delaysConfig, randomGenerator)
+      val delaysGenerator = LongSequence.Generator.fromConfig(delaysConfig, randomGenerator)
       new HomogenousNetworkWithRandomDelays[BlockchainNode, Brick](delaysGenerator)
     case NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(latencyAverageCfg, latencyMinMaxSpreadCfg, bandwidthCfg) =>
-      val latencyAverageGen = LongSequenceGenerator.fromConfig(latencyAverageCfg, randomGenerator)
-      val latencyMinMaxSpreadGen = LongSequenceGenerator.fromConfig(latencyMinMaxSpreadCfg, randomGenerator)
-      val bandwidthGen = LongSequenceGenerator.fromConfig(bandwidthCfg, randomGenerator)
+      val latencyAverageGen = LongSequence.Generator.fromConfig(latencyAverageCfg, randomGenerator)
+      val latencyMinMaxSpreadGen = LongSequence.Generator.fromConfig(latencyMinMaxSpreadCfg, randomGenerator)
+      val bandwidthGen = LongSequence.Generator.fromConfig(bandwidthCfg, randomGenerator)
       new SymmetricLatencyBandwidthGraphNetwork(randomGenerator, config.numberOfValidators, latencyAverageGen, latencyMinMaxSpreadGen, bandwidthGen)
   }
 

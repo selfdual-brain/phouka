@@ -2,7 +2,7 @@ package com.selfdualbrain.disruption
 
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
 import com.selfdualbrain.des.ExtEventIngredients
-import com.selfdualbrain.randomness.LongSequenceGenerator
+import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.{EventStreamsMerge, SimTimepoint, TimeDelta, TimeUnit}
 
@@ -48,7 +48,7 @@ class FixedFrequencies(
   for (i <- 0 until numberOfValidators)
     aliveNodes += i -> i
   private var lastNodeIdUsed: Int = numberOfValidators - 1
-  private val outageLengthGenerator = outageLengthMinMax map { case (min,max) => new LongSequenceGenerator.UniformGen(random, min, max) }
+  private val outageLengthGenerator = outageLengthMinMax map { case (min,max) => new LongSequence.Generator.UniformGen(random, min, max) }
 
   override def hasNext: Boolean = aliveNodes.nonEmpty
 
@@ -82,7 +82,7 @@ class FixedFrequencies(
 
   private def createStream(marker: Int, freq: Option[Double]): Iterator[(Int, SimTimepoint)] = freq match {
       case Some(f) =>
-        val it = new LongSequenceGenerator.PoissonProcessGen(random, lambda = f, lambdaUnit = TimeUnit.HOURS, outputUnit = TimeUnit.MICROSECONDS)
+        val it = new LongSequence.Generator.PoissonProcessGen(random, lambda = f, lambdaUnit = TimeUnit.HOURS, outputUnit = TimeUnit.MICROSECONDS)
         it map (micros => (marker, SimTimepoint(micros)))
       case None => Iterator.empty[(Int, SimTimepoint)]
     }

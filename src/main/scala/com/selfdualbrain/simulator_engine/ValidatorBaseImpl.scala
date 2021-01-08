@@ -4,7 +4,7 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{ACC, _}
 import com.selfdualbrain.data_structures.{CloningSupport, MsgBuffer, MsgBufferImpl}
 import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
-import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator}
+import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.transactions.BlockPayloadBuilder
 
@@ -45,10 +45,10 @@ object ValidatorBaseImpl {
     var computingPower: Long = _
 
     //todo: doc
-    var msgValidationCostModel: LongSequenceConfig = _
+    var msgValidationCostModel: LongSequence.Config = _
 
     //todo: doc
-    var msgCreationCostModel: LongSequenceConfig = _
+    var msgCreationCostModel: LongSequence.Config = _
 
     //flag that enables emitting semantic events around msg buffer operations
     var msgBufferSherlockMode: Boolean = _
@@ -65,8 +65,8 @@ object ValidatorBaseImpl {
     var myLastMessagePublished: Option[Brick] = _
     var finalizer: Finalizer = _
     var brickHashGenerator: CryptographicDigester = _
-    var msgValidationCostGenerator: LongSequenceGenerator = _
-    var msgCreationCostGenerator: LongSequenceGenerator = _
+    var msgValidationCostGenerator: LongSequence.Generator = _
+    var msgCreationCostGenerator: LongSequence.Generator = _
 
     def copyTo(state: State): Unit = {
       state.messagesBuffer = this.messagesBuffer.createDetachedCopy()
@@ -103,8 +103,8 @@ object ValidatorBaseImpl {
       )
       finalizer = new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb(finalizerCfg)
       brickHashGenerator = new FakeSha256Digester(context.random, 8)
-      msgValidationCostGenerator = LongSequenceGenerator.fromConfig(config.msgValidationCostModel, context.random)
-      msgCreationCostGenerator = LongSequenceGenerator.fromConfig(config.msgCreationCostModel, context.random)
+      msgValidationCostGenerator = LongSequence.Generator.fromConfig(config.msgValidationCostModel, context.random)
+      msgCreationCostGenerator = LongSequence.Generator.fromConfig(config.msgCreationCostModel, context.random)
     }
   }
 
@@ -162,10 +162,10 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
 
     //simulation of incoming message processing time
     val payloadValidationTime: TimeDelta = msg match {
-      case x: AbstractNormalBlock => (x.totalGas.toDouble * 1000000 / config.computingPower).toLong
+      case x: AbstractNormalBlock => calculateBlockTransactionsExecutionTime(x)
       case x: Ballot => 0L
     }
-    context.registerProcessingTime(state.msgValidationCostGenerator.next())
+    context.registerProcessingTime(state.msgValidationCostGenerator.next() + payloadValidationTime)
 
     if (missingDependencies.isEmpty) {
       context.addOutputEvent(EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
@@ -244,6 +244,8 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
 
   protected def calculateBlockBinarySize(numberOfJustifications: Int, payloadSize: Int): Int =
     config.brickHeaderCoreSize + numberOfJustifications * config.singleJustificationSize + payloadSize
+
+  protected def calculateBlockTransactionsExecutionTime(block: AbstractNormalBlock): TimeDelta = block.totalGas * 1000000 / config.computingPower
 
   //Integer exponentiation
   protected def exp(x: Int, n: Int): Int = {

@@ -76,7 +76,7 @@ object HighwayValidator {
     override def initialize(nodeId: BlockchainNode, context: ValidatorContext, config: ValidatorBaseImpl.Config): Unit = {
       super.initialize(nodeId, context, config)
       val cf = config.asInstanceOf[HighwayValidator.Config]
-      val secondaryFinalizerCfg = new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb.Config(
+      val secondaryFinalizerCfg = BGamesDrivenFinalizerWithForkchoiceStartingAtLfb.Config(
         config.numberOfValidators,
         config.weightsOfValidators,
         config.totalWeight,
@@ -635,7 +635,7 @@ class HighwayValidator private (
             state.finalizer.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
         val payload: BlockPayload = config.blockPayloadBuilder.next()
-        Highway.NormalBlock(
+        val newBlock = Highway.NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
           timepoint = timeNow,
@@ -652,6 +652,8 @@ class HighwayValidator private (
           totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = state.brickHashGenerator.generateHash()
         )
+        context.registerProcessingTime(calculateBlockTransactionsExecutionTime(newBlock))
+        newBlock
 
       case BrickRole.LambdaResponse =>
         val forkChoiceWinner: Block = state.secondaryFinalizer.currentForkChoiceWinner()

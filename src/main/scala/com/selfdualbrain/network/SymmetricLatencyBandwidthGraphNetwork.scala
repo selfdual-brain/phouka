@@ -1,7 +1,7 @@
 package com.selfdualbrain.network
 
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick}
-import com.selfdualbrain.randomness.LongSequenceGenerator
+import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.util.Random
@@ -31,12 +31,12 @@ import scala.util.Random
 class SymmetricLatencyBandwidthGraphNetwork(
                                              random: Random,
                                              initialNumberOfNodes: Int,
-                                             latencyAverageGen: LongSequenceGenerator, //here we interpret integers as microseconds
-                                             latencyMinMaxSpread: LongSequenceGenerator, ////here we interpret integers as microseconds
-                                             bandwidthGen: LongSequenceGenerator //here we measure bandwidth in bits/sec
+                                             latencyAverageGen: LongSequence.Generator, //here we interpret integers as microseconds
+                                             latencyMinMaxSpread: LongSequence.Generator, ////here we interpret integers as microseconds
+                                             bandwidthGen: LongSequence.Generator //here we measure bandwidth in bits/sec
                                             ) extends NetworkModel[BlockchainNode, Brick] {
 
-  case class ConnectionParams(latencyGenerator: LongSequenceGenerator, bandwidth: Long)
+  case class ConnectionParams(latencyGenerator: LongSequence.Generator, bandwidth: Long)
 
   private var networkGeometryTable: Array[Array[ConnectionParams]] = Array.ofDim[ConnectionParams](initialNumberOfNodes,initialNumberOfNodes)
   for {
@@ -58,7 +58,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
   private def initPair(sourceAddress: Int, targetAddress: Int): Unit = {
     val lAverage: Long = latencyAverageGen.next()
     val lSpread: Long = latencyMinMaxSpread.next()
-    val gen = new LongSequenceGenerator.PseudoGaussianGen(random, lAverage - lSpread/2, lAverage + lSpread/2)
+    val gen = new LongSequence.Generator.PseudoGaussianGen(random, lAverage - lSpread/2, lAverage + lSpread/2)
     val bandwidth: Long = bandwidthGen.next()
     val connParams = new ConnectionParams(gen, bandwidth)
     networkGeometryTable(sourceAddress)(targetAddress) = connParams

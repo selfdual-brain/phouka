@@ -2,7 +2,7 @@ package com.selfdualbrain.simulator_engine.ncb
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
-import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator}
+import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.simulator_engine.{Validator, ValidatorContext, ValidatorsFactory}
 import com.selfdualbrain.transactions.BlockPayloadBuilder
 
@@ -19,11 +19,11 @@ class NcbValidatorsFactory(
                             relativeFTT: Double,
                             absoluteFTT: Ether,
                             ackLevel: Int,
-                            brickProposeDelaysGeneratorConfig: LongSequenceConfig,
+                            brickProposeDelaysGeneratorConfig: LongSequence.Config,
                             blockPayloadBuilder: BlockPayloadBuilder,
-                            msgValidationCostModel: LongSequenceConfig,
-                            msgCreationCostModel: LongSequenceConfig,
-                            computingPowersGenerator: LongSequenceGenerator,
+                            msgValidationCostModel: LongSequence.Config,
+                            msgCreationCostModel: LongSequence.Config,
+                            computingPowersGenerator: LongSequence.Generator,
                             msgBufferSherlockMode: Boolean,
                             brickHeaderCoreSize: Int,
                             singleJustificationSize: Int

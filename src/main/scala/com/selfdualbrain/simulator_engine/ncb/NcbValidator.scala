@@ -2,19 +2,19 @@ package com.selfdualbrain.simulator_engine.ncb
 
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.CloningSupport
-import com.selfdualbrain.randomness.{LongSequenceConfig, LongSequenceGenerator, Picker}
+import com.selfdualbrain.randomness.{LongSequence, Picker}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.transactions.BlockPayload
 
 object NcbValidator {
   class Config extends ValidatorBaseImpl.Config {
     var blocksFraction: Double = _
-    var brickProposeDelaysConfig: LongSequenceConfig = _
+    var brickProposeDelaysConfig: LongSequence.Config = _
   }
 
   class State extends ValidatorBaseImpl.State with CloningSupport[State] {
     var blockVsBallot: Picker[String] = _
-    var brickProposeDelaysGenerator: LongSequenceGenerator = _
+    var brickProposeDelaysGenerator: LongSequence.Generator = _
 
     override def createEmpty() = new State
 
@@ -29,7 +29,7 @@ object NcbValidator {
       super.initialize(nodeId, context, config)
       val cf = config.asInstanceOf[NcbValidator.Config]
       blockVsBallot = new Picker[String](context.random, Map("block" -> cf.blocksFraction, "ballot" -> (100.0 - cf.blocksFraction)))
-      brickProposeDelaysGenerator = LongSequenceGenerator.fromConfig(cf.brickProposeDelaysConfig, context.random)
+      brickProposeDelaysGenerator = LongSequence.Generator.fromConfig(cf.brickProposeDelaysConfig, context.random)
     }
 
     override def createDetachedCopy(): NcbValidator.State = super.createDetachedCopy().asInstanceOf[NcbValidator.State]
@@ -124,7 +124,7 @@ class NcbValidator private (
             state.finalizer.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
         val payload: BlockPayload = config.blockPayloadBuilder.next()
-        Ncb.NormalBlock(
+        val newBlock = Ncb.NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
           timepoint = timeNow,
@@ -139,6 +139,8 @@ class NcbValidator private (
           totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = state.brickHashGenerator.generateHash()
         )
+        context.registerProcessingTime(calculateBlockTransactionsExecutionTime(newBlock))
+        newBlock
       } else
         Ncb.Ballot(
           id = context.generateBrickId(),

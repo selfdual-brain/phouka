@@ -2,7 +2,7 @@ import com.selfdualbrain.blockchain_structure.AbstractGenesis
 import com.selfdualbrain.gui._
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.SwingSessionManager
-import com.selfdualbrain.randomness.{IntSequenceConfig, LongSequenceConfig}
+import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
@@ -31,25 +31,25 @@ object PresentersSandbox {
   val config: ExperimentConfig = ExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
-      delaysGenerator = LongSequenceConfig.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(10))
+      delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(10))
     ),
-    nodesComputingPowerModel = LongSequenceConfig.Pareto(minValue = 5000, mean = 20000),
+    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 5000, mean = 20000),
     numberOfValidators = 10,
-    validatorsWeights = IntSequenceConfig.Fixed(1),
+    validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
     forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
     bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
-      brickProposeDelays = LongSequenceConfig.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS), //on average a validator proposes 6 bricks per minute
+      brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS), //on average a validator proposes 6 bricks per minute
       blocksFractionAsPercentage = 10 //blocks fraction as if in perfect round-robin (in every round there is one leader producing a block and others produce one ballot each)
     ),
     disruptionModel = DisruptionModelConfig.VanillaBlockchain,
     transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
-      sizeDistribution = IntSequenceConfig.PoissonProcess(lambda = 1.0 / 1500, lambdaUnit = TimeUnit.SECONDS, outputUnit = TimeUnit.SECONDS) ,//in bytes
-      costDistribution = LongSequenceConfig.PoissonProcess(lambda = 1.0 / 1000, lambdaUnit = TimeUnit.SECONDS, outputUnit = TimeUnit.SECONDS)   //in gas
+      sizeDistribution = IntSequence.Config.PoissonProcess(lambda = 1.0 / 1500, lambdaUnit = TimeUnit.SECONDS, outputUnit = TimeUnit.SECONDS) ,//in bytes
+      costDistribution = LongSequence.Config.PoissonProcess(lambda = 1.0 / 1000, lambdaUnit = TimeUnit.SECONDS, outputUnit = TimeUnit.SECONDS)   //in gas
     ),
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
-    brickCreationCostModel = LongSequenceConfig.PseudoGaussian(TimeDelta.millis(5), TimeDelta.millis(20)), //this is in microseconds (for a node with computing power = 1 sprocket)
-    brickValidationCostModel = LongSequenceConfig.PseudoGaussian(TimeDelta.millis(1), TimeDelta.millis(5)), //this is in microseconds (for a node with computing power = 1 sprocket)
+    brickCreationCostModel = LongSequence.Config.PseudoGaussian(TimeDelta.millis(5), TimeDelta.millis(20)), //this is in microseconds (for a node with computing power = 1 sprocket)
+    brickValidationCostModel = LongSequence.Config.PseudoGaussian(TimeDelta.millis(1), TimeDelta.millis(5)), //this is in microseconds (for a node with computing power = 1 sprocket)
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,

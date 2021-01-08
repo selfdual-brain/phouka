@@ -1,11 +1,10 @@
 package com.selfdualbrain.simulator_engine
 
 import java.io.File
-
 import com.selfdualbrain.blockchain_structure.BlockchainNode
 import com.selfdualbrain.config_files_support.ConfigParsingSupport
 import com.selfdualbrain.disruption.FttApproxMode
-import com.selfdualbrain.randomness.{IntSequenceConfig, LongSequenceConfig}
+import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
 
 import scala.util.Random
@@ -16,17 +15,17 @@ import scala.util.Random
 case class ExperimentConfig(
                              randomSeed: Option[Long],
                              networkModel: NetworkConfig,
-                             nodesComputingPowerModel: LongSequenceConfig, //values are interpreted as node nominal performance in [gas/second] units; for convenience we define a unit of performance 1 sprocket = 1 million gas/second
+                             nodesComputingPowerModel: LongSequence.Config, //values are interpreted as node nominal performance in [gas/second] units; for convenience we define a unit of performance 1 sprocket = 1 million gas/second
                              numberOfValidators: Int,
-                             validatorsWeights: IntSequenceConfig,
+                             validatorsWeights: IntSequence.Config,
                              finalizer: FinalizerConfig,
                              forkChoiceStrategy: ForkChoiceStrategy,
                              bricksProposeStrategy: ProposeStrategyConfig,
                              disruptionModel: DisruptionModelConfig,
                              transactionsStreamModel: TransactionsStreamConfig,
                              blocksBuildingStrategy: BlocksBuildingStrategyModel,
-                             brickCreationCostModel: LongSequenceConfig,
-                             brickValidationCostModel: LongSequenceConfig,
+                             brickCreationCostModel: LongSequence.Config,
+                             brickValidationCostModel: LongSequence.Config,
                              brickHeaderCoreSize: Int,//unit = bytes
                              singleJustificationSize: Int,//unit = bytes
                              msgBufferSherlockMode: Boolean,
@@ -35,13 +34,13 @@ case class ExperimentConfig(
 
 sealed abstract class NetworkConfig
 object NetworkConfig extends ConfigParsingSupport {
-  case class HomogenousNetworkWithRandomDelays(delaysGenerator: LongSequenceConfig) extends NetworkConfig
-  case class SymmetricLatencyBandwidthGraphNetwork(latencyAverageGen: LongSequenceConfig, latencyMinMaxSpread: LongSequenceConfig, bandwidthGen: LongSequenceConfig) extends NetworkConfig
+  case class HomogenousNetworkWithRandomDelays(delaysGenerator: LongSequence.Config) extends NetworkConfig
+  case class SymmetricLatencyBandwidthGraphNetwork(latencyAverageGen: LongSequence.Config, latencyMinMaxSpread: LongSequence.Config, bandwidthGen: LongSequence.Config) extends NetworkConfig
 }
 
 sealed abstract class TransactionsStreamConfig
 object TransactionsStreamConfig {
-  case class IndependentSizeAndExecutionCost(sizeDistribution: IntSequenceConfig, costDistribution: LongSequenceConfig) extends TransactionsStreamConfig
+  case class IndependentSizeAndExecutionCost(sizeDistribution: IntSequence.Config, costDistribution: LongSequence.Config) extends TransactionsStreamConfig
   case class Constant(size: Int, gas: Long) extends TransactionsStreamConfig
 }
 
@@ -65,7 +64,7 @@ object ForkChoiceStrategy {
 
 sealed abstract class ProposeStrategyConfig
 object ProposeStrategyConfig {
-  case class NaiveCasper(brickProposeDelays: LongSequenceConfig, blocksFractionAsPercentage: Double) extends ProposeStrategyConfig
+  case class NaiveCasper(brickProposeDelays: LongSequence.Config, blocksFractionAsPercentage: Double) extends ProposeStrategyConfig
   case class RandomLeadersSequenceWithFixedRounds(roundLength: TimeDelta) extends ProposeStrategyConfig
   case class Highway(
                       initialRoundExponent: Int,
@@ -122,24 +121,24 @@ object ExperimentConfig {
 
   val default: ExperimentConfig = ExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
-    networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequenceConfig.PseudoGaussian(100000, 20000000)),
-    nodesComputingPowerModel = LongSequenceConfig.Pareto(minValue = 10000, 1000000),
+    networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequence.Config.PseudoGaussian(100000, 20000000)),
+    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, 1000000),
     numberOfValidators = 10,
-    validatorsWeights = IntSequenceConfig.Fixed(1),
+    validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
     forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
     bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
-      brickProposeDelays = LongSequenceConfig.PoissonProcess(lambda = 2, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS), //on average a validator proposes 2 blocks per minute
+      brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 2, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS), //on average a validator proposes 2 blocks per minute
       blocksFractionAsPercentage = 10 //blocks fraction as if in perfect round-robin (in every round there is one leader producing a block and others produce one ballot each)
     ),
     disruptionModel = DisruptionModelConfig.VanillaBlockchain,
     transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
-      sizeDistribution = IntSequenceConfig.Pareto(100, 2500),//in bytes
-      costDistribution = LongSequenceConfig.Pareto(1, 1000)   //in gas
+      sizeDistribution = IntSequence.Config.Pareto(100, 2500),//in bytes
+      costDistribution = LongSequence.Config.Pareto(1, 1000)   //in gas
     ),
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
-    brickCreationCostModel = LongSequenceConfig.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
-    brickValidationCostModel = LongSequenceConfig.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
+    brickCreationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
+    brickValidationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,

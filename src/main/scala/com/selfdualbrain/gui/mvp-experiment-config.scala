@@ -6,7 +6,6 @@ import com.selfdualbrain.gui_framework.MvpView.{JCheckBoxOps, JTextComponentOps}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{FieldsLadderPanel, RibbonPanel}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
-import com.selfdualbrain.randomness.IntSequenceConfig
 import com.selfdualbrain.simulator_engine.ExperimentConfig
 import javax.swing.{JCheckBox, JTextField}
 

@@ -1,6 +1,6 @@
 package com.selfdualbrain.transactions
 
-import com.selfdualbrain.randomness.{IntSequenceGenerator, LongSequenceGenerator}
+import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine.TransactionsStreamConfig
 
 import scala.util.Random
@@ -16,13 +16,13 @@ object TransactionsStream {
   def fromConfig(config: TransactionsStreamConfig, random: Random): TransactionsStream =
     config match {
       case TransactionsStreamConfig.IndependentSizeAndExecutionCost(sizeDistribution, costDistribution) =>
-        IndependentSizeAndExecutionCost(IntSequenceGenerator.fromConfig(sizeDistribution, random), LongSequenceGenerator.fromConfig(costDistribution, random))
+        IndependentSizeAndExecutionCost(IntSequence.Generator.fromConfig(sizeDistribution, random), LongSequence.Generator.fromConfig(costDistribution, random))
       case TransactionsStreamConfig.Constant(size, gas) =>
         Constant(size, gas)
     }
 
 
-  case class IndependentSizeAndExecutionCost(sizeDistribution: IntSequenceGenerator, costDistribution: LongSequenceGenerator) extends TransactionsStream {
+  case class IndependentSizeAndExecutionCost(sizeDistribution: IntSequence.Generator, costDistribution: LongSequence.Generator) extends TransactionsStream {
     override def next(): Transaction = Transaction(sizeDistribution.next(), costDistribution.next())
   }
 

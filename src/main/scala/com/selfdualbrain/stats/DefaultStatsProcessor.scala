@@ -323,7 +323,7 @@ class DefaultStatsProcessor(
 
   override def cumulativeThroughput: Double = numberOfVisiblyFinalizedBlocks.toDouble / totalTime.asSeconds
 
-  private val throughputMovingWindowAsSeconds: Double = throughputMovingWindow.toDouble / TimeDelta.seconds(1)
+  private val throughputMovingWindowAsSeconds: Double = throughputMovingWindow.toDouble
 
   override val movingWindowThroughput: SimTimepoint => Double = (timepoint: SimTimepoint) => {
     assert(timepoint < lastStepTimepoint + throughputMovingWindow) //we do not support asking for throughput for yet-unexplored future

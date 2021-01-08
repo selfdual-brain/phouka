@@ -115,7 +115,7 @@ class LeadersSeqValidator private (
             state.finalizer.panoramaOf(forkChoiceWinner.asInstanceOf[Brick]).equivocators
         val toBeSlashedInThisBlock: Set[ValidatorId] = currentlyVisibleEquivocators diff parentBlockEquivocators
         val payload: BlockPayload = config.blockPayloadBuilder.next()
-        LeadersSeq.NormalBlock(
+        val newBlock = LeadersSeq.NormalBlock(
           id = context.generateBrickId(),
           positionInSwimlane = state.mySwimlaneLastMessageSequenceNumber,
           timepoint = timeNow,
@@ -131,6 +131,8 @@ class LeadersSeqValidator private (
           totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = state.brickHashGenerator.generateHash()
         )
+        context.registerProcessingTime(calculateBlockTransactionsExecutionTime(newBlock))
+        newBlock
       } else
         LeadersSeq.Ballot(
           id = context.generateBrickId(),
