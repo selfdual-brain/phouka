@@ -3,7 +3,7 @@ package com.selfdualbrain.stats
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval, MovingWindowBeepsCounterWithHistory}
-import com.selfdualbrain.des.{Event, SimulationEngine, SimulationObserver}
+import com.selfdualbrain.des.{Event, SimulationObserver}
 import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, EventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.util.RepeatUntilExitCondition
@@ -140,7 +140,6 @@ class DefaultStatsProcessor(
         val vid = agentId2validatorId(source.address)
         if (! faultyValidatorsMap(vid)) {
           handleSemanticEvent(vid, eventTimepoint, eventPayload)
-          visiblyFinalizedBlocksMovingWindowCounter.silence(eventTimepoint.micros)
         }
         node2stats(source.address).handleEvent(eventTimepoint, eventPayload)
 

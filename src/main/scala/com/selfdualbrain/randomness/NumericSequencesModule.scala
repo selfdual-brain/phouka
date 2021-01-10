@@ -132,6 +132,12 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
       override def next(): N = coerce(minValue / math.pow(random.nextDouble(), reciprocalOfAlpha))
     }
 
+//    class ParetoGenBigDecimal(random: Random, minValue: Double, mean: Double) extends Generator {
+//      private val alpha: BigDecimal = BigDecimal(mean / (mean - minValue))
+//      private val reciprocalOfAlpha: BigDecimal = BigDecimal(1) / alpha
+//      override def next(): N = coerce(minValue / math.pow(random.nextDouble(), reciprocalOfAlpha))
+//    }
+
   }
 
 }

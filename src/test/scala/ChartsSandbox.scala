@@ -19,7 +19,7 @@ import scala.util.Random
 
 object ChartsSandbox {
   private val log = LoggerFactory.getLogger(s"chart-sandbox")
-  private val NUMBER_OF_STEPS: Int = 200000
+  private val NUMBER_OF_STEPS: Int = 100000
 
   private val headerSize: Int =
     32 + //message id
@@ -36,7 +36,7 @@ object ChartsSandbox {
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15))
     ),
-    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 5000, mean = 20000),
+    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, mean = 100000),
     numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),

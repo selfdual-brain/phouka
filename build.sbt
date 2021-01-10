@@ -12,6 +12,7 @@ libraryDependencies ++= {
     "com.intellij" % "forms_rt" % "7.0.3",
     "org.jfree" % "jfreechart" % "1.5.0",
     "org.json4s" %% "json4s-native" % "3.6.9",
-    "org.scalatest" %% "scalatest" % "3.2.3" % Test
+    "org.scalatest" %% "scalatest" % "3.2.3" % Test,
+    "org.apache.commons" % "commons-math3" % "3.6.1"
   )
 }

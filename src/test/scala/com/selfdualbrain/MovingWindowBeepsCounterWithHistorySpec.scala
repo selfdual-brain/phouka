@@ -23,8 +23,7 @@ class MovingWindowBeepsCounterWithHistorySpec extends BaseSpec {
     //feeding test data into beeps counter
     val beepsCounter = new MovingWindowBeepsCounterWithHistory(movingWindowLength, checkpointsResolution)
     for (i <- 0 until numberOfTestBeeps)
-      beepsCounter.beep(i+1, sortedBeeps(i))
-    beepsCounter.silence(testIntervalLength)
+      beepsCounter.beep(i + 1, sortedBeeps(i))
 
     //checking loop
     for (i <- 1 to 200) {
