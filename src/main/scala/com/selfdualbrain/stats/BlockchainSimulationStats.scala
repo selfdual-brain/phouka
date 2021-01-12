@@ -86,11 +86,21 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   def totalWeight: Ether
 
+  //Average weight of a validator (in ether).
+  def averageWeight: Double
+
   def absoluteWeightsMap: ValidatorId => Ether
 
   def relativeWeightsMap: ValidatorId => Double
 
   def absoluteFTT: Ether
+
+  def relativeFTT: Double
+
+  def ackLevel: Int
+
+  //Average computing power of a node calculated at blockchain startup, i.e. when nodes are 1-1 to validators.
+  def averageComputingPower: Double
 
   def isFaulty(vid: ValidatorId): Boolean
 
@@ -101,6 +111,23 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   //simulation(t).ballots.size
   def numberOfBallotsPublished: Long
+
+  //in bytes
+  def averageBlockBinarySize: Double
+
+  //in bytes
+  def averageBlockPayloadSize: Double
+
+  def averageNumberOfTransactionsInOneBlock: Double
+
+  //in gas
+  def averageBlockExecutionCost: Double
+
+  //in bytes
+  def averageTransactionSize: Double
+
+  //in gas
+  def averageTransactionCost: Double
 
   //simulation(t).ballots.size / simulation(t).bricks.size
   def fractionOfBallots: Double

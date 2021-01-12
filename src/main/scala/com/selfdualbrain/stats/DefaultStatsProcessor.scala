@@ -29,6 +29,8 @@ class DefaultStatsProcessor(
                              val absoluteWeightsMap: ValidatorId => Ether,
                              val relativeWeightsMap: ValidatorId => Double,
                              val absoluteFTT: Ether,
+                             val relativeFTT: Double,
+                             val ackLevel: Int,
                              val totalWeight: Ether,
                              genesis: Block,
                              engine: BlockchainSimulationEngine
@@ -48,6 +50,14 @@ class DefaultStatsProcessor(
   private var publishedBlocksCounter: Long = 0
   //counter of published ballots
   private var publishedBallotsCounter: Long = 0
+  //counting all published blocks here
+  private var cumulativeBinarySizeOfBlocks: Long = 0
+  //counting all published blocks here
+  private var cumulativeSizeOfBlocksPayload: Long = 0
+  //counting all published blocks here
+  private var totalNumberOfTransactions: Long = 0
+  //counting all published blocks here
+  private var cumulativeGasInAllTransactions: Long = 0
   //counter of visibly finalized blocks (= at least one validator established finality)
   private var visiblyFinalizedBlocksCounter: Long = 0
   //counter of completely finalized blocks (= all validators established finality)
@@ -119,6 +129,10 @@ class DefaultStatsProcessor(
               case block: AbstractNormalBlock =>
                 publishedBlocksCounter += 1
                 blocksByGenerationCounters.nodeAdded(block.generation)
+                cumulativeBinarySizeOfBlocks += block.binarySize
+                cumulativeSizeOfBlocksPayload += block.payloadSize
+                totalNumberOfTransactions += block.numberOfTransactions
+                cumulativeGasInAllTransactions += block.totalGas
               case ballot: Ballot =>
                 publishedBallotsCounter += 1
             }
@@ -269,6 +283,10 @@ class DefaultStatsProcessor(
 
   override def numberOfBlockchainNodes: ValidatorId = node2stats.size
 
+  override def averageWeight: Double = totalWeight.toDouble / numberOfValidators
+
+  override def averageComputingPower: Double = (0 to numberOfValidators).map(i => engine.computingPowerOf(BlockchainNode(i))).sum / numberOfValidators
+
   override def totalTime: SimTimepoint = lastStepTimepoint
 
   override def numberOfEvents: Long = eventsCounter
@@ -289,6 +307,18 @@ class DefaultStatsProcessor(
       orphanedBlocks.toDouble / allBlocks
     }
   }
+
+  override def averageBlockBinarySize: Double = cumulativeBinarySizeOfBlocks.toDouble / numberOfBlocksPublished
+
+  override def averageBlockPayloadSize: Double = cumulativeSizeOfBlocksPayload.toDouble / numberOfBlocksPublished
+
+  override def averageNumberOfTransactionsInOneBlock: Double = totalNumberOfTransactions.toDouble / numberOfBlocksPublished
+
+  override def averageBlockExecutionCost: Double = cumulativeGasInAllTransactions.toDouble / numberOfBlocksPublished
+
+  override def averageTransactionSize: Double = cumulativeSizeOfBlocksPayload.toDouble / totalNumberOfTransactions
+
+  override def averageTransactionCost: Double = cumulativeGasInAllTransactions.toDouble / totalNumberOfTransactions
 
   override def numberOfVisiblyFinalizedBlocks: Long = visiblyFinalizedBlocksCounter
 

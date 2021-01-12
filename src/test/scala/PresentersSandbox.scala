@@ -33,7 +33,7 @@ object PresentersSandbox {
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(10))
     ),
-    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 5000, mean = 20000),
+    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 5000, alpha = 1.3),
     numberOfValidators = 10,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),

@@ -10,7 +10,11 @@ class StatsPrinter(out: AbstractTextOutput) {
     out.section("****** General ******") {
       out.print(s"...............total time [sec]: ${stats.totalTime} (${stats.totalTime.asHumanReadable.toStringCutToSeconds})")
       out.print(s"...........number of validators: ${stats.numberOfValidators}")
-      out.print(s".....number of blockchain nodes: ${stats.numberOfBlockchainNodes}")
+      out.print(s".........................weight: average ${stats.averageWeight} total ${stats.totalWeight}")
+      out.print(s"........average computing power: ${stats.averageComputingPower}")
+      out.print(s"...............ack level in use: ${stats}")
+      out.print(s"......fault tolerance threshold: absolute ${stats.absoluteFTT} relative ${stats.relativeFTT}")
+      out.print(s"...............blockchain nodes: total ${stats.numberOfBlockchainNodes} alive ${}")
       out.print(s"...............number of events: ${stats.numberOfEvents}")
       out.print(s"...............published bricks: ${stats.numberOfBlocksPublished + stats.numberOfBallotsPublished} (${stats.numberOfBlocksPublished} blocks, ${stats.numberOfBallotsPublished} ballots)")
       out.print(f"........fraction of ballots [%%]: ${stats.fractionOfBallots * 100}%.2f")
@@ -18,6 +22,12 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(f"................orphan rate [%%]: $orphanRateAsPercent%.2f")
       out.print(s".....number of finalized blocks: ${stats.numberOfVisiblyFinalizedBlocks} visibly, ${stats.numberOfCompletelyFinalizedBlocks} completely")
       out.print(s"number of observed equivocators: ${stats.numberOfObservedEquivocators}")
+      out.print(f"........average block size [MB]: ${stats.averageBlockBinarySize / 1000000}%.5f")
+      out.print(f".....average block payload [MB]: ${stats.averageBlockPayloadSize / 1000000}%.5f")
+      out.print(f"......transactions in one block: ${stats.averageNumberOfTransactionsInOneBlock}%.1f")
+      out.print(s".......average block cost [gas]: ${stats.averageBlockExecutionCost.toLong}")
+      out.print(s".....average trans size [bytes]: ${stats.averageTransactionSize.toInt}")
+      out.print(s".......average trans cost [gas]: ${stats.averageTransactionCost.toLong}")
     }
 
     out.section("****** Latency ******") {

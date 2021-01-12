@@ -122,7 +122,7 @@ object ExperimentConfig {
   val default: ExperimentConfig = ExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequence.Config.PseudoGaussian(100000, 20000000)),
-    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, 1000000),
+    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, alpha = 1.3),
     numberOfValidators = 10,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),

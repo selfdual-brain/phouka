@@ -1,4 +1,3 @@
-import com.selfdualbrain.randomness.{ParetoMachineV1, ParetoMachineV2}
 
 import scala.util.Random
 

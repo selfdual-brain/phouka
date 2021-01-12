@@ -29,7 +29,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   private val weightsOfValidatorsAsMap: Map[ValidatorId, Ether] = (weightsArray.toSeq.zipWithIndex map {case (weight,vid) => (vid,weight)}).toMap
   val totalWeight: Ether = weightsArray.sum
   private val relativeWeightsOfValidators: ValidatorId => Double = (vid: ValidatorId) => weightsArray(vid).toDouble / totalWeight
-  val (ackLevel: Int, relativeFTT, absoluteFTT: Ether) = config.finalizer match {
+  val (ackLevel: Int, relativeFTT: Double, absoluteFTT: Ether) = config.finalizer match {
     case FinalizerConfig.SummitsTheoryV2(ackLevel, relativeFTT) =>
       (ackLevel, relativeFTT, math.floor(totalWeight * relativeFTT).toLong)
     case other => throw new RuntimeException(s"not supported: $other")
@@ -171,6 +171,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         weightsOfValidatorsAsFunction,
         relativeWeightsOfValidators,
         absoluteFTT,
+        relativeFTT,
+        ackLevel,
         totalWeight,
         genesis,
         engine

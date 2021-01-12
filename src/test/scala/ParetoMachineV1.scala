@@ -1,5 +1,3 @@
-package com.selfdualbrain.randomness
-
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random

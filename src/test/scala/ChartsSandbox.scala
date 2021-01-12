@@ -36,7 +36,7 @@ object ChartsSandbox {
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15))
     ),
-    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, mean = 100000),
+    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, alpha = 1.3),
     numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
