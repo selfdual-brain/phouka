@@ -617,7 +617,7 @@ class HighwayValidator private (
 
   protected def createNewBrick(role: BrickRole): Brick = {
     //simulation of "create new message" processing time
-    context.registerProcessingTime(state.msgCreationCostGenerator.next())
+    context.registerProcessingGas(state.msgCreationCostGenerator.next())
     val creator: ValidatorId = config.validatorId
     state.mySwimlaneLastMessageSequenceNumber += 1
     val timeNow = context.time()
@@ -652,7 +652,7 @@ class HighwayValidator private (
           totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = state.brickHashGenerator.generateHash()
         )
-        context.registerProcessingTime(calculateBlockTransactionsExecutionTime(newBlock))
+        context.registerProcessingGas(newBlock.totalGas)
         newBlock
 
       case BrickRole.LambdaResponse =>

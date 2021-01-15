@@ -99,7 +99,7 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   def ackLevel: Int
 
-  //Average computing power of a node calculated at blockchain startup, i.e. when nodes are 1-1 to validators.
+  //Average computing power [gas/sec] of a node calculated at blockchain startup, i.e. when nodes are 1-1 to validators.
   def averageComputingPower: Double
 
   def isFaulty(vid: ValidatorId): Boolean
@@ -190,11 +190,13 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   //number of blocks visibly finalized per second (calculated for the whole time of simulation)
   //simulation(t).blocks.filter(b => b.isVisiblyFinalized) / t.asSeconds
-  def cumulativeThroughput: Double
+  def totalThroughputBlocksPerSecond: Double
 
   //number of transactions finalized per second (calculated for the whole time of simulation)
   //(we count transactions in visibly finalized blocks)
-  def cumulativeTPS: Double
+  def totalThroughputTransactionsPerSecond: Double
+
+  def totalThroughputGasPerSecond: Double
 
   //Latency is time from publishing a block B to B becoming finalized.
   //Of course this time is different for each validator.
@@ -229,9 +231,24 @@ trait BlockchainSimulationStats extends SimulationStats {
   //throughput(t) = simulation(t).blocks.filter(b => b.isVisiblyFinalized and t - K <= b.vfTime <= t) / K
   def movingWindowThroughput: SimTimepoint => Double
 
+  //within all data transmitted so far, tells the fraction that is not part of transactions in finalized blocks
+  def protocolOverhead: Double
+
   //Statistics calculated separately for every validator.
   //For a faulty validator it returns stats from the freezing point.
   def perValidatorStats(validator: ValidatorId): NodeLocalStats
 
   def perNodeStats(node: BlockchainNode): NodeLocalStats
+
+  //asSeconds
+  def topConsumptionDelay: Double
+
+  //as fraction
+  def topComputingPowerUtilization: Double
+
+  //as seconds
+  def topNetworkDelayForBlocks: Double
+
+  //as seconds
+  def topNetworkDelayForBallots: Double
 }

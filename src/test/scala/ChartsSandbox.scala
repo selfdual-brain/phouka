@@ -19,7 +19,7 @@ import scala.util.Random
 
 object ChartsSandbox {
   private val log = LoggerFactory.getLogger(s"chart-sandbox")
-  private val NUMBER_OF_STEPS: Int = 100000
+  private val NUMBER_OF_STEPS: Int = 200000
 
   private val headerSize: Int =
     32 + //message id
@@ -36,23 +36,23 @@ object ChartsSandbox {
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15))
     ),
-    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, alpha = 1.3),
+    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 300000, alpha = 1.2),
     numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
     forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
     bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
-      brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 2, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
+      brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
       blocksFractionAsPercentage = 4
     ),
     disruptionModel = DisruptionModelConfig.VanillaBlockchain,
     transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
       sizeDistribution = IntSequence.Config.Exponential(mean = 1500), //in bytes
-      costDistribution = LongSequence.Config.Exponential(mean = 1000) //in gas
+      costDistribution = LongSequence.Config.Exponential(mean = 500) //in gas
     ),
-    blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
-    brickCreationCostModel = LongSequence.Config.PseudoGaussian(TimeDelta.millis(5), TimeDelta.millis(20)), //this is in microseconds (for a node with computing power = 1 sprocket)
-    brickValidationCostModel = LongSequence.Config.PseudoGaussian(TimeDelta.millis(1), TimeDelta.millis(5)), //this is in microseconds (for a node with computing power = 1 sprocket)
+    blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 1000),
+    brickCreationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000),
+    brickValidationCostModel = LongSequence.Config.PseudoGaussian(500, 1000),
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,

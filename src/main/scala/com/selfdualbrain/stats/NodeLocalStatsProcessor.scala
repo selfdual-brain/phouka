@@ -90,8 +90,8 @@ class NodeLocalStatsProcessor(
   private var allBlocksByGenerationCounters = new TreeNodesByGenerationCounter
   allBlocksByGenerationCounters.nodeAdded(0) //counting genesis
   private var allBricksCumulativeBinarySize: Long = 0L
-  private var transactionsDataCounter: Long = 0L
-
+  private var cumulativePayloadSizeInAllPublishedBlocks: Long = 0L
+  private var cumulativePayloadSizeInFinalizedBlocks: Long = 0L
 
 //#####################################################################################################################################
 //                                               PROCESSING EVENTS
@@ -119,7 +119,7 @@ class NodeLocalStatsProcessor(
             myBlocksByGenerationCounters.nodeAdded(block.generation)
             allBlocksByGenerationCounters.nodeAdded(block.generation)
             lastForkChoiceWinnerX = block.parent
-            transactionsDataCounter += block.payloadSize
+            cumulativePayloadSizeInAllPublishedBlocks += block.payloadSize
           case ballot: Ballot =>
             ownBallotsCounter += 1
             lastForkChoiceWinnerX = ballot.targetBlock
@@ -140,7 +140,7 @@ class NodeLocalStatsProcessor(
           case block: AbstractNormalBlock =>
             acceptedBlocksCounter += 1
             allBlocksByGenerationCounters.nodeAdded(block.generation)
-            transactionsDataCounter += block.payloadSize
+            cumulativePayloadSizeInAllPublishedBlocks += block.payloadSize
           case ballot: Ballot =>
             acceptedBallotsCounter += 1
           case other => throw new RuntimeException(s"unsupported brick type: $brick")
@@ -162,7 +162,7 @@ class NodeLocalStatsProcessor(
           case block: AbstractNormalBlock =>
             acceptedBlocksCounter += 1
             allBlocksByGenerationCounters.nodeAdded(block.generation)
-            transactionsDataCounter += block.payloadSize
+            cumulativePayloadSizeInAllPublishedBlocks += block.payloadSize
           case ballot: Ballot =>
             acceptedBallotsCounter += 1
           case other => throw new RuntimeException(s"unsupported brick type: $brick")
@@ -190,6 +190,7 @@ class NodeLocalStatsProcessor(
         currentBGameStatusX = None
         sumOfLatenciesForAllFinalizedBlocks += eventTimepoint timePassedSince finalizedBlock.timepoint
         transactionsInAllFinalizedBlocksCounter += finalizedBlock.numberOfTransactions
+        cumulativePayloadSizeInFinalizedBlocks += finalizedBlock.payloadSize
         totalGasInAllFinalizedBlocksCounter += finalizedBlock.totalGas
 
       case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
@@ -346,7 +347,7 @@ class NodeLocalStatsProcessor(
       orphaned.toDouble / allBlocksUpToLfbGeneration
   }
 
-  override def protocolOverhead: Double = (allBricksCumulativeBinarySize - transactionsDataCounter).toDouble / allBricksCumulativeBinarySize
+  override def protocolOverhead: Double = (allBricksCumulativeBinarySize - cumulativePayloadSizeInFinalizedBlocks).toDouble / allBricksCumulativeBinarySize
 
   //#####################################################################################################################################
   //                                             CLONING
@@ -392,7 +393,7 @@ class NodeLocalStatsProcessor(
     copy.sumOfLatenciesForAllFinalizedBlocks = sumOfLatenciesForAllFinalizedBlocks
     copy.allBlocksByGenerationCounters = allBlocksByGenerationCounters.createDetachedCopy()
     copy.allBricksCumulativeBinarySize = allBricksCumulativeBinarySize
-    copy.transactionsDataCounter = transactionsDataCounter
+    copy.cumulativePayloadSizeInAllPublishedBlocks = cumulativePayloadSizeInAllPublishedBlocks
 
     return copy
   }

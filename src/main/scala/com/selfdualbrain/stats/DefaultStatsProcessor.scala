@@ -47,27 +47,34 @@ class DefaultStatsProcessor(
   //agent id ---> validator id (which is non-trivial only because of our approach to simulating equivocators)
   private val agentId2validatorId = new FastMapOnIntInterval[Int](numberOfValidators)
   //counter of published blocks
-  private var publishedBlocksCounter: Long = 0
+  private var publishedBlocksCounter: Long = 0L
   //counter of published ballots
-  private var publishedBallotsCounter: Long = 0
-  //counting all published blocks here
-  private var cumulativeBinarySizeOfBlocks: Long = 0
-  //counting all published blocks here
-  private var cumulativeSizeOfBlocksPayload: Long = 0
-  //counting all published blocks here
-  private var totalNumberOfTransactions: Long = 0
-  //counting all published blocks here
-  private var cumulativeGasInAllTransactions: Long = 0
+  private var publishedBallotsCounter: Long = 0L
+
+  //--------------- COUNTERS OF STUFF IN ALL PUBLISHED BRICKS -----------------------
+  private var cumulativeBinarySizeOfAllBricks: Long = 0
+
+  //--------------- COUNTERS OF STUFF IN ALL PUBLISHED BLOCKS -----------------------
+  private var binarySizeOfAllBlocks: Long = 0L
+  private var payloadOfAllBlocks: Long = 0L
+  private var transactionsInAllBlocks: Long = 0L
+  private var gasInAllBlocks: Long = 0L
+
+  //--------------- COUNTERS OF STUFF IN (VISIBLY) FINALIZED BLOCKS -----------------------
+  private var transactionsInFinalizedBlocks: Long = 0L
+  private var payloadInFinalizedBlocks: Long = 0L
+
+
   //counter of visibly finalized blocks (= at least one validator established finality)
   private var visiblyFinalizedBlocksCounter: Long = 0
+
   //counter of completely finalized blocks (= all validators established finality)
   private var completelyFinalizedBlocksCounter: Long = 0
-  //counter of transactions in visibly finalized blocks
-  private var transactionsCounter: Long = 0
+
   //collection of equivocators observed so far
   private var observedEquivocators = new mutable.HashSet[ValidatorId]
   //total weight of validators in "observed equivocators" collection
-  private var weightOfObservedEquivocatorsX: Long = 0
+  private var weightOfObservedEquivocatorsX: Long = 0L
   //counters of "blocks below generation"
   private val blocksByGenerationCounters = new TreeNodesByGenerationCounter
   blocksByGenerationCounters.nodeAdded(0) //counting genesis
@@ -129,12 +136,14 @@ class DefaultStatsProcessor(
               case block: AbstractNormalBlock =>
                 publishedBlocksCounter += 1
                 blocksByGenerationCounters.nodeAdded(block.generation)
-                cumulativeBinarySizeOfBlocks += block.binarySize
-                cumulativeSizeOfBlocksPayload += block.payloadSize
-                totalNumberOfTransactions += block.numberOfTransactions
-                cumulativeGasInAllTransactions += block.totalGas
+                binarySizeOfAllBlocks += block.binarySize
+                cumulativeBinarySizeOfAllBricks += block.binarySize
+                payloadOfAllBlocks += block.payloadSize
+                transactionsInAllBlocks += block.numberOfTransactions
+                gasInAllBlocks += block.totalGas
               case ballot: Ballot =>
                 publishedBallotsCounter += 1
+                cumulativeBinarySizeOfAllBricks += ballot.binarySize
             }
         }
         node2stats(agent.get.address).handleEvent(timepoint, payload)
@@ -197,7 +206,8 @@ class DefaultStatsProcessor(
         if (! wasVisiblyFinalizedBefore && lfbElementInfo.isVisiblyFinalized) {
           visiblyFinalizedBlocksCounter += 1
           assert (visiblyFinalizedBlocksCounter == finalizedBlock.generation)
-          transactionsCounter += finalizedBlock.numberOfTransactions
+          transactionsInFinalizedBlocks += finalizedBlock.numberOfTransactions
+          payloadInFinalizedBlocks += finalizedBlock.payloadSize
           visiblyFinalizedBlocksMovingWindowCounter.beep(finalizedBlock.generation, eventTimepoint.micros)
         }
 
@@ -285,7 +295,7 @@ class DefaultStatsProcessor(
 
   override def averageWeight: Double = totalWeight.toDouble / numberOfValidators
 
-  override def averageComputingPower: Double = (0 to numberOfValidators).map(i => engine.computingPowerOf(BlockchainNode(i))).sum / numberOfValidators
+  override def averageComputingPower: Double = (0 until numberOfValidators).map(i => engine.computingPowerOf(BlockchainNode(i))).sum.toDouble / numberOfValidators
 
   override def totalTime: SimTimepoint = lastStepTimepoint
 
@@ -308,17 +318,17 @@ class DefaultStatsProcessor(
     }
   }
 
-  override def averageBlockBinarySize: Double = cumulativeBinarySizeOfBlocks.toDouble / numberOfBlocksPublished
+  override def averageBlockBinarySize: Double = binarySizeOfAllBlocks.toDouble / numberOfBlocksPublished
 
-  override def averageBlockPayloadSize: Double = cumulativeSizeOfBlocksPayload.toDouble / numberOfBlocksPublished
+  override def averageBlockPayloadSize: Double = payloadOfAllBlocks.toDouble / numberOfBlocksPublished
 
-  override def averageNumberOfTransactionsInOneBlock: Double = totalNumberOfTransactions.toDouble / numberOfBlocksPublished
+  override def averageNumberOfTransactionsInOneBlock: Double = transactionsInAllBlocks.toDouble / numberOfBlocksPublished
 
-  override def averageBlockExecutionCost: Double = cumulativeGasInAllTransactions.toDouble / numberOfBlocksPublished
+  override def averageBlockExecutionCost: Double = gasInAllBlocks.toDouble / numberOfBlocksPublished
 
-  override def averageTransactionSize: Double = cumulativeSizeOfBlocksPayload.toDouble / totalNumberOfTransactions
+  override def averageTransactionSize: Double = payloadOfAllBlocks.toDouble / transactionsInAllBlocks
 
-  override def averageTransactionCost: Double = cumulativeGasInAllTransactions.toDouble / totalNumberOfTransactions
+  override def averageTransactionCost: Double = gasInAllBlocks.toDouble / transactionsInAllBlocks
 
   override def numberOfVisiblyFinalizedBlocks: Long = visiblyFinalizedBlocksCounter
 
@@ -350,7 +360,7 @@ class DefaultStatsProcessor(
 
   override def cumulativeLatency: Double = exactSumOfFinalityDelays.toDouble / 1000000 / (completelyFinalizedBlocksCounter * numberOfValidators)
 
-  override def cumulativeThroughput: Double = numberOfVisiblyFinalizedBlocks.toDouble / totalTime.asSeconds
+  override def totalThroughputBlocksPerSecond: Double = numberOfVisiblyFinalizedBlocks.toDouble / totalTime.asSeconds
 
   private val throughputMovingWindowAsSeconds: Double = throughputMovingWindow.toDouble
 
@@ -380,5 +390,17 @@ class DefaultStatsProcessor(
 
   override def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint] = faultyValidatorsFreezingPoints(vid)
 
-  override def cumulativeTPS: Double = transactionsCounter.toDouble / totalTime.asSeconds
+  override def totalThroughputTransactionsPerSecond: Double = transactionsInFinalizedBlocks.toDouble / totalTime.asSeconds
+
+  override def totalThroughputGasPerSecond: Double = gasInAllBlocks.toDouble / totalTime.asSeconds
+
+  override def protocolOverhead: Double = (cumulativeBinarySizeOfAllBricks - payloadInFinalizedBlocks).toDouble / cumulativeBinarySizeOfAllBricks
+
+  override def topConsumptionDelay: Double = engine.agents.map(node => perNodeStats(node).averageConsumptionDelay).max
+
+  override def topComputingPowerUtilization: Double = engine.agents.map(node => perNodeStats(node).averageComputingPowerUtilization).max
+
+  override def topNetworkDelayForBlocks: Double = engine.agents.map(node => perNodeStats(node).averageNetworkDelayForBlocks).max
+
+  override def topNetworkDelayForBallots: Double = engine.agents.map(node => perNodeStats(node).averageNetworkDelayForBallots).max
 }

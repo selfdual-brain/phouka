@@ -86,6 +86,15 @@ trait ValidatorContext {
     * In other words - current architecture of the engine does not help much in implementing simulated concurrency inside agents, but it does not stop the developer
     * of introducing the simulated concurrency anyway.
     */
+  @deprecated
   def registerProcessingTime(t: TimeDelta): Unit
+
+  /**
+    * This is the same as registerProcessingTime(), just using different units.
+    * Caution: computing power of given node gives gas/time rate.
+    *
+    * @param gas amount of the gas to be burned for computing
+    */
+  def registerProcessingGas(gas: Long): Unit
 
 }

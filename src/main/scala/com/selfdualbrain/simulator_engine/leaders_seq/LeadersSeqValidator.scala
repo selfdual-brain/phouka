@@ -98,7 +98,7 @@ class LeadersSeqValidator private (
 
   protected def createNewBrick(shouldBeBlock: Boolean, round: Long): Brick = {
     //simulation of "create new message" processing time
-    context.registerProcessingTime(state.msgCreationCostGenerator.next())
+    context.registerProcessingGas(state.msgCreationCostGenerator.next())
     val creator: ValidatorId = config.validatorId
     state.mySwimlaneLastMessageSequenceNumber += 1
     val forkChoiceWinner: Block = state.finalizer.currentForkChoiceWinner()
@@ -131,7 +131,7 @@ class LeadersSeqValidator private (
           totalGas = payload.totalGasNeededForExecutingTransactions,
           hash = state.brickHashGenerator.generateHash()
         )
-        context.registerProcessingTime(calculateBlockTransactionsExecutionTime(newBlock))
+        context.registerProcessingGas(newBlock.totalGas)
         newBlock
       } else
         LeadersSeq.Ballot(

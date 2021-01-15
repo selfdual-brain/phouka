@@ -161,11 +161,11 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! state.finalizer.knowsAbout(j))
 
     //simulation of incoming message processing time
-    val payloadValidationTime: TimeDelta = msg match {
-      case x: AbstractNormalBlock => calculateBlockTransactionsExecutionTime(x)
+    val payloadValidationCost: TimeDelta = msg match {
+      case x: AbstractNormalBlock => x.totalGas
       case x: Ballot => 0L
     }
-    context.registerProcessingTime(state.msgValidationCostGenerator.next() + payloadValidationTime)
+    context.registerProcessingGas(state.msgValidationCostGenerator.next() + payloadValidationCost)
 
     if (missingDependencies.isEmpty) {
       context.addOutputEvent(EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
@@ -244,8 +244,6 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
 
   protected def calculateBlockBinarySize(numberOfJustifications: Int, payloadSize: Int): Int =
     config.brickHeaderCoreSize + numberOfJustifications * config.singleJustificationSize + payloadSize
-
-  protected def calculateBlockTransactionsExecutionTime(block: AbstractNormalBlock): TimeDelta = block.totalGas * 1000000 / config.computingPower
 
   //Integer exponentiation
   protected def exp(x: Int, n: Int): Int = {

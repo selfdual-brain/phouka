@@ -7,21 +7,23 @@ import com.selfdualbrain.time.TimeDelta
 class StatsPrinter(out: AbstractTextOutput) {
 
   def print(stats: BlockchainSimulationStats): Unit = {
-    out.section("****** General ******") {
+    out.section("****** Simulation summary ******") {
       out.print(s"...............total time [sec]: ${stats.totalTime} (${stats.totalTime.asHumanReadable.toStringCutToSeconds})")
       out.print(s"...........number of validators: ${stats.numberOfValidators}")
       out.print(s".........................weight: average ${stats.averageWeight} total ${stats.totalWeight}")
-      out.print(s"........average computing power: ${stats.averageComputingPower}")
-      out.print(s"...............ack level in use: ${stats}")
+      out.print(f"average computing power [sprck]: ${stats.averageComputingPower / 1000000}%.5f")
+      out.print(s"...............ack level in use: ${stats.ackLevel}")
       out.print(s"......fault tolerance threshold: absolute ${stats.absoluteFTT} relative ${stats.relativeFTT}")
-      out.print(s"...............blockchain nodes: total ${stats.numberOfBlockchainNodes} alive ${}")
+      out.print(s"...............blockchain nodes: total ${stats.numberOfBlockchainNodes} still alive [todo]")
       out.print(s"...............number of events: ${stats.numberOfEvents}")
       out.print(s"...............published bricks: ${stats.numberOfBlocksPublished + stats.numberOfBallotsPublished} (${stats.numberOfBlocksPublished} blocks, ${stats.numberOfBallotsPublished} ballots)")
       out.print(f"........fraction of ballots [%%]: ${stats.fractionOfBallots * 100}%.2f")
-      val orphanRateAsPercent: Double = stats.orphanRate * 100
-      out.print(f"................orphan rate [%%]: $orphanRateAsPercent%.2f")
       out.print(s".....number of finalized blocks: ${stats.numberOfVisiblyFinalizedBlocks} visibly, ${stats.numberOfCompletelyFinalizedBlocks} completely")
       out.print(s"number of observed equivocators: ${stats.numberOfObservedEquivocators}")
+    }
+
+    out.newLine()
+    out.section("****** Published blocks geometry ******") {
       out.print(f"........average block size [MB]: ${stats.averageBlockBinarySize / 1000000}%.5f")
       out.print(f".....average block payload [MB]: ${stats.averageBlockPayloadSize / 1000000}%.5f")
       out.print(f"......transactions in one block: ${stats.averageNumberOfTransactionsInOneBlock}%.1f")
@@ -30,26 +32,27 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(s".......average trans cost [gas]: ${stats.averageTransactionCost.toLong}")
     }
 
-    out.section("****** Latency ******") {
-      out.print(f"..overall average [seconds]: ${stats.cumulativeLatency}%.2f")
-      val av = stats.movingWindowLatencyAverage(stats.numberOfCompletelyFinalizedBlocks.toInt)
-      val sd = stats.movingWindowLatencyStandardDeviation(stats.numberOfCompletelyFinalizedBlocks.toInt)
-      out.print(f"....moving window [seconds]: average = $av%.2f, standard deviation = $sd%.2f")
-    }
-
-    out.section("****** Throughput ******") {
-      val ps = stats.cumulativeThroughput
-      val pm = stats.cumulativeThroughput * 60
-      val ph = stats.cumulativeThroughput * 3600
-      out.print(f"overall average [number of blocks]: per second = $ps%.4f, per minute = $pm%.3f, per hour = $ph%.2f")
-
-      val movingWindow_ps = stats.movingWindowThroughput(stats.totalTime)
-      val movingWindow_pm = movingWindow_ps * 60
-      val movingWindow_ph = movingWindow_ps * 3600
-      out.print(f"..moving window [number of blocks]: per second = $movingWindow_ps%.4f, per minute = $movingWindow_pm%.3f, per per hour = $movingWindow_ph%.2f")
+    out.newLine()
+    out.section("****** Blockchain performance ******") {
+      out.print(f"..................latency [sec]: ${stats.cumulativeLatency}%.2f")
+      val bph = stats.totalThroughputBlocksPerSecond * 3600
+      val tps = stats.totalThroughputTransactionsPerSecond
+      val gps = stats.totalThroughputGasPerSecond.toLong
+      out.print(f".....................throughput: [blocks/h] $bph%.2f [trans/sec] $tps%.2f [gas/sec] $gps ")
+      val orphanRateAsPercent: Double = stats.orphanRate * 100
+      out.print(f"................orphan rate [%%]: $orphanRateAsPercent%.2f")
+      out.print(f"..........protocol overhead [%%]: ${stats.protocolOverhead * 100}%.2f")
     }
 
     out.newLine()
+    out.section("****** Per-node possible bottlenecks (worst averages among nodes) ******") {
+      out.print(f"........consumption delay [sec]: ${stats.topConsumptionDelay}%.2f")
+      out.print(f"computing power utilization [%%]: ${stats.topComputingPowerUtilization * 100}%.2f")
+      out.print(f".network delay for blocks [sec]: ${stats.topNetworkDelayForBlocks}%.3f")
+      out.print(f"network delay for ballots [sec]: ${stats.topNetworkDelayForBallots}%.3f")
+    }
+
+      out.newLine()
     out.section("****** Per-node stats ******") {
       for (node <- 0 until stats.numberOfBlockchainNodes) {
         out.section(s"=============== node $node ===============") {

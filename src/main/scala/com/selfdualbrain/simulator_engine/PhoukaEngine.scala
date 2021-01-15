@@ -336,9 +336,17 @@ class PhoukaEngine(
 
     override def time(): SimTimepoint = localClock
 
+
     override def registerProcessingTime(t: TimeDelta): Unit = {
       if (t > 0) {
         val effectiveTime = math.max(1L, t * 1000000 / validatorInstance.computingPower)
+        localClock += effectiveTime
+      }
+    }
+
+    override def registerProcessingGas(gas: Long): Unit = {
+      if (gas > 0) {
+        val effectiveTime = math.max(1L, gas * 1000000 / validatorInstance.computingPower)
         localClock += effectiveTime
       }
     }

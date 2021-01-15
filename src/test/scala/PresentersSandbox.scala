@@ -31,33 +31,33 @@ object PresentersSandbox {
   val config: ExperimentConfig = ExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
-      delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(10))
+      delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15))
     ),
-    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 5000, alpha = 1.3),
-    numberOfValidators = 10,
+    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 100000, alpha = 1.3),
+    numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
     forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
     bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
-      brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS), //on average a validator proposes 6 bricks per minute
-      blocksFractionAsPercentage = 10 //blocks fraction as if in perfect round-robin (in every round there is one leader producing a block and others produce one ballot each)
+      brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 2, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
+      blocksFractionAsPercentage = 4
     ),
     disruptionModel = DisruptionModelConfig.VanillaBlockchain,
     transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
-      sizeDistribution = IntSequence.Config.PoissonProcess(lambda = 1.0 / 1500, lambdaUnit = TimeUnit.SECONDS, outputUnit = TimeUnit.SECONDS) ,//in bytes
-      costDistribution = LongSequence.Config.PoissonProcess(lambda = 1.0 / 1000, lambdaUnit = TimeUnit.SECONDS, outputUnit = TimeUnit.SECONDS)   //in gas
+      sizeDistribution = IntSequence.Config.Exponential(mean = 1500), //in bytes
+      costDistribution = LongSequence.Config.Exponential(mean = 500) //in gas
     ),
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
-    brickCreationCostModel = LongSequence.Config.PseudoGaussian(TimeDelta.millis(5), TimeDelta.millis(20)), //this is in microseconds (for a node with computing power = 1 sprocket)
-    brickValidationCostModel = LongSequence.Config.PseudoGaussian(TimeDelta.millis(1), TimeDelta.millis(5)), //this is in microseconds (for a node with computing power = 1 sprocket)
+    brickCreationCostModel = LongSequence.Config.PseudoGaussian(TimeDelta.millis(1), TimeDelta.millis(3)),
+    brickValidationCostModel = LongSequence.Config.PseudoGaussian(300, 1000),
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,
     observers = Seq(
       ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15)
-//      ObserverConfig.FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Some(Seq(BlockchainNode(0))))
     )
   )
+
   val simulationSetup: SimulationSetup = new ConfigBasedSimulationSetup(config)
   val engine: BlockchainSimulationEngine = simulationSetup.engine
   val genesis: AbstractGenesis = simulationSetup.genesis
