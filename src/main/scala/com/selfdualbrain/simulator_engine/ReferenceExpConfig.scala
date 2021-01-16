@@ -53,21 +53,18 @@ object ReferenceExpConfig {
     )
   )
 
-  //Amsterdam scaled-up to 100 validators
+  //same as Amsterdam but using leaders-sequence
   def London(seed: Long): ExperimentConfig = ExperimentConfig(
     randomSeed = Some(seed),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15))
     ),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 300000, alpha = 1.2),
-    numberOfValidators = 100,
+    numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
     forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
-    bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
-      brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
-      blocksFractionAsPercentage = 1
-    ),
+    bricksProposeStrategy = ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds(TimeDelta.seconds(10)),
     disruptionModel = DisruptionModelConfig.VanillaBlockchain,
     transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
       sizeDistribution = IntSequence.Config.Exponential(mean = 1500), //in bytes
@@ -84,21 +81,26 @@ object ReferenceExpConfig {
     )
   )
 
-  //Amsterdam scaled-down to 5 validators
-  //but they have extremely-fast processors
+  //same as Amsterdam but using Highway
   def LasVegas(seed: Long): ExperimentConfig = ExperimentConfig(
     randomSeed = Some(seed),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15))
     ),
-    nodesComputingPowerModel = LongSequence.Config.Fixed(100000000), //every node has computing power 100 sprockets
-    numberOfValidators = 5,
+    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 300000, alpha = 1.2),
+    numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
     forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
-    bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
-      brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
-      blocksFractionAsPercentage = 20
+    bricksProposeStrategy = ProposeStrategyConfig.Highway(
+      initialRoundExponent = 14,
+      omegaWaitingMargin = 10000,
+      exponentAccelerationPeriod = 20,
+      exponentInertia = 8,
+      runaheadTolerance = 5,
+      droppedBricksMovingAverageWindow = TimeDelta.minutes(5),
+      droppedBricksAlarmLevel = 0.05,
+      droppedBricksAlarmSuppressionPeriod = 3
     ),
     disruptionModel = DisruptionModelConfig.VanillaBlockchain,
     transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
@@ -116,7 +118,7 @@ object ReferenceExpConfig {
     )
   )
 
-  //more "realistic" case:
+  //more "realistic" variant of LasVegas:
   //- non-equal-weights
   //- equivocators
   //- network outages

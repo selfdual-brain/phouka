@@ -70,7 +70,7 @@ object ProposeStrategyConfig {
                       initialRoundExponent: Int,
                       omegaWaitingMargin: TimeDelta,
                       exponentAccelerationPeriod: Int,
-                      exponentSlowdownPeriod: Int,
+//                      exponentSlowdownPeriod: Int,
                       exponentInertia: Int,
                       runaheadTolerance: Int,
                       droppedBricksMovingAverageWindow: TimeDelta,
