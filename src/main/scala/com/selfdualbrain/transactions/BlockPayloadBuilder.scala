@@ -1,6 +1,6 @@
 package com.selfdualbrain.transactions
 
-import com.selfdualbrain.simulator_engine.BlocksBuildingStrategyModel
+import com.selfdualbrain.simulator_engine.config.BlocksBuildingStrategyModel
 import com.selfdualbrain.util.RepeatUntilExitCondition
 
 case class BlockPayload(numberOfTransactions: Int, transactionsBinarySize: Int, totalGasNeededForExecutingTransactions: Gas)

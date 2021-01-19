@@ -1,12 +1,12 @@
 package com.selfdualbrain.gui
 
 import java.awt.Dimension
-
 import com.selfdualbrain.gui_framework.MvpView.{JCheckBoxOps, JTextComponentOps}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{FieldsLadderPanel, RibbonPanel}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
-import com.selfdualbrain.simulator_engine.ExperimentConfig
+import com.selfdualbrain.simulator_engine.config.ExperimentConfig
+
 import javax.swing.{JCheckBox, JTextField}
 
 /**

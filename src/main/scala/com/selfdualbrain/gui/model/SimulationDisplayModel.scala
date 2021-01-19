@@ -7,6 +7,8 @@ import com.selfdualbrain.des.{Event, SimulationEngine}
 import com.selfdualbrain.gui.EventsFilter
 import com.selfdualbrain.gui.model.SimulationDisplayModel.{EngineStopConditionChecker, SimulationEngineStopCondition}
 import com.selfdualbrain.gui_framework.EventsBroadcaster
+import com.selfdualbrain.simulator_engine.config.{ConfigBasedSimulationSetup, ExperimentConfig}
+import com.selfdualbrain.simulator_engine.core.PhoukaEngine
 import com.selfdualbrain.simulator_engine.{EventPayload, _}
 import com.selfdualbrain.stats.{BlockchainSimulationStats, NodeLocalStats}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
@@ -222,7 +224,7 @@ class SimulationDisplayModel(
       event match {
         case Event.Engine(id, timepoint, agent, payload) =>
           payload match {
-            case EventPayload.BroadcastBrick(brick) =>
+            case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
               agent2bricksHistory(agent.get.address).onBrickAddedToJdag(stepAsInt, brick)
             case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
               agent2bricksHistory(agent.get.address) = new JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks, expectedNumberOfEvents)

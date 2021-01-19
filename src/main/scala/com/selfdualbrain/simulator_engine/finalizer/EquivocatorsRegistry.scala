@@ -1,4 +1,4 @@
-package com.selfdualbrain.simulator_engine
+package com.selfdualbrain.simulator_engine.finalizer
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.ValidatorId

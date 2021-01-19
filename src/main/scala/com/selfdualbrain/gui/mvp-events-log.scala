@@ -202,7 +202,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
-          case EventPayload.BroadcastBrick(brick) => s"$brick"
+          case EventPayload.BroadcastBlockchainProtocolMsg(brick) => s"$brick"
           case EventPayload.NetworkDisruptionEnd(disruptionEventId) => s"disruption-begin = event $disruptionEventId"
           case EventPayload.NewAgentSpawned(validatorId, progenitor) => if (progenitor.isEmpty) s"validator-id=$validatorId" else s"cloned from node $progenitor (validator-id=$validatorId)"
           case other => throw new RuntimeException(s"unexpected payload: $payload")

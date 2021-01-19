@@ -1,7 +1,7 @@
 package com.selfdualbrain.transactions
 
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
-import com.selfdualbrain.simulator_engine.TransactionsStreamConfig
+import com.selfdualbrain.simulator_engine.config.TransactionsStreamConfig
 
 import scala.util.Random
 

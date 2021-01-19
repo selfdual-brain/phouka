@@ -3,6 +3,7 @@ package com.selfdualbrain.simulator_engine.highway
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{CloningSupport, DirectedGraphUtils, MovingWindowBeepsCounter}
 import com.selfdualbrain.simulator_engine._
+import com.selfdualbrain.simulator_engine.finalizer.BGamesDrivenFinalizerWithForkchoiceStartingAtLfb
 import com.selfdualbrain.simulator_engine.highway.Highway.WakeupMarker
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.transactions.BlockPayload

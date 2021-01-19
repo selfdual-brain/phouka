@@ -1,10 +1,11 @@
-package com.selfdualbrain.simulator_engine
+package com.selfdualbrain.simulator_engine.core
 
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.FastMapOnIntInterval
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue}
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.NetworkModel
+import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import org.slf4j.LoggerFactory
 
@@ -29,48 +30,24 @@ import scala.util.Random
   * @param validatorsFactory validators factory to be used by this engine (for creating agents i.e. validators)
   */
 class PhoukaEngine(
-                    random: Random,
+                    val random: Random,
                     numberOfValidators: Int,
                     validatorsFactory: ValidatorsFactory,
                     disruptionModel: DisruptionModel,
-                    networkModel: NetworkModel[BlockchainNode,Brick],
-                    genesis: AbstractGenesis
+                    networkModel: NetworkModel[BlockchainNode, Brick],
+                    val genesis: AbstractGenesis,
+                    val downloadsPriorityStrategy: Ordering[MsgReceivedBySkeletonHost]
                 ) extends BlockchainSimulationEngine {
 
-  engine =>
-
   private val log = LoggerFactory.getLogger("** sim-engine")
-  val desQueue: SimEventsQueue[BlockchainNode, EventPayload] =
+  private[core] val desQueue: SimEventsQueue[BlockchainNode, EventPayload] =
     new ClassicDesQueue[BlockchainNode, EventPayload](
       extStreams = ArraySeq(disruptionModel),
       extEventsHorizonMargin = TimeDelta.minutes(1)
     )
-  var lastBrickId: BlockdagVertexId = 0
+  private var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
   private var lastNodeIdAllocated: Int = -1
-
-  sealed abstract class NodeStatus
-  object NodeStatus {
-    case object NORMAL extends NodeStatus
-    case object NETWORK_OUTAGE extends NodeStatus
-    case object CRASHED extends NodeStatus
-  }
-
-  //holds together stuff related to one node
-  private class NodeBox(val nodeId: BlockchainNode, val validatorId: ValidatorId, val validatorInstance: Validator, val context: ValidatorContextImpl) {
-    var status: NodeStatus = NodeStatus.NORMAL
-    var networkOutageGoingToBeFixedAt: SimTimepoint = SimTimepoint.zero
-    var broadcastBuffer = new ArrayBuffer[Brick]
-    var receivedBricksBuffer = new ArrayBuffer[Brick]
-    var totalProcessingTime: TimeDelta = 0L
-
-    def executeAndRecordProcessingTimeConsumption(block: => Unit): Unit = {
-      val processingStartTimepoint: SimTimepoint = context.time()
-      block
-      val timeConsumedForProcessing: TimeDelta = context.time().timePassedSince(processingStartTimepoint)
-      totalProcessingTime += timeConsumedForProcessing
-    }
-  }
 
   //initialize nodes
   //at startup we just create nodes which are 1-1 with validators
@@ -83,11 +60,11 @@ class PhoukaEngine(
   for (i <- 0 until numberOfValidators) {
     val nodeId = BlockchainNode(i)
     lastNodeIdAllocated = i
-    val context = new ValidatorContextImpl(nodeId, SimTimepoint.zero)
+    val context = new ValidatorContextImpl(this, nodeId, SimTimepoint.zero)
     val newValidator = validatorsFactory.create(BlockchainNode(i), i, context)
     context.validatorInstance = newValidator
     nodeId2validatorId(i) = i
-    val newBox = new NodeBox(nodeId, i, newValidator, context)
+    val newBox = new NodeBox(this, nodeId, i, newValidator, context, networkModel.bandwidth(nodeId))
     nodes.append(newBox)
     context.moveForwardLocalClockToAtLeast(desQueue.currentTime)
     desQueue.addEngineEvent(context.time(), Some(nodeId), EventPayload.NewAgentSpawned(i, progenitor = None))
@@ -145,24 +122,27 @@ class PhoukaEngine(
   //returns None if subsequent event is "masked" - i.e. should not be emitted outside the engine
   private def processNextEventFromQueue(): Option[Event[BlockchainNode,EventPayload]] = {
     val event: Event[BlockchainNode,EventPayload] = desQueue.next()
-    val box = nodes(event.loggingAgent.get.address) //todo: handle general case - logging agent can possibly be None
+    event.loggingAgent match {
+      case None => throw new RuntimeException("this is an extension point - currently not used")
+      case Some(agent) =>
+        val box = nodes(agent.address)
+        return if (box.status == NodeStatus.CRASHED)
+          None //dead node is supposed to be silent; hence after the crash we "magically" delete all events scheduled for this node
+        else {
+          val eventMaskingDecision: EventMaskingDecision = event match {
+            case Event.External(id, timepoint, destination, payload) => handleExternal(box, id, timepoint, destination, payload)
+            case Event.Transport(id, timepoint, source, destination, payload) => handleTransport(box, id, timepoint, source, destination, payload.asInstanceOf[EventPayload])
+            case Event.Loopback(id, timepoint, agent, payload) => handleLoopback(box, id, timepoint, agent, payload)
+            case Event.Engine(id, timepoint, agent, payload) => handleEngine(box, id, timepoint, agent, payload)
+            case Event.Semantic(id, timepoint, source, payload) =>
+              EMIT_EVENT //semantic events are never masked, but also no extra processing of them within the engine is needed, because they are just "output"
+          }
 
-    return if (box.status == NodeStatus.CRASHED)
-      None //dead node is supposed to be silent; hence after the crash we "magically" delete all events scheduled for this node
-    else {
-      val eventMaskingDecision: EventMaskingDecision = event match {
-        case Event.External(id, timepoint, destination, payload) => handleExternal(box, id, timepoint, destination, payload)
-        case Event.Transport(id, timepoint, source, destination, payload) => handleTransport(box, id, timepoint, source, destination, payload.asInstanceOf[EventPayload])
-        case Event.Loopback(id, timepoint, agent, payload) => handleLoopback(box, id, timepoint, agent, payload)
-        case Event.Engine(id, timepoint, agent, payload) => handleEngine(box, id, timepoint, agent, payload)
-        case Event.Semantic(id, timepoint, source, payload) =>
-          EMIT_EVENT //semantic events are never masked, but also no extra processing of them within the engine is needed, because they are just "output"
-      }
-
-      eventMaskingDecision match {
-        case EMIT_EVENT => Some(event)
-        case MASK_EVENT => None
-      }
+          eventMaskingDecision match {
+            case EMIT_EVENT => Some(event)
+            case MASK_EVENT => None
+          }
+        }
     }
   }
 
@@ -186,10 +166,10 @@ class PhoukaEngine(
         for (i <- 1 to numberOfClones) {
           lastNodeIdAllocated += 1
           val newNodeId = BlockchainNode(lastNodeIdAllocated)
-          val context = new ValidatorContextImpl(newNodeId, box.context.time())
+          val context = new ValidatorContextImpl(this, newNodeId, box.context.time())
           val newValidator = box.validatorInstance.clone(newNodeId, context)
           context.validatorInstance = newValidator
-          val newBox = new NodeBox(newNodeId, box.validatorId, newValidator, context)
+          val newBox = new NodeBox(this, newNodeId, box.validatorId, newValidator, context, networkModel.bandwidth(newNodeId))
           nodes.append(newBox)
           nodeId2validatorId(newValidator.blockchainNodeId.address) = newValidator.validatorId
           clone2progenitor += newNodeId -> destination
@@ -240,7 +220,7 @@ class PhoukaEngine(
       case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
         EMIT_EVENT
 
-      case EventPayload.BroadcastBrick(brick) =>
+      case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
         box.status match {
           case NodeStatus.CRASHED =>
             //do nothing
@@ -249,16 +229,20 @@ class PhoukaEngine(
             box.broadcastBuffer += brick
             MASK_EVENT
           case NodeStatus.NORMAL =>
-            executeBrickBroadcastByCreatingDeliveryEvents(agent.get, timepoint, brick)
+            executeBlockchainProtocolMsgBroadcast(agent.get, timepoint, brick)
             EMIT_EVENT
         }
+
+      case EventPayload.BlockchainProtocolMsgReceivedBySkeletonHost(sender, brick) =>
+        box.downloadsBuffer += brick
+
 
       case EventPayload.NetworkDisruptionEnd(disruptionEventId) =>
         if (box.networkOutageGoingToBeFixedAt <= timepoint) {
           box.status = NodeStatus.NORMAL
           desQueue.addOutputEvent(timepoint, box.nodeId, EventPayload.NetworkConnectionRestored)
           for (brick <- box.broadcastBuffer)
-            executeBrickBroadcastByCreatingDeliveryEvents(box.nodeId, timepoint, brick)
+            executeBlockchainProtocolMsgBroadcast(box.nodeId, timepoint, brick)
           for (brick <- box.receivedBricksBuffer)
             performBrickConsumption(box, eventId, brick, timepoint)
           EMIT_EVENT
@@ -279,76 +263,58 @@ class PhoukaEngine(
     }
   }
 
-  protected def nextBrickId(): BlockdagVertexId = {
+  protected[core] def nextBrickId(): BlockdagVertexId = {
     lastBrickId += 1
     return lastBrickId
   }
+
+
 
   /**
     * Simulates transporting given brick over the network. The brick will be delivered to all nodes with the exception of sending node.
     * The delivery is technically guaranteed, although it will be masked if the target node turns dead by the time of delivery. The delivery delay
     * is derived from the network model configured for the current simulation.
     *
-    * Remark: Please notice that conceptually we cover here the whole comms stack: physical network, IP protocol and gossip (with retransmissions). All this
+    * Implementation notes:
+    *
+    * Please notice that conceptually we cover here the whole comms stack: physical network, IP protocol and gossip (with retransmissions). All this
     * effectively looks like "broadcast service with delivery guarantee".
+    *
+    * Our comms stack simulation establishes: 2-layers architecture:
+    * - network "skeleton" - this is an abstraction of "global internet" graph, where vertices are "hosts" and where we just simulate communication delays
+    *   using pluggable "network model"
+    * - blockchain nodes; every blockchain node is "conceptually connected" to one "inet skeleton host"
+    *
+    * Broadcast happens as follows:
+    * 1. A validator calls context.broadcast(brick). This will schedule actual broadcast by placing BroadcastBlockchainProtocolMsg event. Which is
+    *    needed because of how we simulate local clocks of agents.
+    * 2. BroadcastBlockchainProtocolMsg is picked and handled by the engine. What is does is just calling executeBlockchainProtocolMsgBroadcast() method.
+    *    This method will use currently plugged-in network model to calculate delivery times for target skeleton hosts (which are 1-1 with agents).
+    *    For every destination (= skeleton host), a corresponding BlockchainProtocolMsgReceivedBySkeletonHost event is added to DES queue.
+    * 3. Handling of BlockchainProtocolMsgReceivedBySkeletonHost creates an item in downloadsBuffer, which is a per-validator priority queue. The priority
+    *    function of this queue is pluggable and is provided by the validator.
+    * 4. Every time an item is pulled from downloads buffer, a BrickDelivered event is scheduled with timepoint calculated in a way to reflect connection bandwidth
+    *    between blockchain node and corresponding skeleton host.
+    * 5. In reality the above algorithm is a little more complex so to handle simulation of network outages and node crashes. A network outage is simulated
+    *    as temporary failure of the connection between a validator and its skeleton host.
+    *
+    * Effectively, we simulate download bandwidth limitations of every blockchain node, but we DO NOT simulate upload bandwidth limitations. Also, the
+    * internet skeleton modeled with per-message-delay function is rather simplistic and in practice it does not allow for realistic modeling of attacks
+    * such as spam attacks, deaf nodes attacks or equivocation bombs.
+    *
+    * For a detailed simulation of these, one would have to establish proper RPC-over-DES simulation engine, then implement Kademlia discovery and suitable
+    * gossip protocol (on top of previously established RPC-over-DES). Mechanics of internet delays and bandwidth would have to be reflected below RPC-over-DES.
+    * This is all perfectly doable, but leads to way more complex implementation than the one we utilize in Phouka.
     *
     * @param sender sending agent id
     * @param sendingTimepoint sending timepoint
     * @param brick payload
     */
-  protected def executeBrickBroadcastByCreatingDeliveryEvents(sender: BlockchainNode, sendingTimepoint: SimTimepoint, brick: Brick): Unit = {
+  protected def executeBlockchainProtocolMsgBroadcast(sender: BlockchainNode, sendingTimepoint: SimTimepoint, brick: Brick): Unit = {
     for (i <- 0 to lastNodeIdAllocated if i != sender.address) {
       val effectiveDelay: Long = math.max(1, networkModel.calculateMsgDelay(brick, sender, BlockchainNode(i), sendingTimepoint)) // we enforce minimum delay = 1 microsecond
       val targetTimepoint: SimTimepoint = sendingTimepoint + effectiveDelay
-      desQueue.addTransportEvent(targetTimepoint, sender, BlockchainNode(i), EventPayload.BrickDelivered(brick))
-    }
-  }
-
-  private class ValidatorContextImpl(nodeId: BlockchainNode, initialTimepointOfLocalClock: SimTimepoint) extends ValidatorContext {
-    private var localClock: SimTimepoint = initialTimepointOfLocalClock
-    private[PhoukaEngine] var validatorInstance: Validator = _
-
-    private[PhoukaEngine] def moveForwardLocalClockToAtLeast(timepoint: SimTimepoint): Unit = {
-      localClock = SimTimepoint.max(timepoint, localClock)
-    }
-
-    override def generateBrickId(): BlockdagVertexId = engine.nextBrickId()
-
-    override def genesis: AbstractGenesis = engine.genesis
-
-    override def random: Random = engine.random
-
-    override def broadcast(timepointOfPassingTheBrickToCommsLayer: SimTimepoint, brick: Brick): Unit = {
-      desQueue.addEngineEvent(timepointOfPassingTheBrickToCommsLayer, Some(nodeId), EventPayload.BroadcastBrick(brick))
-    }
-
-    override def scheduleWakeUp(wakeUpTimepoint: SimTimepoint, strategySpecificMarker: Any): Unit = {
-      desQueue.addLoopbackEvent(wakeUpTimepoint, nodeId, EventPayload.WakeUp(strategySpecificMarker))
-    }
-
-    override def addPrivateEvent(wakeUpTimepoint: SimTimepoint, payload: EventPayload): Unit = {
-      desQueue.addTransportEvent(timepoint = wakeUpTimepoint, source = nodeId, destination = nodeId, payload)
-    }
-
-    override def addOutputEvent(payload: EventPayload): Unit = {
-      desQueue.addOutputEvent(time(), source = nodeId, payload)
-    }
-
-    override def time(): SimTimepoint = localClock
-
-
-    override def registerProcessingTime(t: TimeDelta): Unit = {
-      if (t > 0) {
-        val effectiveTime = math.max(1L, t * 1000000 / validatorInstance.computingPower)
-        localClock += effectiveTime
-      }
-    }
-
-    override def registerProcessingGas(gas: Long): Unit = {
-      if (gas > 0) {
-        val effectiveTime = math.max(1L, gas * 1000000 / validatorInstance.computingPower)
-        localClock += effectiveTime
-      }
+      desQueue.addEngineEvent(targetTimepoint, Some(BlockchainNode(i)), EventPayload.BlockchainProtocolMsgReceivedBySkeletonHost(sender, brick))
     }
   }
 

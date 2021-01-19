@@ -5,6 +5,7 @@ import com.selfdualbrain.blockchain_structure.{ACC, _}
 import com.selfdualbrain.data_structures.{CloningSupport, MsgBuffer, MsgBufferImpl}
 import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness.LongSequence
+import com.selfdualbrain.simulator_engine.finalizer.BGamesDrivenFinalizerWithForkchoiceStartingAtLfb
 import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.transactions.BlockPayloadBuilder
 

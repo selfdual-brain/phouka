@@ -1,4 +1,4 @@
-package com.selfdualbrain.simulator_engine
+package com.selfdualbrain.simulator_engine.config
 
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.time.{TimeDelta, TimeUnit}

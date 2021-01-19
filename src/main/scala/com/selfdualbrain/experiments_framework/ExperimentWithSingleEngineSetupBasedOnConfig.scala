@@ -1,6 +1,7 @@
 package com.selfdualbrain.experiments_framework
 
-import com.selfdualbrain.simulator_engine.{ConfigBasedSimulationSetup, ExperimentConfig, SimulationSetup}
+import com.selfdualbrain.simulator_engine.config.{ConfigBasedSimulationSetup, ExperimentConfig}
+import com.selfdualbrain.simulator_engine.SimulationSetup
 
 /**
   * Base class for experiments based on ExperimentConfig.

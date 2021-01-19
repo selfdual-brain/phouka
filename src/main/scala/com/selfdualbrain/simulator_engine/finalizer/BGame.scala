@@ -1,9 +1,9 @@
-package com.selfdualbrain.simulator_engine
+package com.selfdualbrain.simulator_engine.finalizer
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{ACC, Block, Brick, AbstractNormalBlock, ValidatorId}
+import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.CloningSupport
-import com.selfdualbrain.simulator_engine.BGame.IndexedArrayOfAccumulators
+import com.selfdualbrain.simulator_engine.finalizer.BGame.IndexedArrayOfAccumulators
 
 import scala.collection.mutable
 

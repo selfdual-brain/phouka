@@ -111,7 +111,7 @@ class NodeLocalStatsProcessor(
         }
 
       //=========ENGINE=========
-      case EventPayload.BroadcastBrick(brick) =>
+      case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
         lastBrickPublishedX = Some(brick)
         brick match {
           case block: AbstractNormalBlock =>

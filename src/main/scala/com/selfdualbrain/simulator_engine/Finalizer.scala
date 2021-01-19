@@ -3,6 +3,7 @@ package com.selfdualbrain.simulator_engine
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{ACC, AbstractNormalBlock, Block, Brick, ValidatorId}
 import com.selfdualbrain.data_structures.CloningSupport
+import com.selfdualbrain.simulator_engine.finalizer.EquivocatorsRegistry
 
 import scala.collection.immutable.ArraySeq
 

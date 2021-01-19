@@ -65,7 +65,7 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
               case None => ""
             }
             s"spawned new agent ${agent.get} using validator-id $vid $progenitorDesc"
-          case EventPayload.BroadcastBrick(brick) =>
+          case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
             s"published $brick"
           case EventPayload.NetworkDisruptionEnd(eventId) =>
             s"network disruption end (disruption $eventId)"

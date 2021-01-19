@@ -3,6 +3,7 @@ package com.selfdualbrain.simulator_engine
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.Event
+import com.selfdualbrain.simulator_engine.core.MsgReceivedBySkeletonHost
 import com.selfdualbrain.time.TimeDelta
 
 sealed abstract class EventPayload {
@@ -22,12 +23,20 @@ object EventPayload {
   }
 
   //======== ENGINE ========
-  case class BroadcastBrick(brick: Brick) extends EventPayload {
+  case class BroadcastBlockchainProtocolMsg(brick: Brick) extends EventPayload {
     override val filteringTag: BlockdagVertexId =
       if (brick.isInstanceOf[Block])
         EventTag.BROADCAST_BLOCK
       else
         EventTag.BROADCAST_BALLOT
+  }
+
+  case class BlockchainProtocolMsgReceivedBySkeletonHost(sender: BlockchainNode, brick: Brick) extends EventPayload {
+    override val filteringTag: BlockdagVertexId = EventTag.MSG_RECEIVED_BY_LOCAL_DOWNLOAD_SERVER
+  }
+
+  case class DownloadCheckpoint(download: MsgReceivedBySkeletonHost) extends EventPayload {
+    override val filteringTag: BlockdagVertexId = EventTag.DOWNLOAD_CHECKPOINT
   }
 
   case class NetworkDisruptionEnd(disruptionEventId: Long) extends EventPayload {
@@ -107,6 +116,8 @@ object EventTag {
   val WAKE_UP = 2
   val BROADCAST_BLOCK = 3
   val BROADCAST_BALLOT = 20
+  val MSG_RECEIVED_BY_LOCAL_DOWNLOAD_SERVER = 21
+  val DOWNLOAD_CHECKPOINT = 22
   val DIRECT_ACCEPT = 4
   val ADDED_ENTRY_TO_BUF = 5
   val REMOVED_ENTRY_FROM_BUF = 6
@@ -127,6 +138,8 @@ object EventTag {
   val collection = Map(
     NEW_AGENT_SPAWNED -> "agent created",
     BRICK_DELIVERED -> "brick delivery",
+    MSG_RECEIVED_BY_LOCAL_DOWNLOAD_SERVER -> "msg delivered to download server",
+    DOWNLOAD_CHECKPOINT -> "download checkpoint",
     WAKE_UP -> "wake-up",
     BROADCAST_BLOCK -> "block broadcast",
     BROADCAST_BALLOT -> "ballot broadcast",

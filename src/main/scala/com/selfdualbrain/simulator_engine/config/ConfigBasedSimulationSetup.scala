@@ -1,14 +1,16 @@
-package com.selfdualbrain.simulator_engine
+package com.selfdualbrain.simulator_engine.config
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{ObservableSimulationEngine, SimulationObserver}
 import com.selfdualbrain.disruption.DisruptionModel
-import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelays, NetworkModel, SymmetricLatencyBandwidthGraphNetwork}
+import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth, NetworkModel, SymmetricLatencyBandwidthGraphNetwork}
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
+import com.selfdualbrain.simulator_engine.core.PhoukaEngine
 import com.selfdualbrain.simulator_engine.highway.{Highway, HighwayValidatorsFactory}
 import com.selfdualbrain.simulator_engine.leaders_seq.{LeadersSeq, LeadersSeqValidatorsFactory}
 import com.selfdualbrain.simulator_engine.ncb.{Ncb, NcbValidatorsFactory}
+import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.stats.{BlockchainSimulationStats, DefaultStatsProcessor}
 import com.selfdualbrain.transactions.{BlockPayloadBuilder, TransactionsStream}
 
@@ -153,7 +155,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   private def buildNetworkModel(): NetworkModel[BlockchainNode, Brick] = config.networkModel match {
     case NetworkConfig.HomogenousNetworkWithRandomDelays(delaysConfig) =>
       val delaysGenerator = LongSequence.Generator.fromConfig(delaysConfig, randomGenerator)
-      new HomogenousNetworkWithRandomDelays[BlockchainNode, Brick](delaysGenerator)
+      new HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth[BlockchainNode, Brick](delaysGenerator)
     case NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(latencyAverageCfg, latencyMinMaxSpreadCfg, bandwidthCfg) =>
       val latencyAverageGen = LongSequence.Generator.fromConfig(latencyAverageCfg, randomGenerator)
       val latencyMinMaxSpreadGen = LongSequence.Generator.fromConfig(latencyMinMaxSpreadCfg, randomGenerator)

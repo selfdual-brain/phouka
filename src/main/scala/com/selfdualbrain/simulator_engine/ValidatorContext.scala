@@ -10,6 +10,15 @@ import scala.util.Random
   *
   * Implementation remark: every agent gets own instance of ValidatorContext.
   * We say "nested agent" to refer to the agent using given context instance.
+  *
+  * Implementation remark:
+  * The whole engine is implemented with agents thought to be "sequential computers". I.e. we say nothing about actual parallelism of of agent's
+  * business logic, but "from the outside" the are seen as machines that live in "real sequential time". When an agent registers x of processing time
+  * while processing event e1, this is processed by the engine as "blocking-busy", i.e. any event later than e1 will be consumed later than e1.time + x.
+  * In case one wants to simulate multi-threaded agent logic, the way to go is avoid calls to registerProcessingTime() and instead calculate respective timepoints
+  * while calling broadcast(), addPrivateEvent() and addOutputEvent() (instead of just using context.time() there).
+  * In other words - current architecture of the engine does not help much in implementing simulated concurrency inside agents, but it does not stop the developer
+  * of introducing the simulated concurrency anyway.
   */
 trait ValidatorContext {
 
@@ -72,22 +81,6 @@ trait ValidatorContext {
     * Conceptually - agents should focus on business logic, while simulating time flow is the job of simulation engine.
     */
   def time(): SimTimepoint
-
-  /**
-    * Register time spent on internal processing.
-    * This is how we model processing costs of operations.
-    * It is up to the agent to "know" how much time stuff takes.
-    *
-    * Caution: the whole engine is implemented with agents thought to be "sequential computers". I.e. we say nothing about actual parallelism of of agent's
-    * business logic, but "from the outside" the are seen as machines that live in "real sequential time". When an agent registers x of processing time
-    * while processing event e1, this is processed by the engine as "blocking-busy", i.e. any event later than e1 will be consumed later than e1.time + x.
-    * In case one wants to simulate multi-threaded agent logic, the way to go is avoid calls to registerProcessingTime() and instead calculate respective timepoints
-    * while calling broadcast(), addPrivateEvent() and addOutputEvent() (instead of just using context.time() there).
-    * In other words - current architecture of the engine does not help much in implementing simulated concurrency inside agents, but it does not stop the developer
-    * of introducing the simulated concurrency anyway.
-    */
-  @deprecated
-  def registerProcessingTime(t: TimeDelta): Unit
 
   /**
     * This is the same as registerProcessingTime(), just using different units.

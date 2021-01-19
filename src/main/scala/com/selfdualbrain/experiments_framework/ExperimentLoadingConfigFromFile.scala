@@ -1,8 +1,8 @@
 package com.selfdualbrain.experiments_framework
 
-import java.io.File
+import com.selfdualbrain.simulator_engine.config.ExperimentConfig
 
-import com.selfdualbrain.simulator_engine.ExperimentConfig
+import java.io.File
 
 /**
   * Base class for experiments that load experiment setup from a file.

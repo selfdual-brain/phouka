@@ -8,10 +8,13 @@ import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
   * Rather, some probabilistic distribution of random delays is applied to all messages.
   *
   * @param networkDelaysGenerator random delays generator (in microseconds)
+  * @param bandwidth nodes download bandwidth (in bits/sec)
   */
-class HomogenousNetworkWithRandomDelays[A,M](networkDelaysGenerator: LongSequence.Generator) extends NetworkModel[A,M] {
+class HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth[A,M](networkDelaysGenerator: LongSequence.Generator, downloadBandwidth: Double) extends NetworkModel[A,M] {
 
   override def calculateMsgDelay(msg: M, sender: A, destination: A, sendingTime: SimTimepoint): TimeDelta = networkDelaysGenerator.next()
+
+  override def bandwidth(agent: A): Double = downloadBandwidth
 
   override def grow(newNumberOfNodes: Int): Unit = {
     //do nothing

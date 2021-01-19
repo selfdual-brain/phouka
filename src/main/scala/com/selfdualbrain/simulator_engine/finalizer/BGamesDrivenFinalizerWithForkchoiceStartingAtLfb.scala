@@ -1,9 +1,9 @@
-package com.selfdualbrain.simulator_engine
+package com.selfdualbrain.simulator_engine.finalizer
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{ACC, _}
 import com.selfdualbrain.data_structures.{CloningSupport, LayeredMap}
-import com.selfdualbrain.simulator_engine.BGamesDrivenFinalizerWithForkchoiceStartingAtLfb._
+import com.selfdualbrain.simulator_engine.Finalizer
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -30,6 +30,10 @@ object BGamesDrivenFinalizerWithForkchoiceStartingAtLfb {
     var brick2nextBrickInTheSwimlane: LayeredMap[Brick,Brick] = _
   }
 }
+
+import com.selfdualbrain.simulator_engine.finalizer.BGamesDrivenFinalizerWithForkchoiceStartingAtLfb.Config
+import com.selfdualbrain.simulator_engine.finalizer.BGamesDrivenFinalizerWithForkchoiceStartingAtLfb.State
+
 
 /**
   * This implementation is based on we idea that we are happy to sacrifice some extra memory and to play with some mutable state around,

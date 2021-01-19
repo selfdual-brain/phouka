@@ -1,12 +1,12 @@
-package com.selfdualbrain.simulator_engine
+package com.selfdualbrain.simulator_engine.config
 
-import java.io.File
 import com.selfdualbrain.blockchain_structure.BlockchainNode
 import com.selfdualbrain.config_files_support.ConfigParsingSupport
 import com.selfdualbrain.disruption.FttApproxMode
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
 
+import java.io.File
 import scala.util.Random
 
 /**

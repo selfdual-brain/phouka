@@ -131,7 +131,7 @@ class DefaultStatsProcessor(
               case Some(p) => node2stats(p.address).createDetachedCopy(agent.get)
             }
 
-          case EventPayload.BroadcastBrick(brick) =>
+          case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
             brick match {
               case block: AbstractNormalBlock =>
                 publishedBlocksCounter += 1
