@@ -8,9 +8,9 @@ import scala.util.Random
 
 private[core] class ValidatorContextImpl(engine: PhoukaEngine, nodeId: BlockchainNode, initialTimepointOfLocalClock: SimTimepoint) extends ValidatorContext {
   private var localClock: SimTimepoint = initialTimepointOfLocalClock
-  private[PhoukaEngine] var validatorInstance: Validator = _
+  private[core] var validatorInstance: Validator = _
 
-  private[PhoukaEngine] def moveForwardLocalClockToAtLeast(timepoint: SimTimepoint): Unit = {
+  private[core] def moveForwardLocalClockToAtLeast(timepoint: SimTimepoint): Unit = {
     localClock = SimTimepoint.max(timepoint, localClock)
   }
 

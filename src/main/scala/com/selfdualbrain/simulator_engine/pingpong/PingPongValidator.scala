@@ -64,7 +64,16 @@ class PingPongValidator(
   }
 
   override def clone(blockchainNode: BlockchainNode, context: ValidatorContext): Validator = {
-    val result = new PingPongValidator(blockchainNode, validatorId, context, numberOfValidators, maxNumberOfNodes, barrelProposeDelaysGen, barrelSizesGen)
+    val result = new PingPongValidator(
+      blockchainNode,
+      validatorId,
+      context,
+      numberOfValidators,
+      maxNumberOfNodes,
+      barrelProposeDelaysGen,
+      barrelSizesGen,
+      numberOfBarrelsToBePublished
+    )
 
     for ((pos, barrel) <- mySwimlane)
       result.mySwimlane(pos) = barrel

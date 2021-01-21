@@ -8,10 +8,20 @@ class PingPongValidatorsFactory(
                                numberOfValidators: Int,
                                barrelsProposeDelaysGenerator: LongSequence.Generator,
                                barrelSizes: IntSequence.Generator,
-                               numberOfBarrelsToBePublished: Int
+                               numberOfBarrelsToBePublished: Int,
+                               maxNumberOfNodes: Int
                                ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator = {
-    return new PingPongValidator(node, vid, context, numberOfValidators, barrelsProposeDelaysGenerator, barrelSizes, numberOfBarrelsToBePublished)
+    return new PingPongValidator(
+      node,
+      vid,
+      context,
+      numberOfValidators,
+      maxNumberOfNodes,
+      barrelsProposeDelaysGenerator,
+      barrelSizes,
+      numberOfBarrelsToBePublished
+    )
   }
 }
