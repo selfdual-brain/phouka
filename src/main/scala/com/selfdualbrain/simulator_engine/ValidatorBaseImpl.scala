@@ -5,6 +5,7 @@ import com.selfdualbrain.blockchain_structure.{ACC, _}
 import com.selfdualbrain.data_structures.{CloningSupport, MsgBuffer, MsgBufferImpl}
 import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness.LongSequence
+import com.selfdualbrain.simulator_engine.core.DownloadsBufferItem
 import com.selfdualbrain.simulator_engine.finalizer.BGamesDrivenFinalizerWithForkchoiceStartingAtLfb
 import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.transactions.BlockPayloadBuilder
@@ -179,6 +180,14 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
         state.messagesBuffer.addMessage(msg, missingDependencies)
       }
     }
+  }
+
+  override def prioritizeDownloads(left: DownloadsBufferItem, right: DownloadsBufferItem): Int = {
+    val a = left.brick.timepoint.compare(right.brick.timepoint)
+    return if (a != 0)
+      a
+    else
+      left.arrival.compare(right.arrival)
   }
 
   //#################### HANDLING OF INCOMING MESSAGES ############################

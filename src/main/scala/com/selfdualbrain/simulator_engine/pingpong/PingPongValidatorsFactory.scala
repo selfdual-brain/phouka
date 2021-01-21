@@ -7,10 +7,11 @@ import com.selfdualbrain.simulator_engine.{Validator, ValidatorContext, Validato
 class PingPongValidatorsFactory(
                                numberOfValidators: Int,
                                barrelsProposeDelaysGenerator: LongSequence.Generator,
-                               barrelSizes: IntSequence.Generator
+                               barrelSizes: IntSequence.Generator,
+                               numberOfBarrelsToBePublished: Int
                                ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator = {
-    return new PingPongValidator(node, vid, context, numberOfValidators, barrelsProposeDelaysGenerator, barrelSizes)
+    return new PingPongValidator(node, vid, context, numberOfValidators, barrelsProposeDelaysGenerator, barrelSizes, numberOfBarrelsToBePublished)
   }
 }

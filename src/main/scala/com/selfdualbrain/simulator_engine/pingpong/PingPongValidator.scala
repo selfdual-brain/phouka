@@ -13,7 +13,8 @@ class PingPongValidator(
                          numberOfValidators: Int,
                          maxNumberOfNodes: Int,
                          barrelProposeDelaysGen: LongSequence.Generator,
-                         barrelSizesGen: IntSequence.Generator
+                         barrelSizesGen: IntSequence.Generator,
+                         numberOfBarrelsToBePublished: Int
                        ) extends Validator {
 
   private[pingpong] val mySwimlane = new FastMapOnIntInterval[Barrel](1000)
@@ -52,6 +53,9 @@ class PingPongValidator(
     myFirstAvailablePositionInSwimlane += 1
     myLastPublishedBarrel = Some(newBarrel)
     context.broadcast(context.time(), newBarrel)
+
+    if (numberOfBarrelsPublished < numberOfBarrelsToBePublished)
+      scheduleNextWakeup()
   }
 
   protected def scheduleNextWakeup(): Unit = {
@@ -79,9 +83,9 @@ class PingPongValidator(
     return result
   }
 
-  def numberOfBarrelsPublished(): Int = mySwimlane.size
+  def numberOfBarrelsPublished: Int = mySwimlane.size
 
-  def sizeOfBarrelsPublished(): Long = myBarrelsTotalSize
+  def sizeOfBarrelsPublished: Long = myBarrelsTotalSize
 
   def numberOfBarrelsReceivedFrom(vid: Int): Int = swimlanes(vid).size
 

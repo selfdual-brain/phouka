@@ -3,7 +3,7 @@ package com.selfdualbrain.simulator_engine
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.Event
-import com.selfdualbrain.simulator_engine.core.MsgReceivedBySkeletonHost
+import com.selfdualbrain.simulator_engine.core.DownloadsBufferItem
 import com.selfdualbrain.time.TimeDelta
 
 sealed abstract class EventPayload {
@@ -35,7 +35,7 @@ object EventPayload {
     override val filteringTag: BlockdagVertexId = EventTag.MSG_RECEIVED_BY_LOCAL_DOWNLOAD_SERVER
   }
 
-  case class DownloadCheckpoint(download: MsgReceivedBySkeletonHost) extends EventPayload {
+  case class DownloadCheckpoint(download: DownloadsBufferItem) extends EventPayload {
     override val filteringTag: BlockdagVertexId = EventTag.DOWNLOAD_CHECKPOINT
   }
 

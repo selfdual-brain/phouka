@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.pingpong
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, BlockdagVertexId, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{AbstractGenesis, BlockchainNode, BlockdagVertexId, Brick, ValidatorId}
 import com.selfdualbrain.time.SimTimepoint
 
 object PingPong {
@@ -18,7 +18,10 @@ object PingPong {
                   ) extends Brick {
 
     override def justifications: Iterable[Brick] = Iterable.empty
+  }
 
+  case object Genesis extends AbstractGenesis {
+    override def id: BlockdagVertexId = 0
   }
 
 }

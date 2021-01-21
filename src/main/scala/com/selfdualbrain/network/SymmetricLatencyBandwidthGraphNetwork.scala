@@ -9,7 +9,9 @@ import scala.util.Random
 
 /**
   * Idealised model of a network, where:
-  * 1. Node connections are represented as explicit graph. For every edge, latency and bandwidth are randomly selected at simulation start.
+  * 1. Node connections are represented as explicit graph. For every edge we pick:
+  *     - random bandwidth value
+  *     - randomly selected gaussian distribution of latencies
   * 2. Additionally, there is a download bandwidth limit defined for each node.
   *
   * Technically our approach is:

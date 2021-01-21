@@ -15,7 +15,6 @@ import scala.collection.mutable.ArrayBuffer
   * We basically just keep all the "per-agent" stuff here, so it is not scattered around the engine.
   *
   * @param desQueue DES events queue shared within the engine
-  * @param downloadsPriorityStrategy downloads priority to be used by this node
   * @param nodeId id of this node
   * @param validatorId validator id that this node is using at the consensus protocol level
   * @param validatorInstance this is what stands as "an agent" at the SimulationEngine level of abstraction
@@ -23,15 +22,14 @@ import scala.collection.mutable.ArrayBuffer
   * @param downloadBandwidth download bandwidth (in bits/sec) this validator is using
   */
 private[core] class NodeBox(
-               desQueue: SimEventsQueue[BlockchainNode, EventPayload],
-               val downloadsPriorityStrategy: Ordering[MsgReceivedBySkeletonHost],
-               val nodeId: BlockchainNode,
-               val validatorId: ValidatorId,
-               val validatorInstance: Validator,
-               val context: ValidatorContextImpl,
-               val downloadBandwidth: Double) {
+                             desQueue: SimEventsQueue[BlockchainNode, EventPayload],
+                             val nodeId: BlockchainNode,
+                             val validatorId: ValidatorId,
+                             val validatorInstance: Validator,
+                             val context: ValidatorContextImpl,
+                             val downloadBandwidth: Double) {
 
-  private class Download(val file: MsgReceivedBySkeletonHost) {
+  private class Download(val file: DownloadsBufferItem) {
     var checkpointTime: SimTimepoint = SimTimepoint.zero //last pause/resume timepoint
     var checkpointBytesTransmittedSoFar: Int = 0 //transmitted bytes counter at last pause/resume
 
@@ -65,10 +63,17 @@ private[core] class NodeBox(
   @deprecated
   var receivedBricksBuffer = new ArrayBuffer[Brick]
 
+  //we prioritize downloads according to strategy that is defined at the level of concrete implementation of validator
+  //possibly this can get quite complex, as the validator can utilize its equivocators registry or analyze its messages buffer
+  //to apply non-trivial optimizations here
+  val downloadsPriorityStrategy: Ordering[DownloadsBufferItem] = new Ordering[DownloadsBufferItem] {
+    override def compare(x: DownloadsBufferItem, y: DownloadsBufferItem): ValidatorId = validatorInstance.prioritizeDownloads(x, y)
+  }
+
   //blockchain node-2-node protocol messages that are already received by "local download server"
   //and so are ready to download by the node
   //(this is core part of how we model node download bandwidth constraints)
-  val downloadsBuffer = new mutable.PriorityQueue[MsgReceivedBySkeletonHost]()(downloadsPriorityStrategy)
+  val downloadsBuffer = new mutable.PriorityQueue[DownloadsBufferItem]()(downloadsPriorityStrategy)
 
   //the counter of time the virtual processor of this node was busy
   var totalProcessingTime: TimeDelta = 0L
@@ -103,7 +108,7 @@ private[core] class NodeBox(
 
   def startNextDownloadIfQueueIsNotEmpty(): Unit = {
     if (downloadsBuffer.nonEmpty) {
-      val downloadCandidate: MsgReceivedBySkeletonHost = downloadsBuffer.dequeue()
+      val downloadCandidate: DownloadsBufferItem = downloadsBuffer.dequeue()
       val download: Download = new Download(downloadCandidate)
       download.checkpointTime = context.time()
       onGoingDownload = Some(download)

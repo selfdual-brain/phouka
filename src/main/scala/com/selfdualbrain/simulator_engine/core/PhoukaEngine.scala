@@ -36,7 +36,7 @@ class PhoukaEngine(
                     disruptionModel: DisruptionModel,
                     networkModel: NetworkModel[BlockchainNode, Brick],
                     val genesis: AbstractGenesis,
-                    val downloadsPriorityStrategy: Ordering[MsgReceivedBySkeletonHost]
+                    verboseMode: Boolean //verbose mode ON causes publishing ALL events (i.e. including internal engine events that are normally hidden)
                 ) extends BlockchainSimulationEngine {
 
   private val log = LoggerFactory.getLogger("** sim-engine")
@@ -138,10 +138,13 @@ class PhoukaEngine(
               EMIT_EVENT //semantic events are never masked, but also no extra processing of them within the engine is needed, because they are just "output"
           }
 
-          eventMaskingDecision match {
-            case EMIT_EVENT => Some(event)
-            case MASK_EVENT => None
-          }
+          if (verboseMode)
+            Some(event)
+          else
+            eventMaskingDecision match {
+              case EMIT_EVENT => Some(event)
+              case MASK_EVENT => None
+            }
         }
     }
   }
@@ -235,7 +238,6 @@ class PhoukaEngine(
 
       case EventPayload.BlockchainProtocolMsgReceivedBySkeletonHost(sender, brick) =>
         box.downloadsBuffer += brick
-
 
       case EventPayload.NetworkDisruptionEnd(disruptionEventId) =>
         if (box.networkOutageGoingToBeFixedAt <= timepoint) {

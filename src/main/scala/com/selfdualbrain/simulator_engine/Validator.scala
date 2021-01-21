@@ -1,6 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.simulator_engine.core.DownloadsBufferItem
 
 /**
   * Defines features of an agent ("validator") to be compatible with PhoukaEngine.
@@ -31,6 +32,17 @@ trait Validator {
     * Computing power of this node [gas/second].
     */
   def computingPower: Long
+
+  /**
+    * Compares two download buffer items and decides which to pick as first for downloading.
+    * Caution: this relates to the networking model we use in the simulator. Every validator
+    * carries downloads sequentially, utilizing a priority queue.
+    *
+    * @param left first download item to be compared
+    * @param right second download item to be compared
+    * @return -1 if left should go first; 1 if right should go first; 0 - use the default (decided at engine level)
+    */
+  def prioritizeDownloads(left: DownloadsBufferItem, right: DownloadsBufferItem): Int
 
   /**
     * Called by the engine at the beginning of the simulation.

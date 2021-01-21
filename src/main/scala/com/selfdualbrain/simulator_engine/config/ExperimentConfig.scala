@@ -34,8 +34,25 @@ case class ExperimentConfig(
 
 sealed abstract class NetworkConfig
 object NetworkConfig extends ConfigParsingSupport {
-  case class HomogenousNetworkWithRandomDelays(delaysGenerator: LongSequence.Config) extends NetworkConfig
-  case class SymmetricLatencyBandwidthGraphNetwork(latencyAverageGen: LongSequence.Config, latencyMinMaxSpread: LongSequence.Config, bandwidthGen: LongSequence.Config) extends NetworkConfig
+
+  //At internet skeleton level there are just random delays derived from given probabilistic distribution.
+  //At per-node-download queue the same download bandwidth is used by all nodes.
+  case class HomogenousNetworkWithRandomDelays(delaysGenerator: LongSequence.Config, downloadBandwidth: Double) extends NetworkConfig
+
+  //At internet skeleton level there is explicit (full) graph of connections. For every edge, latency is randomly selected using
+  //gaussian distribution, however every edge is using different gaussian distribution;
+  //because to define a gaussian distribution you need 2 numbers: average and standard deviation, we proceed as follows:
+  //1. For every edge we randomly pick the desired value AV (derived from connGraphLatencyAverageGenCfg-based random generator).
+  //2. The corresponding standard deviation will be connGraphLatencyStdDeviationNormalized * AV.
+  //3. The effective gaussian distribution to be used for given edge is Gaussian(AV, connGraphLatencyStdDeviationNormalized * AV).
+  //4. Bandwidth for the edge is taken from connGraphBandwidthGenCfg-based random generator.
+  //5. Bandwidth for the download queue at node N is taken from downloadQueueBandwidthGenCfg-based random generator.
+  case class SymmetricLatencyBandwidthGraphNetwork(
+                                                    connGraphLatencyAverageGenCfg: LongSequence.Config,
+                                                    connGraphLatencyStdDeviationNormalized: Double,
+                                                    connGraphBandwidthGenCfg: LongSequence.Config,
+                                                    downloadQueueBandwidthGenCfg: LongSequence.Config
+                                                  ) extends NetworkConfig
 }
 
 sealed abstract class TransactionsStreamConfig
@@ -85,6 +102,7 @@ object DisruptionModelConfig {
   case class AsteroidImpact(disasterTimepoint: SimTimepoint, fttApproxMode: FttApproxMode) extends DisruptionModelConfig
   case class BifurcationsRainfall(disasterTimepoint: SimTimepoint, fttApproxMode: FttApproxMode) extends DisruptionModelConfig
   case class ExplicitDisruptionsSchedule(events: Seq[DisruptionEventDesc]) extends DisruptionModelConfig
+  //frequencies using [events/hour] units
   case class FixedFrequencies(bifurcationsFreq: Option[Double], crashesFreq: Option[Double],outagesFreq: Option[Double], outageLengthMinMax: Option[(TimeDelta, TimeDelta)]) extends DisruptionModelConfig
   case class SingleBifurcationBomb(targetBlockchainNode: BlockchainNode, disasterTimepoint: SimTimepoint, numberOfClones: Int) extends DisruptionModelConfig
 }

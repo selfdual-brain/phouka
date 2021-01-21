@@ -90,6 +90,7 @@ object SimTimepoint {
 }
 
 object TimeDelta {
+  def micros(n: Long): TimeDelta = n
   def millis(n: Long): TimeDelta = n * 1000L
   def seconds(n: Long): TimeDelta = n * 1000000L
   def minutes(n: Long): TimeDelta = n * 1000000L * 60L
