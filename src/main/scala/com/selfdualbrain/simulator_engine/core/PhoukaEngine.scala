@@ -7,6 +7,7 @@ import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.NetworkModel
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.util.LineUnreachable
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.ArraySeq
@@ -64,7 +65,7 @@ class PhoukaEngine(
     val newValidator = validatorsFactory.create(BlockchainNode(i), i, context)
     context.validatorInstance = newValidator
     nodeId2validatorId(i) = i
-    val newBox = new NodeBox(this, nodeId, i, newValidator, context, networkModel.bandwidth(nodeId))
+    val newBox = new NodeBox(desQueue, nodeId, i, newValidator, context, networkModel.bandwidth(nodeId))
     nodes.append(newBox)
     context.moveForwardLocalClockToAtLeast(desQueue.currentTime)
     desQueue.addEngineEvent(context.time(), Some(nodeId), EventPayload.NewAgentSpawned(i, progenitor = None))
@@ -111,13 +112,18 @@ class PhoukaEngine(
 
   //###################################### PRIVATE ########################################
 
+  /**
+    * All events are scheduled via DES queue. This includes also some "technical" events that the engine is using as part of internal machinery.
+    * From the outside, the engine is just a stream of events. If "verbose mode" is enabled, events emitted by the engine are 1-1 with events in the DES queue.
+    * If "verbose mode" is disabled, we hide some events and also we replace some events by other events "on the fly", i.e. just before they are emitted from the engine.
+    * In effect the stream of events coming out of the engine makes "more sense" by hiding internal tricks which are not that much interesting for the client code.
+    */
   sealed abstract class EventMaskingDecision {}
   object EventMaskingDecision {
-    case object EMIT_EVENT extends EventMaskingDecision
-    case object MASK_EVENT extends EventMaskingDecision
+    case object Emit extends EventMaskingDecision
+    case object Mask extends EventMaskingDecision
+    case class Transform(translation: Event[BlockchainNode, EventPayload] => Event[BlockchainNode, EventPayload]) extends EventMaskingDecision
   }
-
-  import EventMaskingDecision._
 
   //returns None if subsequent event is "masked" - i.e. should not be emitted outside the engine
   private def processNextEventFromQueue(): Option[Event[BlockchainNode,EventPayload]] = {
@@ -130,81 +136,85 @@ class PhoukaEngine(
           None //dead node is supposed to be silent; hence after the crash we "magically" delete all events scheduled for this node
         else {
           val eventMaskingDecision: EventMaskingDecision = event match {
-            case Event.External(id, timepoint, destination, payload) => handleExternal(box, id, timepoint, destination, payload)
-            case Event.Transport(id, timepoint, source, destination, payload) => handleTransport(box, id, timepoint, source, destination, payload.asInstanceOf[EventPayload])
-            case Event.Loopback(id, timepoint, agent, payload) => handleLoopback(box, id, timepoint, agent, payload)
-            case Event.Engine(id, timepoint, agent, payload) => handleEngine(box, id, timepoint, agent, payload)
+            case Event.External(id, timepoint, destination, payload) => handleExternalEvent(box, id, timepoint, destination, payload)
+//            case Event.Transport(id, timepoint, source, destination, payload) => handleTransportEvent(box, id, timepoint, source, destination, payload.asInstanceOf[EventPayload])
+            case Event.Loopback(id, timepoint, agent, payload) => handleLoopbackEvent(box, id, timepoint, agent, payload)
+            case Event.Engine(id, timepoint, agent, payload) => handleEngineEvent(box, id, timepoint, agent, payload)
             case Event.Semantic(id, timepoint, source, payload) =>
-              EMIT_EVENT //semantic events are never masked, but also no extra processing of them within the engine is needed, because they are just "output"
+              EventMaskingDecision.Emit //semantic events are never masked, but also no extra processing of them within the engine is needed, because they are just "output"
+            case other => throw new LineUnreachable
           }
 
           if (verboseMode)
             Some(event)
           else
             eventMaskingDecision match {
-              case EMIT_EVENT => Some(event)
-              case MASK_EVENT => None
+              case EventMaskingDecision.Emit => Some(event)
+              case EventMaskingDecision.Mask => None
+              case EventMaskingDecision.Transform(translation) => Some(translation(event))
             }
         }
     }
   }
 
-  protected def handleTransport(box: NodeBox, eventId: Long, timepoint: SimTimepoint, source: BlockchainNode, destination: BlockchainNode, payload: EventPayload): EventMaskingDecision =
-    payload match {
-      case EventPayload.BrickDelivered(brick) =>
-        if (box.status == NodeStatus.NETWORK_OUTAGE) {
-          box.receivedBricksBuffer.append(brick)
-          MASK_EVENT
-        } else {
-          performBrickConsumption(box, eventId, brick, timepoint)
-          EMIT_EVENT
-        }
-      case other =>
-        throw new RuntimeException(s"not supported: $other")
-    }
+//  @deprecated
+//  protected def handleTransportEvent(box: NodeBox, eventId: Long, timepoint: SimTimepoint, source: BlockchainNode, destination: BlockchainNode, payload: EventPayload): EventMaskingDecision =
+//    payload match {
+//      case EventPayload.BrickDelivered(brick) =>
+//        if (box.status == NodeStatus.NETWORK_OUTAGE) {
+//          box.receivedBricksBuffer.append(brick)
+//          EventMaskingDecision.Mask
+//        } else {
+//          performBrickConsumption(box, eventId, brick, timepoint)
+//          EventMaskingDecision.Emit
+//        }
+//      case other =>
+//        throw new RuntimeException(s"not supported: $other")
+//    }
 
-  protected def handleExternal(box: NodeBox, eventId: Long, timepoint: SimTimepoint, destination: BlockchainNode, payload: EventPayload): EventMaskingDecision = {
+  protected def handleExternalEvent(box: NodeBox, eventId: Long, timepoint: SimTimepoint, destination: BlockchainNode, payload: EventPayload): EventMaskingDecision = {
     payload match {
       case EventPayload.Bifurcation(numberOfClones) =>
-        for (i <- 1 to numberOfClones) {
-          lastNodeIdAllocated += 1
-          val newNodeId = BlockchainNode(lastNodeIdAllocated)
-          val context = new ValidatorContextImpl(this, newNodeId, box.context.time())
-          val newValidator = box.validatorInstance.clone(newNodeId, context)
-          context.validatorInstance = newValidator
-          val newBox = new NodeBox(this, newNodeId, box.validatorId, newValidator, context, networkModel.bandwidth(newNodeId))
-          nodes.append(newBox)
-          nodeId2validatorId(newValidator.blockchainNodeId.address) = newValidator.validatorId
-          clone2progenitor += newNodeId -> destination
-          desQueue.addEngineEvent(
-            timepoint = context.time(),
-            agent = Some(newNodeId),
-            payload = EventPayload.NewAgentSpawned(validatorId = box.validatorId, progenitor = Some(destination))
-          )
+        //to avoid extra complexity we just ignore a bifurcation event when it happens during network outage
+        if (box.status == NodeStatus.NETWORK_OUTAGE)
+          EventMaskingDecision.Mask
+        else {
+          for (i <- 1 to numberOfClones) {
+            lastNodeIdAllocated += 1
+            val newNodeId = BlockchainNode(lastNodeIdAllocated)
+            val context = new ValidatorContextImpl(this, newNodeId, box.context.time())
+            val newValidator = box.validatorInstance.clone(newNodeId, context)
+            context.validatorInstance = newValidator
+            val newBox = new NodeBox(desQueue, newNodeId, box.validatorId, newValidator, context, networkModel.bandwidth(newNodeId))
+            nodes.append(newBox)
+            nodeId2validatorId(newValidator.blockchainNodeId.address) = newValidator.validatorId
+            clone2progenitor += newNodeId -> destination
+            desQueue.addEngineEvent(
+              timepoint = context.time(),
+              agent = Some(newNodeId),
+              payload = EventPayload.NewAgentSpawned(validatorId = box.validatorId, progenitor = Some(destination))
+            )
+          }
+          EventMaskingDecision.Emit
         }
-        EMIT_EVENT
 
       case EventPayload.NodeCrash =>
         box.status = NodeStatus.CRASHED
-        EMIT_EVENT
+        EventMaskingDecision.Emit
 
       case EventPayload.NetworkDisruptionBegin(period) =>
-        if (box.status == NodeStatus.NORMAL)
-          desQueue.addOutputEvent(timepoint, box.nodeId, EventPayload.NetworkConnectionLost)
+        box.outageLevel
         box.status = NodeStatus.NETWORK_OUTAGE
         val end: SimTimepoint = timepoint + period
-        if (end > box.networkOutageGoingToBeFixedAt) {
-          box.networkOutageGoingToBeFixedAt = end
-          desQueue.addLoopbackEvent(end, box.nodeId, EventPayload.NetworkDisruptionEnd(eventId))
-        }
-        EMIT_EVENT
+        desQueue.addEngineEvent(end, Some(box.nodeId), EventPayload.NetworkDisruptionEnd(eventId))
+        EventMaskingDecision.Emit
 
       case other =>
         throw new RuntimeException(s"not supported: $other")
     }
   }
 
-  protected def handleLoopback(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: BlockchainNode, payload: EventPayload): EventMaskingDecision = {
+  protected def handleLoopbackEvent(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: BlockchainNode, payload: EventPayload): EventMaskingDecision = {
     payload match {
       case EventPayload.WakeUp(strategySpecificMarker) =>
         box.context.moveForwardLocalClockToAtLeast(timepoint)
@@ -212,32 +222,60 @@ class PhoukaEngine(
         box executeAndRecordProcessingTimeConsumption {
           box.validatorInstance.onWakeUp(strategySpecificMarker)
         }
-        EMIT_EVENT
+        EventMaskingDecision.Emit
       case other =>
         throw new RuntimeException(s"not supported: $other")
     }
   }
 
-  protected def handleEngine(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: Option[BlockchainNode], payload: EventPayload): EventMaskingDecision = {
+  protected def handleEngineEvent(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: Option[BlockchainNode], payload: EventPayload): EventMaskingDecision = {
     payload match {
       case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
-        EMIT_EVENT
+        EventMaskingDecision.Emit
 
       case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
         box.status match {
-          case NodeStatus.CRASHED =>
-            //do nothing
-            MASK_EVENT
+          case NodeStatus.CRASHED => throw new LineUnreachable
           case NodeStatus.NETWORK_OUTAGE =>
             box.broadcastBuffer += brick
-            MASK_EVENT
+            EventMaskingDecision.Mask
           case NodeStatus.NORMAL =>
             executeBlockchainProtocolMsgBroadcast(agent.get, timepoint, brick)
-            EMIT_EVENT
+            EventMaskingDecision.Emit
         }
 
       case EventPayload.BlockchainProtocolMsgReceivedBySkeletonHost(sender, brick) =>
         box.downloadsBuffer += brick
+        box.startNextDownloadIfPossible()
+        EventMaskingDecision.Mask
+
+      case EventPayload.DownloadCheckpoint =>
+        box.status match {
+          case NodeStatus.CRASHED => throw new LineUnreachable
+          case NodeStatus.NETWORK_OUTAGE =>
+            //ignore
+            EventMaskingDecision.Mask
+          case NodeStatus.NORMAL =>
+            box.downloadProgressGaugeHolder match {
+              case None => throw new LineUnreachable //we schedule checkpoints only when there is on-going download
+              case Some(downloadProgressGauge) =>
+                //we check if the download is completed now
+                //if yes - the delivery event can be emitted and we can start subsequent download
+                //otherwise - we calculate new expected end-of-this-download and we schedule next checkpoint accordingly
+                if (downloadProgressGauge.isCompleted) {
+                  box.downloadProgressGaugeHolder = None
+                  box.startNextDownloadIfPossible()
+                  EventMaskingDecision.Transform(translation = {
+                    case Event.Engine(id, timepoint, agent, EventPayload.DownloadCheckpoint) =>
+                      Event.Transport(id, timepoint, source = downloadProgressGauge.sender, destination = box.nodeId, payload = EventPayload.BrickDelivered(downloadProgressGauge.file.brick))
+                  })
+                } else {
+                  downloadProgressGauge.updateCountersAssumingContinuousTransferSinceLastCheckpoint()
+                  box.scheduleNextDownloadCheckpoint()
+                  EventMaskingDecision.Mask
+                }
+            }
+        }
 
       case EventPayload.NetworkDisruptionEnd(disruptionEventId) =>
         if (box.networkOutageGoingToBeFixedAt <= timepoint) {
@@ -247,9 +285,9 @@ class PhoukaEngine(
             executeBlockchainProtocolMsgBroadcast(box.nodeId, timepoint, brick)
           for (brick <- box.receivedBricksBuffer)
             performBrickConsumption(box, eventId, brick, timepoint)
-          EMIT_EVENT
+          Emit
         } else
-          MASK_EVENT
+          Mask
     }
   }
 
@@ -269,8 +307,6 @@ class PhoukaEngine(
     lastBrickId += 1
     return lastBrickId
   }
-
-
 
   /**
     * Simulates transporting given brick over the network. The brick will be delivered to all nodes with the exception of sending node.

@@ -35,7 +35,7 @@ object EventPayload {
     override val filteringTag: BlockdagVertexId = EventTag.MSG_RECEIVED_BY_LOCAL_DOWNLOAD_SERVER
   }
 
-  case class DownloadCheckpoint(download: DownloadsBufferItem) extends EventPayload {
+  case object DownloadCheckpoint extends EventPayload {
     override val filteringTag: BlockdagVertexId = EventTag.DOWNLOAD_CHECKPOINT
   }
 
