@@ -33,7 +33,7 @@ private[core] class NodeBox(
   /**
     * Set of counters for handling a currently ongoing download.
     */
-  private class DownloadProgressGauge(val file: DownloadsBufferItem) {
+  class DownloadProgressGauge(val file: DownloadsBufferItem) {
     //last point in time when we updated the "bytes-transmitted-so-far" value
     private var checkpointTime: SimTimepoint = context.time()
     //bytes-transmitted-so-far (at last checkpoint)
@@ -126,13 +126,14 @@ private[core] class NodeBox(
   val downloadsBuffer = new mutable.PriorityQueue[DownloadsBufferItem]()(downloadsPriorityStrategy)
 
   //the counter of time the virtual processor of this node was busy
-  var totalProcessingTime: TimeDelta = 0L
+  private var totalProcessingTimeX: TimeDelta = 0L
 
   //counters for handling the on-going download
   var downloadProgressGaugeHolder: Option[DownloadProgressGauge] = None
 
-
   def status: NodeStatus = statusX
+
+  def totalProcessingTime: TimeDelta = totalProcessingTimeX
 
   /**
     * All event handlers executed by the node are called via this method, so we can count the amount of simulated time this node is consuming.
@@ -144,7 +145,7 @@ private[core] class NodeBox(
     val processingStartTimepoint: SimTimepoint = context.time()
     block
     val timeConsumedForProcessing: TimeDelta = context.time().timePassedSince(processingStartTimepoint)
-    totalProcessingTime += timeConsumedForProcessing
+    totalProcessingTimeX += timeConsumedForProcessing
   }
 
   def increaseOutageLevel(): Unit = {

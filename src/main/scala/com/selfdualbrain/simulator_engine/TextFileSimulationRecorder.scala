@@ -71,8 +71,8 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
             s"network disruption end (disruption $eventId)"
           case EventPayload.BlockchainProtocolMsgReceivedBySkeletonHost(sender, brick) =>
             s"brick $brick appended to download queue of $agent, sender = $sender"
-          case EventPayload.DownloadCheckpoint(download) =>
-            s"download checkpoint for brick ${download.brick.id} at $agent"
+          case EventPayload.DownloadCheckpoint =>
+            s"download checkpoint at $agent"
         }
 
       case Event.Semantic(id, timepoint, source, payload) =>

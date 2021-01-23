@@ -35,7 +35,8 @@ object ChartsSandbox {
   val config: ExperimentConfig = ExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
-      delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15))
+      delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15)),
+      downloadBandwidth = 50000
     ),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 300000, alpha = 1.2),
     numberOfValidators = 25,

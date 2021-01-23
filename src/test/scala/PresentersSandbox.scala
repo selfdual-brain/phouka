@@ -32,7 +32,8 @@ object PresentersSandbox {
   val config: ExperimentConfig = ExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
-      delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15))
+      delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15)),
+      downloadBandwidth = 100000
     ),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 100000, alpha = 1.3),
     numberOfValidators = 25,

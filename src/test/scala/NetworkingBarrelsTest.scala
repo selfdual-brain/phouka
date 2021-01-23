@@ -83,7 +83,13 @@ object NetworkingBarrelsTest {
   //================= BUILDING THE ENGINE ========================
   val barrelsProposeDelaysGen: LongSequence.Generator = LongSequence.Generator.fromConfig(barrelsProposeDelays, random)
   val barrelsSizesGen: IntSequence.Generator = IntSequence.Generator.fromConfig(barrelSizes, random)
-  val validatorsFactory: ValidatorsFactory = new PingPongValidatorsFactory(numberOfValidators, barrelsProposeDelaysGen, barrelsSizesGen, numberOfBarrelsToBePublishedByEachValidator)
+  val validatorsFactory: ValidatorsFactory = new PingPongValidatorsFactory(
+    numberOfValidators,
+    barrelsProposeDelaysGen,
+    barrelsSizesGen,
+    numberOfBarrelsToBePublishedByEachValidator,
+    20
+  )
   val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(
     config = disruptionModelCfg,
     random,

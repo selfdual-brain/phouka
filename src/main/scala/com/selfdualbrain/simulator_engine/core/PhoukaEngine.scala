@@ -199,15 +199,21 @@ class PhoukaEngine(
         }
 
       case EventPayload.NodeCrash =>
-        box.status = NodeStatus.CRASHED
+        box.crash()
         EventMaskingDecision.Emit
 
       case EventPayload.NetworkDisruptionBegin(period) =>
-        box.outageLevel
-        box.status = NodeStatus.NETWORK_OUTAGE
-        val end: SimTimepoint = timepoint + period
-        desQueue.addEngineEvent(end, Some(box.nodeId), EventPayload.NetworkDisruptionEnd(eventId))
-        EventMaskingDecision.Emit
+        val maskingDecision = if (box.status == NodeStatus.NORMAL)
+          EventMaskingDecision.Transform(_ => Event.Semantic(eventId, timepoint, box.nodeId, EventPayload.NetworkConnectionLost))
+        else
+          EventMaskingDecision.Mask
+        box.increaseOutageLevel()
+        desQueue.addEngineEvent(timepoint + period, Some(box.nodeId), EventPayload.NetworkDisruptionEnd(eventId))
+        box.downloadProgressGaugeHolder match {
+          case None => //ignore
+          case Some(gauge) => gauge.updateCountersAssumingContinuousTransferSinceLastCheckpoint()
+        }
+        maskingDecision
 
       case other =>
         throw new RuntimeException(s"not supported: $other")
@@ -245,8 +251,9 @@ class PhoukaEngine(
         }
 
       case EventPayload.BlockchainProtocolMsgReceivedBySkeletonHost(sender, brick) =>
-        box.downloadsBuffer += brick
-        box.startNextDownloadIfPossible()
+        box.downloadsBuffer += DownloadsBufferItem(sender, brick, timepoint)
+        if (box.status == NodeStatus.NORMAL)
+          box.startNextDownloadIfPossible()
         EventMaskingDecision.Mask
 
       case EventPayload.DownloadCheckpoint =>
@@ -278,16 +285,21 @@ class PhoukaEngine(
         }
 
       case EventPayload.NetworkDisruptionEnd(disruptionEventId) =>
-        if (box.networkOutageGoingToBeFixedAt <= timepoint) {
-          box.status = NodeStatus.NORMAL
-          desQueue.addOutputEvent(timepoint, box.nodeId, EventPayload.NetworkConnectionRestored)
+        box.decreaseOutageLevel()
+        if (box.status == NodeStatus.NORMAL) {
           for (brick <- box.broadcastBuffer)
             executeBlockchainProtocolMsgBroadcast(box.nodeId, timepoint, brick)
-          for (brick <- box.receivedBricksBuffer)
-            performBrickConsumption(box, eventId, brick, timepoint)
-          Emit
+          box.broadcastBuffer.clear()
+          box.downloadProgressGaugeHolder match {
+            case Some(gauge) =>
+              gauge.updateCountersAssumingZeroTransferSinceLastCheckpoint()
+              box.scheduleNextDownloadCheckpoint()
+            case None => box.startNextDownloadIfPossible()
+          }
+          EventMaskingDecision.Transform(_ => Event.Semantic(eventId, timepoint, box.nodeId, EventPayload.NetworkConnectionRestored))
         } else
-          Mask
+          EventMaskingDecision.Mask
+
     }
   }
 
