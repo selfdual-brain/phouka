@@ -112,6 +112,11 @@ class PhoukaEngine(
 
   override def computingPowerOf(node: BlockchainNode): TimeDelta = nodes(node.address).validatorInstance.computingPower
 
+  override def downloadBandwidthOf(node: BlockchainNode): Double = nodes(node.address).downloadBandwidth
+
+  //low-level access to validator instance is here for diagnostic purposes only
+  def validatorInstance(agentId: BlockchainNode): Validator = nodes(agentId.address).validatorInstance
+
   //###################################### PRIVATE ########################################
 
   /**
@@ -159,6 +164,7 @@ class PhoukaEngine(
   }
 
   protected def handleExternalEvent(box: NodeBox, eventId: Long, timepoint: SimTimepoint, destination: BlockchainNode, payload: EventPayload): EventMaskingDecision = {
+    box.context.moveForwardLocalClockToAtLeast(timepoint)
     payload match {
       case EventPayload.Bifurcation(numberOfClones) =>
         //to avoid additional complexity we just ignore a bifurcation event when it happens during network outage
@@ -213,9 +219,9 @@ class PhoukaEngine(
   }
 
   protected def handleLoopbackEvent(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: BlockchainNode, payload: EventPayload): EventMaskingDecision = {
+    box.context.moveForwardLocalClockToAtLeast(timepoint)
     payload match {
       case EventPayload.WakeUp(strategySpecificMarker) =>
-        box.context.moveForwardLocalClockToAtLeast(timepoint)
         desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedWakeUp(eventId, box.context.time() timePassedSince timepoint, strategySpecificMarker))
         box executeAndRecordProcessingTimeConsumption {
           box.validatorInstance.onWakeUp(strategySpecificMarker)
@@ -227,6 +233,7 @@ class PhoukaEngine(
   }
 
   protected def handleEngineEvent(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: Option[BlockchainNode], payload: EventPayload): EventMaskingDecision = {
+    box.context.moveForwardLocalClockToAtLeast(timepoint)
     payload match {
       case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
         EventMaskingDecision.Emit

@@ -69,7 +69,9 @@ private[core] class NodeBox(
 
     def estimatedCompletionTimepoint: SimTimepoint = {
       val bytesToBeTransferred: Int = math.max(0, this.size - checkpointBytesTransmittedSoFar)
-      val transferTime: TimeDelta = math.ceil(bytesToBeTransferred * 8 * 1000000 / downloadBandwidth).toLong
+      val bitsToBeTransferred: Long = bytesToBeTransferred * 8
+      val transferTimeAsSeconds: Double = bitsToBeTransferred.toDouble / downloadBandwidth
+      val transferTime: TimeDelta = math.ceil(transferTimeAsSeconds * 1000000).toLong + 1 //always adding 1 microsecond so to avoid additional download checkpoint caused by rounding errors
       return checkpointTime + transferTime
     }
   }

@@ -28,4 +28,7 @@ trait BlockchainSimulationEngine extends SimulationEngine[BlockchainNode, EventP
     */
   def computingPowerOf(node: BlockchainNode): Long
 
+  //in bits/sec
+  def downloadBandwidthOf(node: BlockchainNode): Double
+
 }

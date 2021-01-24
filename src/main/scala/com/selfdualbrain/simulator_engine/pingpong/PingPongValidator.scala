@@ -56,6 +56,7 @@ class PingPongValidator(
     myFirstAvailablePositionInSwimlane += 1
     myLastPublishedBarrel = Some(newBarrel)
     context.broadcast(context.time(), newBarrel)
+    myBarrelsTotalSize += newBarrel.binarySize
 
     if (numberOfBarrelsPublished < numberOfBarrelsToBePublished)
       scheduleNextWakeup()
@@ -97,10 +98,12 @@ class PingPongValidator(
 
   def numberOfBarrelsPublished: Int = mySwimlane.size
 
+  //in bytes
   def sizeOfBarrelsPublished: Long = myBarrelsTotalSize
 
   def numberOfBarrelsReceivedFrom(vid: Int): Int = swimlanes(vid).size
 
+  //in bytes
   def totalSizeOfBarrelsReceivedFrom(vid: Int): Long = perSenderBarrelsTotalSize(vid)
 
   //in bits/sec

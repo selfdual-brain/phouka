@@ -13,5 +13,5 @@ class BlockchainSimulationEngineChassis(engine: BlockchainSimulationEngine) exte
   override def validatorIdUsedBy(node: BlockchainNode): ValidatorId = engine.validatorIdUsedBy(node)
   override def progenitorOf(node: BlockchainNode): Option[BlockchainNode] = engine.progenitorOf(node)
   override def computingPowerOf(node: BlockchainNode): Long = engine.computingPowerOf(node)
-
+  override def downloadBandwidthOf(node: BlockchainNode): Double = engine.downloadBandwidthOf(node)
 }

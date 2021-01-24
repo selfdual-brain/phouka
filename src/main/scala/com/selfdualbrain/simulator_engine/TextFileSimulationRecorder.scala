@@ -26,12 +26,12 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
           recordEvent(step, event)
     }
 
-  private def recordEvent(step: Long, event: Event[A,EventPayload]): Unit = {
+  private def recordEvent(step: Long, event: Event[A, EventPayload]): Unit = {
     val loggingAgentId: String = event.loggingAgent match {
       case Some(id) => id.toString
       case None => "none"
     }
-    val prefix: String = s"$step:${event.timepoint.toString} [eid ${event.id}]: (validator $loggingAgentId) "
+    val prefix: String = s"$step:${event.timepoint.toString} [eid ${event.id}]: ($loggingAgentId) "
 
     val description: String = event match {
 
