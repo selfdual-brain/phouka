@@ -6,7 +6,7 @@ package com.selfdualbrain.time
   */
 case class SimTimepoint(micros: Long) extends AnyVal with Ordered[SimTimepoint] {
 
-  override def compare(that: SimTimepoint): Int = math.signum(micros - that.micros).toInt
+  override def compare(that: SimTimepoint): Int = micros.compareTo(that.micros)
 
   def +(delta: TimeDelta): SimTimepoint = SimTimepoint(micros + delta)
 

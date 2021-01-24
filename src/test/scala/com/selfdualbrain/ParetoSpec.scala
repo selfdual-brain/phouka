@@ -4,7 +4,7 @@ import com.selfdualbrain.randomness.LongSequence
 
 import scala.util.Random
 
-class ParetoTest extends BaseSpec {
+class ParetoSpec extends BaseSpec {
 
   "Pareto distribution" should "produce random stream with mean value close to expected" in {
     val random = new Random(42)

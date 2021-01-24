@@ -34,10 +34,10 @@ class FixedFrequencies(
   } yield a + b + c
   assert(sum.isDefined && sum.get > 0.0)
 
-  private val bifurcationsStream: Iterator[(Int,SimTimepoint)] = createStream(marker = 1, bifurcationsFreq)
-  private val crashesStream :Iterator[(Int,SimTimepoint)] = createStream(marker = 2, crashesFreq)
-  private val outagesStream: Iterator[(Int,SimTimepoint)] = createStream(marker = 3, outagesFreq)
-  private val mergedStream: Iterator[(Int,SimTimepoint)] = new EventStreamsMerge[(Int,SimTimepoint)](
+  private val bifurcationsStream: Iterator[(Int, SimTimepoint)] = createStream(marker = 1, bifurcationsFreq)
+  private val crashesStream :Iterator[(Int, SimTimepoint)] = createStream(marker = 2, crashesFreq)
+  private val outagesStream: Iterator[(Int, SimTimepoint)] = createStream(marker = 3, outagesFreq)
+  private val mergedStream: Iterator[(Int, SimTimepoint)] = new EventStreamsMerge[(Int, SimTimepoint)](
     streams = ArraySeq(bifurcationsStream, crashesStream, outagesStream),
     pair => pair._2,
     eventsPullQuantum = TimeDelta.hours(1)
@@ -48,7 +48,14 @@ class FixedFrequencies(
   for (i <- 0 until numberOfValidators)
     aliveNodes += i -> i
   private var lastNodeIdUsed: Int = numberOfValidators - 1
-  private val outageLengthGenerator = outageLengthMinMax map { case (min,max) => new LongSequence.Generator.UniformGen(random, min, max) }
+//  private val outageLengthGenerator: Option[LongSequence.Generator] = outageLengthMinMax map { case (min,max) => new LongSequence.Generator.UniformGen(random, min, max) }
+
+  private val outageLengthGenerator: Option[LongSequence.Generator] =
+    outageLengthMinMax match {
+      case Some((min,max)) => Some(new LongSequence.Generator.UniformGen(random, min, max))
+      case None => None
+    }
+
 
   override def hasNext: Boolean = aliveNodes.nonEmpty
 
@@ -82,8 +89,9 @@ class FixedFrequencies(
 
   private def createStream(marker: Int, freq: Option[Double]): Iterator[(Int, SimTimepoint)] = freq match {
       case Some(f) =>
-        val it = new LongSequence.Generator.PoissonProcessGen(random, lambda = f, lambdaUnit = TimeUnit.HOURS, outputUnit = TimeUnit.MICROSECONDS)
-        it map (micros => (marker, SimTimepoint(micros)))
+        val delays: Iterator[TimeDelta] = new LongSequence.Generator.PoissonProcessGen(random, lambda = f, lambdaUnit = TimeUnit.HOURS, outputUnit = TimeUnit.MICROSECONDS)
+        val timepoints: Iterator[TimeDelta] = delays.scanLeft(0L)(_+_).drop(1)
+        timepoints map (micros => (marker, SimTimepoint(micros)))
       case None => Iterator.empty[(Int, SimTimepoint)]
     }
 
