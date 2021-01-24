@@ -309,8 +309,9 @@ class NodeLocalStatsProcessor(
   override def averageConsumptionDelay: Double = sumOfConsumptionDelays.toDouble / 1000000 / eventConsumptionsCounter
 
   override def averageComputingPowerUtilization: Double = {
-    val effectiveLocalTimeOfThisNodeAsSeconds: Double = math.max(engine.localClockOfAgent(node).asSeconds, basicStats.totalTime.asSeconds)
-    engine.totalConsumedProcessingTimeOfAgent(node).toDouble / 1000000 / effectiveLocalTimeOfThisNodeAsSeconds
+    val amountOfTimeThisNodeWasAlive: TimeDelta = engine.localClockOfAgent(node) timePassedSince engine.agentCreationTimepoint(node)
+    val amountOfTimeThisNodeWasBusy: TimeDelta = engine.totalConsumedProcessingTimeOfAgent(node)
+    return amountOfTimeThisNodeWasBusy.toDouble / amountOfTimeThisNodeWasAlive
   }
 
   override def configuredComputingPower: TimeDelta = engine.computingPowerOf(node)

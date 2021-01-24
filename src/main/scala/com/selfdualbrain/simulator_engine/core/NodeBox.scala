@@ -77,6 +77,9 @@ private[core] class NodeBox(
   //needed for managing network outages and node crashes
   private var statusX: NodeStatus = NodeStatus.NORMAL
 
+  //the timepoint when this agent joined the simulation (i.e. was born)
+  val startupTimepoint: SimTimepoint = context.time()
+
   //Network outage comes as a pair of events (NetworkDisruptionBegin, NetworkDisruptionEnd). Hence every such pair defines an outage interval.
   //These intervals in general can overlap - mostly due to the fact that we want to allow implementations of DisruptionModel to be easy
   //to write, so the developer is not forced to care about possible overlapping. Therefore we need to handle the overlapping here.
@@ -111,7 +114,9 @@ private[core] class NodeBox(
   //Our solution to this problem is straightforward - the implementation of broadcast, apart from simulating proper network delays via DES queue,
   //additionally just "magically" informs all target nodes in advance about a message that is later going to show up. If a node undergoes a bifurcation,
   //all messages expected-but-not-yet-delivered are explicitly scheduled for the cloned node, so the cloned node will also get them later.
-  val messagesExpectedButNotYetDelivered = new mutable.HashSet[Brick]
+  //
+  //here we have a map: expected message ---> sending agent
+  private val messagesExpectedButNotYetDeliveredX = new mutable.HashMap[Brick, BlockchainNode]
 
   //we prioritize downloads according to strategy that is defined at the level of concrete implementation of validator
   //possibly this can get quite complex, as the validator can utilize its equivocators registry or analyze its messages buffer
@@ -177,6 +182,16 @@ private[core] class NodeBox(
     assert(status != NodeStatus.CRASHED)
     desQueue.addEngineEvent(downloadProgressGaugeHolder.get.estimatedCompletionTimepoint, Some(nodeId), EventPayload.DownloadCheckpoint)
   }
+
+  def expectMessage(sender: BlockchainNode, brick: Brick): Unit = {
+    messagesExpectedButNotYetDeliveredX += brick -> sender
+  }
+
+  def expectedMessageWasDelivered(brick: Brick): Unit = {
+    messagesExpectedButNotYetDeliveredX -= brick
+  }
+
+  def messagesExpectedButNotYetDelivered: Iterable[(Brick, BlockchainNode)] = messagesExpectedButNotYetDeliveredX
 
   def crash(): Unit = {
     statusX = NodeStatus.CRASHED
