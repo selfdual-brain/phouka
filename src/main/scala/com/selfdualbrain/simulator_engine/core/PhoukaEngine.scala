@@ -10,7 +10,6 @@ import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.util.LineUnreachable
 import org.slf4j.LoggerFactory
 
-import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
@@ -42,11 +41,7 @@ class PhoukaEngine(
                 ) extends BlockchainSimulationEngine {
 
   private val log = LoggerFactory.getLogger("** sim-engine")
-  private[core] val desQueue: SimEventsQueue[BlockchainNode, EventPayload] =
-    new ClassicDesQueue[BlockchainNode, EventPayload](
-      extStreams = ArraySeq(disruptionModel),
-      extEventsHorizonMargin = TimeDelta.minutes(1)
-    )
+  private[core] val desQueue: SimEventsQueue[BlockchainNode, EventPayload] = new ClassicDesQueue[BlockchainNode, EventPayload](externalEventsStream = disruptionModel)
   private var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
   private var lastNodeIdAllocated: Int = -1
@@ -180,6 +175,7 @@ class PhoukaEngine(
             context.validatorInstance = newValidatorInstance
             val newBox = new NodeBox(desQueue, newNodeId, box.validatorId, newValidatorInstance, context, downloadBandwidthModel.bandwidth(newNodeId))
             nodes.append(newBox)
+            assert(nodes.size - 1 == lastNodeIdAllocated)
             nodeId2validatorId(newValidatorInstance.blockchainNodeId.address) = newValidatorInstance.validatorId
             clone2progenitor += newNodeId -> destination
             desQueue.addEngineEvent(

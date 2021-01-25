@@ -1,10 +1,10 @@
 package com.selfdualbrain.disruption
 
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
-import com.selfdualbrain.des.ExtEventIngredients
+import com.selfdualbrain.des.{EventStreamsMerge, ExtEventIngredients}
 import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.simulator_engine.EventPayload
-import com.selfdualbrain.time.{EventStreamsMerge, SimTimepoint, TimeDelta, TimeUnit}
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
 
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
@@ -48,14 +48,13 @@ class FixedFrequencies(
   for (i <- 0 until numberOfValidators)
     aliveNodes += i -> i
   private var lastNodeIdUsed: Int = numberOfValidators - 1
-//  private val outageLengthGenerator: Option[LongSequence.Generator] = outageLengthMinMax map { case (min,max) => new LongSequence.Generator.UniformGen(random, min, max) }
+  private val outageLengthGenerator: Option[LongSequence.Generator] = outageLengthMinMax map { case (min,max) => new LongSequence.Generator.UniformGen(random, min, max) }
 
-  private val outageLengthGenerator: Option[LongSequence.Generator] =
-    outageLengthMinMax match {
-      case Some((min,max)) => Some(new LongSequence.Generator.UniformGen(random, min, max))
-      case None => None
-    }
-
+//  private val outageLengthGenerator: Option[LongSequence.Generator] =
+//    outageLengthMinMax match {
+//      case Some((min,max)) => Some(new LongSequence.Generator.UniformGen(random, min, max))
+//      case None => None
+//    }
 
   override def hasNext: Boolean = aliveNodes.nonEmpty
 

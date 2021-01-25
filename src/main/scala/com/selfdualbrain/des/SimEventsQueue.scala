@@ -34,11 +34,6 @@ trait SimEventsQueue[A,P] extends Iterator[Event[A,P]] {
   def addEngineEvent(timepoint: SimTimepoint, agent: Option[A], payload: P): Event[A,P]
 
   /**
-    * Pulls closest event from the timeline, advancing the time flow.
-    */
-  def pullNextEvent(): Option[Event[A,P]]
-
-  /**
     * Time of last event pulled.
     */
   def currentTime: SimTimepoint

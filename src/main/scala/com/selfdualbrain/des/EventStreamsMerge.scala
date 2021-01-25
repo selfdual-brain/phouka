@@ -1,10 +1,11 @@
-package com.selfdualbrain.time
+package com.selfdualbrain.des
+
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
 
 /**
-  * Given a collection of event streams (where an "event" is anything that has a timepoint attached) we make a single stream that
-  * combines all events from the collection. So this simply works like a set-theoretic sum.
+  * Given a collection of chronologically sorted event streams (where an "event" is anything that has a timepoint attached) we combine the into a single stream.
   *
   * @param streams event streams to be added; it is required that every stream has elements sorted by timepoints
   * @param timepoint a function that calculates timepoint for any event E

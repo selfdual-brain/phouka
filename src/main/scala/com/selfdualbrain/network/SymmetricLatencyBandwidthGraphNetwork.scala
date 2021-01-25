@@ -42,7 +42,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
 
   override def calculateMsgDelay(msg: Brick, sender: BlockchainNode, destination: BlockchainNode, sendingTime: SimTimepoint): TimeDelta = {
     if (sender.address >= numberOfNodes || destination.address >= numberOfNodes) {
-      grow(growthIncrement)
+      grow(numberOfNodes + growthIncrement)
       growthIncrement = growthIncrement * 2
     }
 
@@ -66,7 +66,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
     assert (newNumberOfNodes > oldNumberOfNodes)
 
     //we want to retain geometry of previously existing connections
-    val newGeometryTable = Array.ofDim[ConnectionParams](initialNumberOfNodes,initialNumberOfNodes)
+    val newGeometryTable = Array.ofDim[ConnectionParams](newNumberOfNodes, newNumberOfNodes)
     for {
       sourceNode <- 0 until oldNumberOfNodes
       targetNode <- 0 until oldNumberOfNodes

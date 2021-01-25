@@ -1,6 +1,6 @@
 package com.selfdualbrain.des
 
-import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.time.SimTimepoint
 
 import scala.collection.mutable
 
@@ -8,18 +8,18 @@ import scala.collection.mutable
  * Classic implementation of SimEventsQueue based on a priority queue.
  * This leads to a sequential, single-threaded simulation.
  */
-class ClassicDesQueue[A,P](extStreams: IndexedSeq[Iterator[ExtEventIngredients[A,P]]], extEventsHorizonMargin: TimeDelta) extends SimEventsQueue[A,P] {
+class ClassicDesQueue[A,P](externalEventsStream: Iterator[ExtEventIngredients[A,P]]) extends SimEventsQueue[A,P] {
   private var lastEventId: Long = 0L
   private var clock: SimTimepoint = SimTimepoint.zero
   private val queue = new mutable.PriorityQueue[Event[A,P]]()(Ordering[Event[A,P]].reverse)
-  private val numberOfExtStreams: Int = extStreams.size
-  private val extStreamEofFlags: Array[Boolean] = Array.fill(numberOfExtStreams)(false)
-  private val extStreamsClocks: Array[SimTimepoint] = Array.fill[SimTimepoint](numberOfExtStreams)(SimTimepoint.zero)
-  private var highestTimepointOfMessagePassingEvent: SimTimepoint = SimTimepoint.zero
+  private var highestTimepointOfExplicitlyAddedEvent: SimTimepoint = SimTimepoint.zero
   private var currentExtEventsHorizon: SimTimepoint = SimTimepoint.zero
 
-  override def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: P): Event[A,P] =
-    this addEvent {id => Event.External(id, timepoint, destination, payload)}
+  override def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: P): Event[A,P] = {
+    val newEvent = this addEvent { id => Event.External(id, timepoint, destination, payload) }
+    ensureExtEventsAreGeneratedUpToHorizon(timepoint)
+    return newEvent
+  }
 
   override def addTransportEvent(timepoint: SimTimepoint, source: A, destination: A, payload: P): Event[A,P] = {
     val newEvent = this addEvent {id => Event.Transport(id, timepoint, source, destination, payload)}
@@ -42,20 +42,23 @@ class ClassicDesQueue[A,P](extStreams: IndexedSeq[Iterator[ExtEventIngredients[A
   override def addOutputEvent(timepoint: SimTimepoint, source: A, payload: P): Event[A,P] =
     this addEvent {id => Event.Semantic(id, timepoint, source, payload)}
 
-  override def pullNextEvent(): Option[Event[A,P]] =
-    if (queue.isEmpty)
-      None
-    else {
-      val nextEvent = queue.dequeue()
-      clock = nextEvent.timepoint
-      Some(nextEvent)
-    }
-
   def currentTime: SimTimepoint = clock
 
   override def hasNext: Boolean = queue.nonEmpty
 
-  override def next(): Event[A,P] = pullNextEvent().get
+  override def next(): Event[A,P] =
+    if (queue.isEmpty)
+      throw new RuntimeException("reached the enf of events queue - there is no more events")
+    else {
+      val nextEvent = queue.dequeue()
+      clock = nextEvent.timepoint
+      nextEvent
+    }
+
+//################################## PRIVATE #######################################
+
+  private def addExternalEventFromAttachedStream(timepoint: SimTimepoint, destination: A, payload: P): Event[A,P] =
+    this addEvent {id => Event.External(id, timepoint, destination, payload)}
 
   private def addEvent(f: Long => Event[A,P]): Event[A,P] = {
     val newEvent = f(lastEventId+1)
@@ -66,24 +69,17 @@ class ClassicDesQueue[A,P](extStreams: IndexedSeq[Iterator[ExtEventIngredients[A
     return newEvent
   }
 
-  private def ensureExtEventsAreGeneratedUpToHorizon(msgPassingEventTimepoint: SimTimepoint): Unit = {
-    if (msgPassingEventTimepoint > highestTimepointOfMessagePassingEvent)
-      highestTimepointOfMessagePassingEvent = msgPassingEventTimepoint
 
-    if (highestTimepointOfMessagePassingEvent >= currentExtEventsHorizon) {
-      currentExtEventsHorizon += extEventsHorizonMargin
-      for (i <- 0 until numberOfExtStreams if ! extStreamEofFlags(i)) {
-        while (extStreamsClocks(i) <= currentExtEventsHorizon && (! extStreamEofFlags(i))) {
-          val stream = extStreams(i)
-          if (stream.hasNext) {
-            val x = stream.next()
-            addExternalEvent(x.timepoint, x.destination, x.payload)
-            extStreamsClocks(i) = x.timepoint
-          } else {
-            extStreamEofFlags(i) = true
-          }
-        }
-      }
+
+  private def ensureExtEventsAreGeneratedUpToHorizon(timepointOfNewEvent: SimTimepoint): Unit = {
+    if (timepointOfNewEvent > highestTimepointOfExplicitlyAddedEvent)
+      highestTimepointOfExplicitlyAddedEvent = timepointOfNewEvent
+
+    while (currentExtEventsHorizon <= highestTimepointOfExplicitlyAddedEvent && externalEventsStream.hasNext) {
+      val x: ExtEventIngredients[A,P] = externalEventsStream.next()
+      assert(x.timepoint >= currentExtEventsHorizon, "external events stream must be ordered by timepoints")
+      addExternalEventFromAttachedStream(x.timepoint, x.destination, x.payload)
+      currentExtEventsHorizon = x.timepoint
     }
   }
 
