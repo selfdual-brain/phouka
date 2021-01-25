@@ -1,7 +1,6 @@
 package com.selfdualbrain.network
 
 import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick}
-import com.selfdualbrain.data_structures.FastIntMap
 import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
@@ -25,8 +24,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
                                              initialNumberOfNodes: Int,
                                              latencyAverageGen: LongSequence.Generator, //here we interpret integers as microseconds
                                              latencyStdDeviationNormalized: Double, //standard deviation of latency expressed as fraction of latency expected value
-                                             bandwidthGen: LongSequence.Generator, //transfer bandwidth generator connection graph [bits/sec]
-                                             downloadBandwidthGen: LongSequence.Generator //download bandwidth generator for agents
+                                             bandwidthGen: LongSequence.Generator //transfer bandwidth generator connection graph [bits/sec]
                                             ) extends NetworkModel[BlockchainNode, Brick] {
 
   case class ConnectionParams(latencyGenerator: LongSequence.Generator, bandwidth: Long)
@@ -39,10 +37,15 @@ class SymmetricLatencyBandwidthGraphNetwork(
     initPair(sourceNode, targetNode)
   }
 
-  private val node2downloadBandwidth = new FastIntMap[Double](initialNumberOfNodes)
   private var numberOfNodes: Int = initialNumberOfNodes
+  private var growthIncrement: Int = 4
 
   override def calculateMsgDelay(msg: Brick, sender: BlockchainNode, destination: BlockchainNode, sendingTime: SimTimepoint): TimeDelta = {
+    if (sender.address >= numberOfNodes || destination.address >= numberOfNodes) {
+      grow(growthIncrement)
+      growthIncrement = growthIncrement * 2
+    }
+
     val connectionParams = networkGeometryTable(sender.address)(destination.address)
     val latency: TimeDelta = connectionParams.latencyGenerator.next()
     val transferDelay: TimeDelta = msg.binarySize.toLong * 1000000 / connectionParams.bandwidth
@@ -58,16 +61,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
     networkGeometryTable(targetAddress)(sourceAddress) = connParams
   }
 
-  override def bandwidth(agent: BlockchainNode): Double =
-    node2downloadBandwidth.get(agent.address) match {
-      case Some(b) => b
-      case None =>
-        val result = downloadBandwidthGen.next().toDouble
-        node2downloadBandwidth(agent.address) = result
-        result
-    }
-
-  override def grow(newNumberOfNodes: Int): Unit = {
+  private def grow(newNumberOfNodes: Int): Unit = {
     val oldNumberOfNodes = numberOfNodes
     assert (newNumberOfNodes > oldNumberOfNodes)
 

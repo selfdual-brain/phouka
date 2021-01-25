@@ -21,21 +21,6 @@ trait NetworkModel[A,M] {
     */
   def calculateMsgDelay(msg: M, sender: A, destination: A, sendingTime: SimTimepoint): TimeDelta
 
-  /**
-    * Download bandwidth upper limit for specified agent.
-    *
-    * @param agent agent id
-    * @return download bandwidth (as bits/sec)
-    */
-  def bandwidth(agent: A): Double
-
-  /**
-    * Informs the model about network growth.
-    *
-    * @param newNumberOfNodes number of new agents added to the network.
-    */
-  def grow(newNumberOfNodes: Int): Unit
-
 }
 
 

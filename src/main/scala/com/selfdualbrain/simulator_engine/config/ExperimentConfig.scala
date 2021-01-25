@@ -15,6 +15,7 @@ import scala.util.Random
 case class ExperimentConfig(
                              randomSeed: Option[Long],
                              networkModel: NetworkConfig,
+                             downloadBandwidthModel: DownloadBandwidthConfig,
                              nodesComputingPowerModel: LongSequence.Config, //values are interpreted as node nominal performance in [gas/second] units; for convenience we define a unit of performance 1 sprocket = 1 million gas/second
                              numberOfValidators: Int,
                              validatorsWeights: IntSequence.Config,
@@ -37,7 +38,7 @@ object NetworkConfig extends ConfigParsingSupport {
 
   //At internet skeleton level there are just random delays derived from given probabilistic distribution.
   //At per-node-download queue the same download bandwidth is used by all nodes.
-  case class HomogenousNetworkWithRandomDelays(delaysGenerator: LongSequence.Config, downloadBandwidth: Double) extends NetworkConfig
+  case class HomogenousNetworkWithRandomDelays(delaysGenerator: LongSequence.Config) extends NetworkConfig
 
   //At internet skeleton level there is explicit (full) graph of connections. For every edge, latency is randomly selected using
   //gaussian distribution, however every edge is using different gaussian distribution;
@@ -46,13 +47,17 @@ object NetworkConfig extends ConfigParsingSupport {
   //2. The corresponding standard deviation will be connGraphLatencyStdDeviationNormalized * AV.
   //3. The effective gaussian distribution to be used for given edge is Gaussian(AV, connGraphLatencyStdDeviationNormalized * AV).
   //4. Bandwidth for the edge is taken from connGraphBandwidthGenCfg-based random generator.
-  //5. Bandwidth for the download queue at node N is taken from downloadQueueBandwidthGenCfg-based random generator.
   case class SymmetricLatencyBandwidthGraphNetwork(
                                                     connGraphLatencyAverageGenCfg: LongSequence.Config,
                                                     connGraphLatencyStdDeviationNormalized: Double,
-                                                    connGraphBandwidthGenCfg: LongSequence.Config,
-                                                    downloadQueueBandwidthGenCfg: LongSequence.Config
+                                                    connGraphBandwidthGenCfg: LongSequence.Config
                                                   ) extends NetworkConfig
+}
+
+sealed abstract class DownloadBandwidthConfig
+object DownloadBandwidthConfig {
+  case class Uniform(bandwidth: Double) extends DownloadBandwidthConfig
+  case class Generic(generatorCfg: LongSequence.Config) extends DownloadBandwidthConfig
 }
 
 sealed abstract class TransactionsStreamConfig
@@ -87,7 +92,6 @@ object ProposeStrategyConfig {
                       initialRoundExponent: Int,
                       omegaWaitingMargin: TimeDelta,
                       exponentAccelerationPeriod: Int,
-//                      exponentSlowdownPeriod: Int,
                       exponentInertia: Int,
                       runaheadTolerance: Int,
                       droppedBricksMovingAverageWindow: TimeDelta,
@@ -139,7 +143,8 @@ object ExperimentConfig {
 
   val default: ExperimentConfig = ExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
-    networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequence.Config.PseudoGaussian(100000, 20000000), 1000000),
+    networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequence.Config.PseudoGaussian(100000, 20000000)),
+    downloadBandwidthModel = DownloadBandwidthConfig.Uniform(1000000),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, alpha = 1.3),
     numberOfValidators = 10,
     validatorsWeights = IntSequence.Config.Fixed(1),

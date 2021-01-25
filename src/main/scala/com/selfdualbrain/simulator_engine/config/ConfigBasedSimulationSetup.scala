@@ -4,17 +4,16 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{ObservableSimulationEngine, SimulationObserver}
 import com.selfdualbrain.disruption.DisruptionModel
-import com.selfdualbrain.network.{HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth, NetworkModel, SymmetricLatencyBandwidthGraphNetwork}
+import com.selfdualbrain.network.{DownloadBandwidthModel, GenericBandwidthModel, HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth, NetworkModel, SymmetricLatencyBandwidthGraphNetwork, UniformBandwidthModel}
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
+import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.simulator_engine.core.PhoukaEngine
 import com.selfdualbrain.simulator_engine.highway.{Highway, HighwayValidatorsFactory}
 import com.selfdualbrain.simulator_engine.leaders_seq.{LeadersSeq, LeadersSeqValidatorsFactory}
 import com.selfdualbrain.simulator_engine.ncb.{Ncb, NcbValidatorsFactory}
-import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.stats.{BlockchainSimulationStats, DefaultStatsProcessor}
 import com.selfdualbrain.transactions.{BlockPayloadBuilder, TransactionsStream}
 
-import java.io.File
 import scala.util.Random
 
 /**
@@ -39,6 +38,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   private val transactionsStream: TransactionsStream = TransactionsStream.fromConfig(config.transactionsStreamModel, randomGenerator)
   private val blockPayloadGenerator: BlockPayloadBuilder = BlockPayloadBuilder.fromConfig(config.blocksBuildingStrategy, transactionsStream)
   val networkModel: NetworkModel[BlockchainNode, Brick] = buildNetworkModel()
+  val downloadBandwidthModel: DownloadBandwidthModel[BlockchainNode] = buildDownloadBandwidthModel()
   val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(config.disruptionModel, randomGenerator, absoluteFTT, weightsOfValidatorsAsFunction, config.numberOfValidators)
   private val computingPowersGenerator: LongSequence.Generator = LongSequence.Generator.fromConfig(config.nodesComputingPowerModel, randomGenerator)
   private val runForkChoiceFromGenesis: Boolean = config.forkChoiceStrategy match {
@@ -129,6 +129,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
     validatorsFactory,
     disruptionModel,
     networkModel,
+    downloadBandwidthModel,
     genesis,
     verboseMode = false
   )
@@ -153,24 +154,34 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   //###################################################################################
 
-  private def buildNetworkModel(): NetworkModel[BlockchainNode, Brick] = config.networkModel match {
-    case NetworkConfig.HomogenousNetworkWithRandomDelays(delaysConfig, downloadBandwidth) =>
-      val delaysGenerator = LongSequence.Generator.fromConfig(delaysConfig, randomGenerator)
-      new HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth[BlockchainNode, Brick](delaysGenerator, downloadBandwidth)
+  private def buildNetworkModel(): NetworkModel[BlockchainNode, Brick] =
+    config.networkModel match {
+      case NetworkConfig.HomogenousNetworkWithRandomDelays(delaysConfig) =>
+        val delaysGenerator = LongSequence.Generator.fromConfig(delaysConfig, randomGenerator)
+        new HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth[BlockchainNode, Brick](delaysGenerator)
 
-    case NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(connGraphLatencyAverageGenCfg, connGraphLatencyStdDeviationNormalized, connGraphBandwidthGenCfg, downloadQueueBandwidthGenCfg) =>
-      val latencyAverageGen = LongSequence.Generator.fromConfig(connGraphLatencyAverageGenCfg, randomGenerator)
-      val connGraphBandwidthGen = LongSequence.Generator.fromConfig(connGraphBandwidthGenCfg, randomGenerator)
-      val downloadQueueBandwidthGen = LongSequence.Generator.fromConfig(downloadQueueBandwidthGenCfg, randomGenerator)
-      new SymmetricLatencyBandwidthGraphNetwork(
-        randomGenerator,
-        initialNumberOfNodes = config.numberOfValidators,
-        latencyAverageGen,
-        connGraphLatencyStdDeviationNormalized,
-        connGraphBandwidthGen,
-        downloadQueueBandwidthGen
-      )
-  }
+      case NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(connGraphLatencyAverageGenCfg, connGraphLatencyStdDeviationNormalized, connGraphBandwidthGenCfg) =>
+        val latencyAverageGen = LongSequence.Generator.fromConfig(connGraphLatencyAverageGenCfg, randomGenerator)
+        val connGraphBandwidthGen = LongSequence.Generator.fromConfig(connGraphBandwidthGenCfg, randomGenerator)
+        new SymmetricLatencyBandwidthGraphNetwork(
+          randomGenerator,
+          initialNumberOfNodes = config.numberOfValidators,
+          latencyAverageGen,
+          connGraphLatencyStdDeviationNormalized,
+          connGraphBandwidthGen
+        )
+    }
+
+  private def buildDownloadBandwidthModel(): DownloadBandwidthModel[BlockchainNode] =
+    config.downloadBandwidthModel match {
+      case DownloadBandwidthConfig.Uniform(bandwidth) =>
+        new UniformBandwidthModel(bandwidth)
+      case DownloadBandwidthConfig.Generic(generatorCfg) =>
+        new GenericBandwidthModel(
+          initialNumberOfNodes = config.numberOfValidators,
+          bandwidthGen = LongSequence.Generator.fromConfig(generatorCfg, randomGenerator)
+        )
+    }
 
   private def buildObserver(cfg: ObserverConfig): SimulationObserver[BlockchainNode, EventPayload] = cfg match {
     case ObserverConfig.DefaultStatsProcessor(latencyMovingWindow, throughputMovingWindow, throughputCheckpointsDelta) =>

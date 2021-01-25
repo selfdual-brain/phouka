@@ -4,7 +4,7 @@ import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.FastMapOnIntInterval
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue}
 import com.selfdualbrain.disruption.DisruptionModel
-import com.selfdualbrain.network.NetworkModel
+import com.selfdualbrain.network.{DownloadBandwidthModel, NetworkModel}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.util.LineUnreachable
@@ -36,6 +36,7 @@ class PhoukaEngine(
                     validatorsFactory: ValidatorsFactory,
                     disruptionModel: DisruptionModel,
                     networkModel: NetworkModel[BlockchainNode, Brick],
+                    downloadBandwidthModel: DownloadBandwidthModel[BlockchainNode],
                     val genesis: AbstractGenesis,
                     verboseMode: Boolean //verbose mode ON causes publishing ALL events (i.e. including internal engine events that are normally hidden)
                 ) extends BlockchainSimulationEngine {
@@ -65,7 +66,7 @@ class PhoukaEngine(
     val newValidator = validatorsFactory.create(BlockchainNode(i), i, context)
     context.validatorInstance = newValidator
     nodeId2validatorId(i) = i
-    val newBox = new NodeBox(desQueue, nodeId, i, newValidator, context, networkModel.bandwidth(nodeId))
+    val newBox = new NodeBox(desQueue, nodeId, i, newValidator, context, downloadBandwidthModel.bandwidth(nodeId))
     nodes.append(newBox)
     context.moveForwardLocalClockToAtLeast(desQueue.currentTime)
     desQueue.addEngineEvent(context.time(), Some(nodeId), EventPayload.NewAgentSpawned(i, progenitor = None))
@@ -177,7 +178,7 @@ class PhoukaEngine(
             val context = new ValidatorContextImpl(this, newNodeId, box.context.time())
             val newValidatorInstance = box.validatorInstance.clone(newNodeId, context)
             context.validatorInstance = newValidatorInstance
-            val newBox = new NodeBox(desQueue, newNodeId, box.validatorId, newValidatorInstance, context, networkModel.bandwidth(newNodeId))
+            val newBox = new NodeBox(desQueue, newNodeId, box.validatorId, newValidatorInstance, context, downloadBandwidthModel.bandwidth(newNodeId))
             nodes.append(newBox)
             nodeId2validatorId(newValidatorInstance.blockchainNodeId.address) = newValidatorInstance.validatorId
             clone2progenitor += newNodeId -> destination

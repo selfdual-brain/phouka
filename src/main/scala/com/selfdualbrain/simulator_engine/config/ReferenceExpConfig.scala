@@ -31,8 +31,8 @@ object ReferenceExpConfig {
     randomSeed = Some(seed),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(100), max = TimeDelta.millis(1000)),
-      downloadBandwidth = 1000000 //download = 1 megabit per second
     ),
+    downloadBandwidthModel = DownloadBandwidthConfig.Uniform(1000000), //download = 1 megabit per second
     nodesComputingPowerModel = LongSequence.Config.Fixed(5000000), //computing power = 5 sprockets
     numberOfValidators = 5,
     validatorsWeights = IntSequence.Config.Fixed(1),
@@ -129,8 +129,10 @@ object ReferenceExpConfig {
       networkModel = NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(
         connGraphLatencyAverageGenCfg = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(5)),
         connGraphLatencyStdDeviationNormalized = 0.1,
-        connGraphBandwidthGenCfg = LongSequence.Config.PseudoGaussian(min = 100000, max = 10000000),
-        downloadQueueBandwidthGenCfg = LongSequence.Config.PseudoGaussian(min = 10000, max = 10000000)
+        connGraphBandwidthGenCfg = LongSequence.Config.PseudoGaussian(min = 100000, max = 10000000)
+      ),
+      downloadBandwidthModel = DownloadBandwidthConfig.Generic(
+        generatorCfg = LongSequence.Config.PseudoGaussian(min = 10000, max = 10000000) //from 10 kbit/s to 10 Mbit/sec
       ),
       nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 300000, alpha = 1.2),
       numberOfValidators = 25,

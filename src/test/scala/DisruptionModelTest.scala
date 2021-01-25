@@ -21,9 +21,9 @@ object DisruptionModelTest {
   val absoluteFTT: Ether = math.floor(totalWeight * relativeFTT).toLong
 
   val disruptionModelCfg: DisruptionModelConfig = DisruptionModelConfig.FixedFrequencies(
-    bifurcationsFreq = Some(1),
-    crashesFreq = Some(1),
-    outagesFreq = Some(10),
+    bifurcationsFreq = Some(50),
+    crashesFreq = Some(50),
+    outagesFreq = Some(50),
     outageLengthMinMax = Some((TimeDelta.seconds(1), TimeDelta.minutes(10)))
   )
 

@@ -98,8 +98,12 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
             s"brick $brick delivery - consumption (-> event $consumedEventId) delay=$consumptionDelay"
           case EventPayload.ConsumedWakeUp(consumedEventId, consumptionDelay, strategySpecificMarker) =>
             s"wakeup - consumed (-> event $consumedEventId) delay=$consumptionDelay"
+          case EventPayload.NetworkConnectionLost =>
+            s"network connection lost"
           case EventPayload.NetworkConnectionRestored =>
             s"network connection restored"
+          case EventPayload.StrategySpecificOutput(cargo) =>
+            s"strategy specific: $cargo"
         }
 
     }
