@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine.core
 
 import com.selfdualbrain.blockchain_structure._
-import com.selfdualbrain.data_structures.FastMapOnIntInterval
+import com.selfdualbrain.data_structures.{FastMapOnIntInterval, PseudoIterator}
 import com.selfdualbrain.des.{ClassicDesQueue, Event, SimEventsQueue}
 import com.selfdualbrain.disruption.DisruptionModel
 import com.selfdualbrain.network.{DownloadBandwidthModel, NetworkModel}
@@ -72,21 +72,35 @@ class PhoukaEngine(
 
   //####################################### PUBLIC ########################################
 
-  override def hasNext: Boolean = desQueue.hasNext
+  override def hasNext: Boolean = internalIterator.hasNext
 
-  override def next(): (Long, Event[BlockchainNode,EventPayload]) = {
-    stepId += 1 //first step executed will have number 0
+  override def next(): (Long, Event[BlockchainNode,EventPayload]) = internalIterator.next()
 
-    var event: Option[Event[BlockchainNode, EventPayload]] = None
-    do {
-      event = processNextEventFromQueue()
-    } while (event.isEmpty)
+  //While getting next event to be published we need to:
+  //1. Handle the underlying processing of the engine.
+  //2. Take into account masking of some events.
+  //3. Capture the possibility of reaching the last event in the DES queue
+  //Because of the interplay of all 3 factors, t is more convenient to implement the Iterator interface of PhoukaEngine in terms of
+  //a pseudo-iterator and then use delegation.
+  private val pseudoiterator = new PseudoIterator[(Long, Event[BlockchainNode,EventPayload])] {
+    override def next(): Option[(TimeDelta, Event[BlockchainNode, EventPayload])] = {
+      stepId += 1 //first step executed will have number 0
 
-    if (log.isDebugEnabled() && stepId % 1000 == 0)
-      log.debug(s"step $stepId")
+      var event: Option[Event[BlockchainNode, EventPayload]] = None
+      do {
+        if (! desQueue.hasNext)
+          return None
+        event = processNextEventFromQueue()
+      } while (event.isEmpty)
 
-    return (stepId, event.get)
+      if (log.isDebugEnabled() && stepId % 1000 == 0)
+        log.debug(s"step $stepId")
+
+      return Some((stepId, event.get))
+    }
   }
+
+  private val internalIterator = pseudoiterator.toIterator
 
   override def lastStepExecuted: Long = stepId
 

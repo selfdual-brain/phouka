@@ -69,8 +69,6 @@ class ClassicDesQueue[A,P](externalEventsStream: Iterator[ExtEventIngredients[A,
     return newEvent
   }
 
-
-
   private def ensureExtEventsAreGeneratedUpToHorizon(timepointOfNewEvent: SimTimepoint): Unit = {
     if (timepointOfNewEvent > highestTimepointOfExplicitlyAddedEvent)
       highestTimepointOfExplicitlyAddedEvent = timepointOfNewEvent
