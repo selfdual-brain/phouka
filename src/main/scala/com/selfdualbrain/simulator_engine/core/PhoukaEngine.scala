@@ -45,6 +45,7 @@ class PhoukaEngine(
   private var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
   private var lastNodeIdAllocated: Int = -1
+  private var engineIsHalted: Boolean = false
 
   //initialize nodes
   //at startup we just create nodes which are 1-1 with validators
@@ -84,6 +85,9 @@ class PhoukaEngine(
   //a pseudo-iterator and then use delegation.
   private val pseudoiterator = new PseudoIterator[(Long, Event[BlockchainNode,EventPayload])] {
     override def next(): Option[(TimeDelta, Event[BlockchainNode, EventPayload])] = {
+      if (engineIsHalted)
+        return None
+
       stepId += 1 //first step executed will have number 0
 
       var event: Option[Event[BlockchainNode, EventPayload]] = None
@@ -233,10 +237,12 @@ class PhoukaEngine(
     box.context.moveForwardLocalClockToAtLeast(timepoint)
     payload match {
       case EventPayload.WakeUp(strategySpecificMarker) =>
-        desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.ConsumedWakeUp(eventId, box.context.time() timePassedSince timepoint, strategySpecificMarker))
+        desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.WakeUpHandlerBegin(eventId, box.context.time() timePassedSince timepoint, strategySpecificMarker))
+        val timeAtBegin = box.context.time()
         box executeAndRecordProcessingTimeConsumption {
           box.validatorInstance.onWakeUp(strategySpecificMarker)
         }
+        desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.WakeUpHandlerEnd(eventId, box.context.time() timePassedSince timeAtBegin))
         EventMaskingDecision.Emit
       case other =>
         throw new RuntimeException(s"not supported: $other")
@@ -245,11 +251,12 @@ class PhoukaEngine(
 
   protected def handleEngineEvent(box: NodeBox, eventId: Long, timepoint: SimTimepoint, agent: Option[BlockchainNode], payload: EventPayload): EventMaskingDecision = {
     box.context.moveForwardLocalClockToAtLeast(timepoint)
+
     payload match {
       case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
         EventMaskingDecision.Emit
 
-      case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
+      case EventPayload.BroadcastProtocolMsg(brick) =>
         box.status match {
           case NodeStatus.CRASHED => throw new LineUnreachable
           case NodeStatus.NETWORK_OUTAGE =>
@@ -260,11 +267,11 @@ class PhoukaEngine(
             EventMaskingDecision.Emit
         }
 
-      case EventPayload.BlockchainProtocolMsgReceivedBySkeletonHost(sender, brick) =>
-        box.downloadsBuffer += DownloadsBufferItem(sender, brick, timepoint)
+      case EventPayload.ProtocolMsgAvailableForDownload(sender, brick) =>
+        box.enqueueDownload(sender, brick, timepoint)
         if (box.status == NodeStatus.NORMAL)
           box.startNextDownloadIfPossible()
-        EventMaskingDecision.Mask
+        EventMaskingDecision.Emit
 
       case EventPayload.DownloadCheckpoint =>
         box.status match {
@@ -311,6 +318,10 @@ class PhoukaEngine(
         } else
           EventMaskingDecision.Mask
 
+      case EventPayload.Halt(reason) =>
+        //simulation engine is just a stream, so all we do at this level is to ensure that this will be the last event emitted
+        engineIsHalted = true
+        EventMaskingDecision.Emit
     }
   }
 
@@ -319,11 +330,17 @@ class PhoukaEngine(
     desQueue.addOutputEvent(
       timepoint = destinationAgentBox.context.time(),
       source = destinationAgentBox.nodeId,
-      payload = EventPayload.ConsumedBrickDelivery(eventId, destinationAgentBox.context.time() timePassedSince  brickDeliveryTimepoint, brick)
+      payload = EventPayload.BrickArrivedHandlerBegin(eventId, destinationAgentBox.context.time() timePassedSince  brickDeliveryTimepoint, brick)
     )
+    val timeAtBegin = destinationAgentBox.context.time()
     destinationAgentBox executeAndRecordProcessingTimeConsumption {
       destinationAgentBox.validatorInstance.onNewBrickArrived(brick)
     }
+    desQueue.addOutputEvent(
+      timepoint = destinationAgentBox.context.time(),
+      source = destinationAgentBox.nodeId,
+      payload = EventPayload.BrickArrivedHandlerEnd(eventId, destinationAgentBox.context.time() timePassedSince timeAtBegin , brick)
+    )
     destinationAgentBox.expectedMessageWasDelivered(brick)
   }
 
@@ -380,7 +397,7 @@ class PhoukaEngine(
   protected def simulateMessageSend(sender: BlockchainNode, destination: BlockchainNode, sendingTimepoint: SimTimepoint, brick: Brick): Unit = {
     val effectiveDelay: Long = math.max(1, networkModel.calculateMsgDelay(brick, sender, destination, sendingTimepoint)) // we enforce minimum delay = 1 microsecond
     val targetTimepoint: SimTimepoint = sendingTimepoint + effectiveDelay
-    desQueue.addEngineEvent(targetTimepoint, Some(destination), EventPayload.BlockchainProtocolMsgReceivedBySkeletonHost(sender, brick))
+    desQueue.addEngineEvent(targetTimepoint, Some(destination), EventPayload.ProtocolMsgAvailableForDownload(sender, brick))
     nodes(destination.address).expectMessage(sender, brick)
   }
 }

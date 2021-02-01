@@ -2,9 +2,10 @@ package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{ACC, _}
-import com.selfdualbrain.des.SimulationStats
+import com.selfdualbrain.simulator_engine.core.NodeStatus
 import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, EventPayload, MsgBufferSnapshot}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.util.LineUnreachable
 
 import scala.collection.mutable
 
@@ -14,7 +15,7 @@ import scala.collection.mutable
 class NodeLocalStatsProcessor(
                                vid: ValidatorId,
                                node: BlockchainNode,
-                               basicStats: SimulationStats,
+                               globalStats: BlockchainSimulationStats,
                                weightsMap: ValidatorId => Ether,
                                genesis: Block,
                                engine: BlockchainSimulationEngine) extends NodeLocalStats {
@@ -92,16 +93,28 @@ class NodeLocalStatsProcessor(
   private var allBricksCumulativeBinarySize: Long = 0L
   private var cumulativePayloadSizeInAllPublishedBlocks: Long = 0L
   private var cumulativePayloadSizeInFinalizedBlocks: Long = 0L
+  private var downloadQueueLengthAsBytesX: Long = 0L
+  private var downloadQueueLengthAsItemsX: Long = 0L
+  private var maxDownloadQueueLengthAsBytesX: Long = 0L
+  private var maxDownloadQueueLengthAsItemsX: Long = 0L
+  private var outageStatusX: NodeStatus = NodeStatus.NORMAL
+  private var nodeIsDownSinceX: Option[SimTimepoint] = None
+  private var closedNetworkOutagesTotalTime: TimeDelta = 0L
 
 //#####################################################################################################################################
 //                                               PROCESSING EVENTS
 //#####################################################################################################################################
 
-  override def handleEvent(eventTimepoint: SimTimepoint, payload: EventPayload): Unit = {
+  def handleEvent(eventTimepoint: SimTimepoint, payload: EventPayload): Unit = {
 
     payload match {
-      //=========TRANSPORT=========
+
+      //#################### TRANSPORT ####################
+
       case EventPayload.BrickDelivered(brick) =>
+        downloadQueueLengthAsItemsX -= 1
+        downloadQueueLengthAsBytesX -= brick.binarySize
+
         if (brick.isInstanceOf[AbstractNormalBlock]) {
           receivedBlocksCounter += 1
           sumOfReceivedBlocksNetworkDelays += eventTimepoint timePassedSince brick.timepoint
@@ -110,8 +123,9 @@ class NodeLocalStatsProcessor(
           sumOfReceivedBallotsNetworkDelays += eventTimepoint timePassedSince brick.timepoint
         }
 
-      //=========ENGINE=========
-      case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
+      //#################### ENGINE ####################
+
+      case EventPayload.BroadcastProtocolMsg(brick) =>
         lastBrickPublishedX = Some(brick)
         brick match {
           case block: AbstractNormalBlock =>
@@ -128,13 +142,20 @@ class NodeLocalStatsProcessor(
         myBrickdagDepth = math.max(myBrickdagDepth, brick.daglevel)
         allBricksCumulativeBinarySize += brick.binarySize
 
+      case EventPayload.ProtocolMsgAvailableForDownload(sender, brick) =>
+        downloadQueueLengthAsItemsX += 1
+        maxDownloadQueueLengthAsItemsX = math.max(maxDownloadQueueLengthAsItemsX, downloadQueueLengthAsItemsX)
+        downloadQueueLengthAsBytesX += brick.binarySize
+        maxDownloadQueueLengthAsBytesX = math.max(maxDownloadQueueLengthAsBytesX, downloadQueueLengthAsBytesX)
+
       case EventPayload.NetworkDisruptionEnd(disruptionEventId) =>
         //ignore
 
       case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
         //ignore
 
-      //=========SEMANTIC=========
+      //#################### SEMANTIC ####################
+
       case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) =>
         brick match {
           case block: AbstractNormalBlock =>
@@ -202,13 +223,41 @@ class NodeLocalStatsProcessor(
       case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
         isAfterObservingEquivocationCatastropheX = true
 
-      case EventPayload.ConsumedBrickDelivery(consumedEventId, consumptionDelay, brick) =>
+      case EventPayload.BrickArrivedHandlerBegin(consumedEventId, consumptionDelay, brick) =>
         eventConsumptionsCounter += 1
         sumOfConsumptionDelays += consumptionDelay
 
-      case EventPayload.ConsumedWakeUp(consumedEventId, consumptionDelay, strategySpecificMarker) =>
+      case EventPayload.WakeUpHandlerBegin(consumedEventId, consumptionDelay, strategySpecificMarker) =>
         eventConsumptionsCounter += 1
         sumOfConsumptionDelays += consumptionDelay
+
+      case EventPayload.NetworkConnectionLost =>
+        if (outageStatusX == NodeStatus.NORMAL) {
+          outageStatusX = NodeStatus.NETWORK_OUTAGE
+          nodeIsDownSinceX = Some(eventTimepoint)
+        }
+
+      case EventPayload.NetworkConnectionRestored =>
+        if (outageStatusX == NodeStatus.NETWORK_OUTAGE) {
+          closedNetworkOutagesTotalTime += eventTimepoint timePassedSince nodeIsDownSinceX.get
+          outageStatusX = NodeStatus.NORMAL
+          nodeIsDownSinceX = None
+        }
+
+      //#################### EXTERNAL ####################
+
+      case EventPayload.NodeCrash =>
+        outageStatusX match {
+          case NodeStatus.NORMAL =>
+            nodeIsDownSinceX = Some(eventTimepoint)
+            outageStatusX = NodeStatus.CRASHED
+          case NodeStatus.NETWORK_OUTAGE =>
+            closedNetworkOutagesTotalTime += eventTimepoint timePassedSince nodeIsDownSinceX.get
+            nodeIsDownSinceX = Some(eventTimepoint)
+            outageStatusX = NodeStatus.CRASHED
+          case NodeStatus.CRASHED =>
+            throw new LineUnreachable
+        }
 
       case other =>
         //ignore
@@ -220,6 +269,11 @@ class NodeLocalStatsProcessor(
 //#####################################################################################################################################
 //                                               LOCAL NODE STATE
 //#####################################################################################################################################
+
+  override def timeSinceBoot: TimeDelta = engine.localClockOfAgent(node) timePassedSince engine.agentCreationTimepoint(node)
+
+
+
 
   override def numberOfBricksInTheBuffer: Long = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
 
@@ -284,11 +338,11 @@ class NodeLocalStatsProcessor(
     else
       sumOfLatenciesForOwnBlocks.toDouble / 1000000 / ownBlocksFinalized //scaling to seconds
 
-  override def ownBlocksThroughputBlocksPerSecond: Double = ownBlocksFinalized / basicStats.totalTime.asSeconds
+  override def ownBlocksThroughputBlocksPerSecond: Double = ownBlocksFinalized / globalStats.totalTime.asSeconds
 
-  override def ownBlocksThroughputTransactionsPerSecond: Double = transactionsInMyFinalizedBlocksCounter.toDouble / basicStats.totalTime.asSeconds
+  override def ownBlocksThroughputTransactionsPerSecond: Double = transactionsInMyFinalizedBlocksCounter.toDouble / globalStats.totalTime.asSeconds
 
-  override def ownBlocksThroughputGasPerSecond: Double = totalGasInMyFinalizedBlocksCounter.toDouble / basicStats.totalTime.asSeconds
+  override def ownBlocksThroughputGasPerSecond: Double = totalGasInMyFinalizedBlocksCounter.toDouble / globalStats.totalTime.asSeconds
 
   override def ownBlocksOrphanRate: Double =
     if (ownBlocksPublished == 0)
@@ -314,20 +368,48 @@ class NodeLocalStatsProcessor(
     return amountOfTimeThisNodeWasBusy.toDouble / amountOfTimeThisNodeWasAlive
   }
 
-  override def configuredComputingPower: TimeDelta = engine.computingPowerOf(node)
+  override def configuredComputingPower: Long = engine.computingPowerOf(node)
 
   override def totalComputingTimeUsed: TimeDelta = engine.totalConsumedProcessingTimeOfAgent(node)
+
+  override def downloadQueueMaxLengthAsBytes: Long = maxDownloadQueueLengthAsBytesX
+
+  override def downloadQueueMaxLengthAsItems: Long = maxDownloadQueueLengthAsItemsX
+
+  override def nodeAvailability: Double = {
+    val onGoingDownElapsedTime: TimeDelta = nodeIsDownSinceX match {
+      case None => 0L
+      case Some(timepoint) => engine.localClockOfAgent(node) timePassedSince timepoint
+
+    }
+    val totalNodeDownTimeUpToNow: TimeDelta = closedNetworkOutagesTotalTime + onGoingDownElapsedTime
+    val totalTime =
+  }
+
+  override def averageIncomingBlockProcessingTime: Double = ???
+
+  override def averageIncomingBlockPayloadProcessingTimeAsFraction: Double = ???
+
+  override def averageIncomingBallotProcessingTime: Double = ???
+
+  override def averageBlockCreationProcessingTime: Double = ???
+
+  override def averageBlockCreationPayloadProcessingTimeAsFraction: Double = ???
+
+  override def averageBlockPayloadExecutionTime: Double = globalStats.averageBlockExecutionCost / configuredComputingPower
+
+  override def cpuProtocolOverhead: Double = ???
+
 
 //#####################################################################################################################################
 //                                             BLOCKCHAIN STATISTICS
 //#####################################################################################################################################
 
+  override def blockchainThroughputBlocksPerSecond: Double = lastFinalizedBlock.generation.toDouble / globalStats.totalTime.asSeconds
 
-  override def blockchainThroughputBlocksPerSecond: Double = lastFinalizedBlock.generation.toDouble / basicStats.totalTime.asSeconds
+  override def blockchainThroughputTransactionsPerSecond: Double = transactionsInAllFinalizedBlocksCounter.toDouble / globalStats.totalTime.asSeconds
 
-  override def blockchainThroughputTransactionsPerSecond: Double = transactionsInAllFinalizedBlocksCounter.toDouble / basicStats.totalTime.asSeconds
-
-  override def blockchainThroughputGasPerSecond: Double = totalGasInAllFinalizedBlocksCounter.toDouble / basicStats.totalTime.asSeconds
+  override def blockchainThroughputGasPerSecond: Double = totalGasInAllFinalizedBlocksCounter.toDouble / globalStats.totalTime.asSeconds
 
   override def blockchainLatency: Double =
     if (lastFinalizedBlock == genesis)
@@ -335,7 +417,7 @@ class NodeLocalStatsProcessor(
     else
       sumOfLatenciesForAllFinalizedBlocks.toDouble / 1000000 / lastFinalizedBlock.generation //scaling to seconds
 
-  override def blockchainRunahead: TimeDelta = basicStats.totalTime timePassedSince lastFinalizedBlock.timepoint
+  override def blockchainRunahead: TimeDelta = globalStats.totalTime timePassedSince lastFinalizedBlock.timepoint
 
   override def blockchainOrphanRate: Double = {
     val allBlocksUpToLfbGeneration: Int = allBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt)
@@ -348,14 +430,21 @@ class NodeLocalStatsProcessor(
       orphaned.toDouble / allBlocksUpToLfbGeneration
   }
 
-  override def protocolOverhead: Double = (allBricksCumulativeBinarySize - cumulativePayloadSizeInFinalizedBlocks).toDouble / allBricksCumulativeBinarySize
+  override def dataProtocolOverhead: Double = (allBricksCumulativeBinarySize - cumulativePayloadSizeInFinalizedBlocks).toDouble / allBricksCumulativeBinarySize
 
   //#####################################################################################################################################
   //                                             CLONING
   //#####################################################################################################################################
 
-  override def createDetachedCopy(node: BlockchainNode): NodeLocalStats = {
-    val copy = new NodeLocalStatsProcessor(vid, node, basicStats, weightsMap, genesis, engine)
+  /**
+    * Create a cloned copy of this stats.
+    * This is for handling stats of bifurcated nodes.
+    *
+    * @param node node-id that cloned stats are to be attached to
+    * @return clone of stats calculator
+    */
+  def createDetachedCopy(node: BlockchainNode): NodeLocalStatsProcessor = {
+    val copy = new NodeLocalStatsProcessor(vid, node, globalStats, weightsMap, genesis, engine)
 
     copy.ownBlocksCounter = ownBlocksCounter
     copy.ownBallotsCounter = ownBallotsCounter

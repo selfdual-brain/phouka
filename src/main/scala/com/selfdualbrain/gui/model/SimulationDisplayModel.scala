@@ -224,7 +224,7 @@ class SimulationDisplayModel(
       event match {
         case Event.Engine(id, timepoint, agent, payload) =>
           payload match {
-            case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
+            case EventPayload.BroadcastProtocolMsg(brick) =>
               agent2bricksHistory(agent.get.address).onBrickAddedToJdag(stepAsInt, brick)
             case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
               agent2bricksHistory(agent.get.address) = new JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks, expectedNumberOfEvents)

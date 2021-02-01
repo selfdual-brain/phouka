@@ -3,7 +3,6 @@ package com.selfdualbrain.simulator_engine
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.Event
-import com.selfdualbrain.simulator_engine.core.DownloadsBufferItem
 import com.selfdualbrain.time.TimeDelta
 
 sealed abstract class EventPayload {
@@ -12,101 +11,118 @@ sealed abstract class EventPayload {
 
 object EventPayload {
 
-  //======== TRANSPORT ========
+  //#################### TRANSPORT ####################
+
   case class BrickDelivered(brick: Brick) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.BRICK_DELIVERED
+    override val filteringTag: Int = EventTag.BRICK_DELIVERED
   }
 
-  //======== LOOPBACK ========
+  //#################### LOOPBACK ####################
+
   case class WakeUp[M](strategySpecificMarker: M) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.WAKE_UP
+    override val filteringTag: Int = EventTag.WAKE_UP
   }
 
-  //======== ENGINE ========
-  case class BroadcastBlockchainProtocolMsg(brick: Brick) extends EventPayload {
-    override val filteringTag: BlockdagVertexId =
+  //#################### ENGINE ####################
+
+  case class BroadcastProtocolMsg(brick: Brick) extends EventPayload {
+    override val filteringTag: Int =
       if (brick.isInstanceOf[Block])
         EventTag.BROADCAST_BLOCK
       else
         EventTag.BROADCAST_BALLOT
   }
 
-  case class BlockchainProtocolMsgReceivedBySkeletonHost(sender: BlockchainNode, brick: Brick) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.MSG_RECEIVED_BY_LOCAL_DOWNLOAD_SERVER
+  case class ProtocolMsgAvailableForDownload(sender: BlockchainNode, brick: Brick) extends EventPayload {
+    override val filteringTag: Int = EventTag.MSG_AVAILABLE_FOR_DOWNLOAD
   }
 
   case object DownloadCheckpoint extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.DOWNLOAD_CHECKPOINT
+    override val filteringTag: Int = EventTag.DOWNLOAD_CHECKPOINT
   }
 
   case class NetworkDisruptionEnd(disruptionEventId: Long) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.NETWORK_DISRUPTION_END
+    override val filteringTag: Int = EventTag.NETWORK_DISRUPTION_END
   }
 
   case class NewAgentSpawned(validatorId: ValidatorId, progenitor: Option[BlockchainNode]) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.NEW_AGENT_SPAWNED
+    override val filteringTag: Int = EventTag.NEW_AGENT_SPAWNED
   }
 
-  //======== SEMANTIC ========
+  case class Halt(reason: String) extends EventPayload {
+    override val filteringTag: Int = EventTag.HALT
+  }
+
+  //#################### SEMANTIC ####################
+
   case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.DIRECT_ACCEPT
+    override val filteringTag: Int = EventTag.DIRECT_ACCEPT
   }
 
   case class AddedIncomingBrickToMsgBuffer(bufferedBrick: Brick, missingDependencies: Iterable[Brick], bufferSnapshotAfter: MsgBufferSnapshot)  extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.ADDED_ENTRY_TO_BUF
+    override val filteringTag: Int = EventTag.ADDED_ENTRY_TO_BUF
   }
 
   case class AcceptedIncomingBrickAfterBuffering(bufferedBrick: Brick, bufferSnapshotAfter: MsgBufferSnapshot) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.REMOVED_ENTRY_FROM_BUF
+    override val filteringTag: Int = EventTag.REMOVED_ENTRY_FROM_BUF
   }
 
   case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.PRE_FINALITY
+    override val filteringTag: Int = EventTag.PRE_FINALITY
   }
 
   case class BlockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.FINALITY
+    override val filteringTag: Int = EventTag.FINALITY
   }
 
   case class EquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.EQUIVOCATION
+    override val filteringTag: Int = EventTag.EQUIVOCATION
   }
 
   case class EquivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.CATASTROPHE
+    override val filteringTag: Int = EventTag.CATASTROPHE
   }
 
-  case class ConsumedBrickDelivery(consumedEventId: Long, consumptionDelay: TimeDelta, brick: Brick) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.CONSUMED_BRICK_DELIVERY
+  case class BrickArrivedHandlerBegin(msgDeliveryEventId: Long, consumptionDelay: TimeDelta, brick: Brick) extends EventPayload {
+    override val filteringTag: Int = EventTag.BRICK_ARRIVED_HANDLER_BEGIN
   }
 
-  case class ConsumedWakeUp(consumedEventId: Long, consumptionDelay: TimeDelta, strategySpecificMarker: Any) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.CONSUMED_WAKEUP
+  case class BrickArrivedHandlerEnd(msgDeliveryEventId: Long, processorTimeUsed: TimeDelta, brick: Brick) extends EventPayload {
+    override val filteringTag: Int = EventTag.BRICK_ARRIVED_HANDLER_END
+  }
+
+  case class WakeUpHandlerBegin(consumedEventId: Long, consumptionDelay: TimeDelta, strategySpecificMarker: Any) extends EventPayload {
+    override val filteringTag: Int = EventTag.WAKEUP_HANDLER_BEGIN
+  }
+
+  case class WakeUpHandlerEnd(consumedEventId: Long, processorTimeUsed: TimeDelta) extends EventPayload {
+    override val filteringTag: Int = EventTag.WAKEUP_HANDLER_END
   }
 
   case object NetworkConnectionLost extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.NETWORK_CONNECTION_LOST
+    override val filteringTag: Int = EventTag.NETWORK_CONNECTION_LOST
   }
 
   case object NetworkConnectionRestored extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.NETWORK_CONNECTION_RESTORED
+    override val filteringTag: Int = EventTag.NETWORK_CONNECTION_RESTORED
   }
 
   case class StrategySpecificOutput[P](cargo: P) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.STRATEGY_SPECIFIC_OUTPUT
+    override val filteringTag: Int = EventTag.STRATEGY_SPECIFIC_OUTPUT
   }
 
-  //======== EXTERNAL ========
+  //#################### EXTERNAL ####################
+
   case class Bifurcation(numberOfClones: Int) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.BIFURCATION
+    override val filteringTag: Int = EventTag.BIFURCATION
   }
 
   case object NodeCrash extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.NODE_CRASH
+    override val filteringTag: Int = EventTag.NODE_CRASH
   }
 
   case class NetworkDisruptionBegin(period: TimeDelta) extends EventPayload {
-    override val filteringTag: BlockdagVertexId = EventTag.NETWORK_DISRUPTION_BEGIN
+    override val filteringTag: Int = EventTag.NETWORK_DISRUPTION_BEGIN
   }
 }
 
@@ -115,30 +131,33 @@ object EventTag {
   val BRICK_DELIVERED = 1
   val WAKE_UP = 2
   val BROADCAST_BLOCK = 3
-  val BROADCAST_BALLOT = 20
-  val MSG_RECEIVED_BY_LOCAL_DOWNLOAD_SERVER = 21
-  val DOWNLOAD_CHECKPOINT = 22
-  val DIRECT_ACCEPT = 4
-  val ADDED_ENTRY_TO_BUF = 5
-  val REMOVED_ENTRY_FROM_BUF = 6
-  val PRE_FINALITY = 7
-  val FINALITY = 8
-  val EQUIVOCATION = 9
-  val CATASTROPHE = 10
-  val BIFURCATION = 11
-  val NODE_CRASH = 12
-  val NETWORK_DISRUPTION_BEGIN = 13
-  val NETWORK_DISRUPTION_END = 14
-  val CONSUMED_BRICK_DELIVERY = 15
-  val CONSUMED_WAKEUP = 16
-  val NETWORK_CONNECTION_RESTORED = 17
-  val NETWORK_CONNECTION_LOST = 18
-  val STRATEGY_SPECIFIC_OUTPUT = 19
+  val BROADCAST_BALLOT = 4
+  val MSG_AVAILABLE_FOR_DOWNLOAD = 5
+  val DOWNLOAD_CHECKPOINT = 6
+  val DIRECT_ACCEPT = 7
+  val ADDED_ENTRY_TO_BUF = 8
+  val REMOVED_ENTRY_FROM_BUF = 9
+  val PRE_FINALITY = 10
+  val FINALITY = 11
+  val EQUIVOCATION = 12
+  val CATASTROPHE = 13
+  val BIFURCATION = 14
+  val NODE_CRASH = 15
+  val NETWORK_DISRUPTION_BEGIN = 16
+  val NETWORK_DISRUPTION_END = 17
+  val BRICK_ARRIVED_HANDLER_BEGIN = 18
+  val BRICK_ARRIVED_HANDLER_END = 19
+  val WAKEUP_HANDLER_BEGIN = 20
+  val WAKEUP_HANDLER_END = 21
+  val NETWORK_CONNECTION_RESTORED = 22
+  val NETWORK_CONNECTION_LOST = 23
+  val STRATEGY_SPECIFIC_OUTPUT = 24
+  val HALT = 25
 
   val collection = Map(
     NEW_AGENT_SPAWNED -> "agent created",
     BRICK_DELIVERED -> "brick delivery",
-    MSG_RECEIVED_BY_LOCAL_DOWNLOAD_SERVER -> "msg delivered to download server",
+    MSG_AVAILABLE_FOR_DOWNLOAD -> "msg added to download queue",
     DOWNLOAD_CHECKPOINT -> "download checkpoint",
     WAKE_UP -> "wake-up",
     BROADCAST_BLOCK -> "block broadcast",
@@ -154,8 +173,10 @@ object EventTag {
     NODE_CRASH -> "node crash",
     NETWORK_DISRUPTION_BEGIN -> "network connection down",
     NETWORK_DISRUPTION_END -> "network restore attempt",
-    CONSUMED_BRICK_DELIVERY -> "brick consumption",
-    CONSUMED_WAKEUP -> "wake-up consumption",
+    BRICK_ARRIVED_HANDLER_BEGIN -> "msg arrived handler (begin)",
+    BRICK_ARRIVED_HANDLER_END -> "msg arrived handler (end)",
+    WAKEUP_HANDLER_BEGIN -> "wake-up handler (begin)",
+    WAKEUP_HANDLER_END -> "wake-up handler (end)",
     NETWORK_CONNECTION_LOST -> "network connection lost",
     NETWORK_CONNECTION_RESTORED -> "network connection restored",
     STRATEGY_SPECIFIC_OUTPUT -> "strategy-specific"

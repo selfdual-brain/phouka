@@ -13,13 +13,13 @@ object ReferenceExpConfig {
 
   private val headerSize: Int =
     32 + //message id
-      32 + //creator
-      8 +  //round id
-      1 +  //ballot type
-      32 + //era id
-      32 + //prev msg
-      32 + //target block
-      32   //signature
+    32 + //creator
+    8 +  //round id
+    1 +  //ballot type
+    32 + //era id
+    32 + //prev msg
+    32 + //target block
+    32   //signature
 
   //minimalistic naive-casper blockchain with homogenous nodes
   //only 5 nodes

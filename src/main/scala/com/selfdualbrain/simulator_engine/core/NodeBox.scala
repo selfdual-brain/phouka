@@ -130,7 +130,10 @@ private[core] class NodeBox(
   //blockchain node-2-node protocol messages that are already received by "local download server"
   //and so are ready to download by the node
   //(this is core part of how we model node download bandwidth constraints)
-  val downloadsBuffer = new mutable.PriorityQueue[DownloadsBufferItem]()(downloadsPriorityStrategy)
+  private val downloadsBuffer = new mutable.PriorityQueue[DownloadsBufferItem]()(downloadsPriorityStrategy)
+
+  //total binary size of messages in the buffer
+  private var downloadsBufferSizeX: Long = 0
 
   //the counter of time the virtual processor of this node was busy
   private var totalProcessingTimeX: TimeDelta = 0L
@@ -170,15 +173,23 @@ private[core] class NodeBox(
       statusX = NodeStatus.NORMAL
   }
 
+  def enqueueDownload(sender: BlockchainNode, brick: Brick, arrival: SimTimepoint): Unit = {
+    downloadsBuffer.enqueue(DownloadsBufferItem(sender, brick, arrival))
+    downloadsBufferSizeX += brick.binarySize
+  }
+
   def startNextDownloadIfPossible(): Unit = {
     assert(status != NodeStatus.CRASHED)
     if (downloadProgressGaugeHolder.isEmpty && downloadsBuffer.nonEmpty) {
       val downloadBufferItem: DownloadsBufferItem = downloadsBuffer.dequeue()
+      downloadsBufferSizeX -= downloadBufferItem.brick.binarySize
       val downloadProgressGauge: DownloadProgressGauge = new DownloadProgressGauge(downloadBufferItem)
       downloadProgressGaugeHolder = Some(downloadProgressGauge)
       scheduleNextDownloadCheckpoint()
     }
   }
+
+  def downloadBufferSize: Long = downloadsBufferSizeX
 
   def scheduleNextDownloadCheckpoint(): Unit = {
     assert(status != NodeStatus.CRASHED)

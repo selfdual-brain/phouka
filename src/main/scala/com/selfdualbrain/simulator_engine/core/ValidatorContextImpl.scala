@@ -21,7 +21,7 @@ private[core] class ValidatorContextImpl(engine: PhoukaEngine, nodeId: Blockchai
   override def random: Random = engine.random
 
   override def broadcast(timepointOfPassingTheBrickToCommsLayer: SimTimepoint, brick: Brick): Unit = {
-    engine.desQueue.addEngineEvent(timepointOfPassingTheBrickToCommsLayer, Some(nodeId), EventPayload.BroadcastBlockchainProtocolMsg(brick))
+    engine.desQueue.addEngineEvent(timepointOfPassingTheBrickToCommsLayer, Some(nodeId), EventPayload.BroadcastProtocolMsg(brick))
   }
 
   override def scheduleWakeUp(wakeUpTimepoint: SimTimepoint, strategySpecificMarker: Any): Unit = {

@@ -202,7 +202,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
-          case EventPayload.BroadcastBlockchainProtocolMsg(brick) => s"$brick"
+          case EventPayload.BroadcastProtocolMsg(brick) => s"$brick"
           case EventPayload.NetworkDisruptionEnd(disruptionEventId) => s"disruption-begin = event $disruptionEventId"
           case EventPayload.NewAgentSpawned(validatorId, progenitor) => if (progenitor.isEmpty) s"validator-id=$validatorId" else s"cloned from node $progenitor (validator-id=$validatorId)"
           case other => throw new RuntimeException(s"unexpected payload: $payload")
@@ -229,10 +229,10 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
           case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"
           case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) => s"absolute ftt exceeded by $absoluteFttExceededBy"
-          case EventPayload.ConsumedBrickDelivery(consumedEventId, consumptionDelay, brick) =>
+          case EventPayload.BrickArrivedHandlerBegin(consumedEventId, consumptionDelay, brick) =>
             val desc = if (brick.isInstanceOf[Block]) "block" else "ballot"
             s"$desc=${brick.id} delay=${TimeDelta.toString(consumptionDelay)} delivery-event=$consumedEventId"
-          case EventPayload.ConsumedWakeUp(consumedEventId, consumptionDelay, strategySpecificMarker) =>
+          case EventPayload.WakeUpHandlerBegin(consumedEventId, consumptionDelay, strategySpecificMarker) =>
             s"marker=$strategySpecificMarker delay=${TimeDelta.toString(consumptionDelay)} delivery-event=$consumedEventId"
           case EventPayload.NetworkConnectionLost => EMPTY
           case EventPayload.NetworkConnectionRestored => EMPTY

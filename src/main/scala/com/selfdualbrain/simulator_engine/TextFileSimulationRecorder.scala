@@ -65,11 +65,11 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
               case None => ""
             }
             s"spawned new agent ${agent.get} using validator-id $vid $progenitorDesc"
-          case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
+          case EventPayload.BroadcastProtocolMsg(brick) =>
             s"published $brick"
           case EventPayload.NetworkDisruptionEnd(eventId) =>
             s"network disruption end (disruption $eventId)"
-          case EventPayload.BlockchainProtocolMsgReceivedBySkeletonHost(sender, brick) =>
+          case EventPayload.ProtocolMsgAvailableForDownload(sender, brick) =>
             s"brick $brick appended to download queue of $agent, sender = $sender"
           case EventPayload.DownloadCheckpoint =>
             s"download checkpoint at $agent"
@@ -94,9 +94,9 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
             s"detected equivocation by $evilValidator - conflicting bricks are ${brick1.id} and ${brick2.id}"
           case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
             s"detected equivocation catastrophe - evil validators are ${validators.mkString(",")} absolute ftt exceeded by $absoluteFttExceededBy"
-          case EventPayload.ConsumedBrickDelivery(consumedEventId, consumptionDelay, brick) =>
+          case EventPayload.BrickArrivedHandlerBegin(consumedEventId, consumptionDelay, brick) =>
             s"brick $brick delivery - consumption (-> event $consumedEventId) delay=$consumptionDelay"
-          case EventPayload.ConsumedWakeUp(consumedEventId, consumptionDelay, strategySpecificMarker) =>
+          case EventPayload.WakeUpHandlerBegin(consumedEventId, consumptionDelay, strategySpecificMarker) =>
             s"wakeup - consumed (-> event $consumedEventId) delay=$consumptionDelay"
           case EventPayload.NetworkConnectionLost =>
             s"network connection lost"

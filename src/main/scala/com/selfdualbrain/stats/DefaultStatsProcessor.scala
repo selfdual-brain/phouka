@@ -88,9 +88,9 @@ class DefaultStatsProcessor(
   //... corresponding standard deviation
   private val latencyMovingWindowStandardDeviation = new ArrayBuffer[Double]
   //per-node statistics
-  private val node2stats = new FastMapOnIntInterval[NodeLocalStats](numberOfValidators)
+  private val node2stats = new FastMapOnIntInterval[NodeLocalStatsProcessor](numberOfValidators)
   //per-validator frozen statistics
-  private val validator2frozenStats = new FastIntMap[NodeLocalStats](numberOfValidators)
+  private val validator2frozenStats = new FastIntMap[NodeLocalStatsProcessor](numberOfValidators)
   //counter of visibly finalized blocks; this counter is used for blockchain throughput calculation
   private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounterWithHistory(TimeDelta.seconds(throughputMovingWindow), TimeDelta.seconds(throughputCheckpointsDelta))
   //flags marking faulty validators
@@ -126,12 +126,12 @@ class DefaultStatsProcessor(
             agentId2validatorId(newNodeAddress) = vid
             node2stats(newNodeAddress) = progenitor match {
               //creating per-node stats processor for new node
-              case None => new NodeLocalStatsProcessor(vid, BlockchainNode(newNodeAddress), basicStats = this, absoluteWeightsMap, genesis, engine)
+              case None => new NodeLocalStatsProcessor(vid, BlockchainNode(newNodeAddress), globalStats = this, absoluteWeightsMap, genesis, engine)
               //cloning per-node stats processor after bifurcation
               case Some(p) => node2stats(p.address).createDetachedCopy(agent.get)
             }
 
-          case EventPayload.BroadcastBlockchainProtocolMsg(brick) =>
+          case EventPayload.BroadcastProtocolMsg(brick) =>
             brick match {
               case block: AbstractNormalBlock =>
                 publishedBlocksCounter += 1

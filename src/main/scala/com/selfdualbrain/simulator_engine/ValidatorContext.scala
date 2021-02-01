@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{BlockdagVertexId, Brick, AbstractGenesis}
-import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.blockchain_structure.{AbstractGenesis, BlockdagVertexId, Brick}
+import com.selfdualbrain.time.SimTimepoint
 
 import scala.util.Random
 
@@ -83,8 +83,17 @@ trait ValidatorContext {
   def time(): SimTimepoint
 
   /**
-    * This is the same as registerProcessingTime(), just using different units.
-    * Caution: computing power of given node gives gas/time rate.
+    * Registers processing power consumed by the nested agent.
+    * Gas is used here instead of time, because we represent computing power (= virtual processor's speed) as gas/time rate.
+    * This approach makes computing time automatically scaling with computing power, which simplifies code.
+    *
+    * Implementation remark: in a real blockchain, "gas" if used as a representation of computation effort
+    * for on-chain operations only (i.e. for transactions in a block). We not only adopt the gas pattern, but we also extend
+    * it further to represent ANY computational effort happening at node with gas. This simplifies the simulated model. In practice
+    * we use "sprockets" as units of computing power (which could be thought as conceptually corresponding to MIPS or MFlops).
+    * 1 sprocket = ability to execute 1 million gas units per second. For example if a node is configured to have computing power
+    * 0.25 sprockets, it means the virtual processor of this node will execute 250000 gas units per second.
+    * On the other hand, the whole business logic in validators simulating time consumption is implemented using this method.
     *
     * @param gas amount of the gas to be burned for computing
     */
