@@ -1,6 +1,6 @@
 package com.selfdualbrain.stats
 
-import com.selfdualbrain.blockchain_structure.BlockchainNode
+import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
 import com.selfdualbrain.textout.AbstractTextOutput
 import com.selfdualbrain.time.TimeDelta
 
@@ -56,7 +56,7 @@ class StatsPrinter(out: AbstractTextOutput) {
     out.section("****** Per-node stats ******") {
       for (node <- 0 until stats.numberOfBlockchainNodes) {
         out.section(s"=============== node $node ===============") {
-          printNodeStats(stats.perNodeStats(BlockchainNode(node)))
+          printNodeStats(stats.perNodeStats(BlockchainNodeRef(node)))
         }
       }
     }

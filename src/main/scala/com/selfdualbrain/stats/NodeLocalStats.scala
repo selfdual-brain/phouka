@@ -93,7 +93,7 @@ import com.selfdualbrain.time.TimeDelta
   */
 trait NodeLocalStats {
 
-  //############################ LOCAL NODE STATE ################################################
+  /*                                     LOCAL NODE STATE                                            */
 
   /** Amount of time passed since this node was launched. */
   def timeSinceBoot: TimeDelta
@@ -180,7 +180,7 @@ trait NodeLocalStats {
     */
   def isAfterObservingEquivocationCatastrophe: Boolean
 
-  //############################ LOCAL NODE STATISTICS ################################################
+  /*                                  LOCAL NODE STATISTICS                                     */
 
   /**
     * Number of blocks published by this node.
@@ -324,7 +324,7 @@ trait NodeLocalStats {
     *   (1) its network connection was up (i.e. not during outage)
     *   (2) the node itself was not crashed
     * In terms of the actual implementation we calculate this as the amount of time this node had "NodeStatus.NORMAL" (expressed as fraction).
-    * Caution: we explicitly simulate outages and node crashes - see - DisruptionModel class.
+    * Caution: we explicitly simulate outages and node crashes - see DisruptionModel class.
     */
   def nodeAvailability: Double
 
@@ -373,7 +373,6 @@ trait NodeLocalStats {
 
   /**
     * The fraction of this node "alive time" that the virtual processor of this node was busy.
-    * As "total time" we take the time of
     */
   def averageComputingPowerUtilization: Double
 

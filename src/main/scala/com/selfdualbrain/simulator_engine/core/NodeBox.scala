@@ -1,8 +1,8 @@
 package com.selfdualbrain.simulator_engine.core
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, Brick, ValidatorId}
 import com.selfdualbrain.des.SimEventsQueue
-import com.selfdualbrain.simulator_engine.{EventPayload, Validator}
+import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, EventPayload, Validator}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -22,13 +22,16 @@ import scala.collection.mutable.ArrayBuffer
   * @param downloadBandwidth download bandwidth (in bits/sec) this validator is using
   */
 private[core] class NodeBox(
-                             desQueue: SimEventsQueue[BlockchainNode, EventPayload],
-                             val nodeId: BlockchainNode,
+                             desQueue: SimEventsQueue[BlockchainNodeRef, EventPayload],
+                             val nodeId: BlockchainNodeRef,
                              val validatorId: ValidatorId,
+                             val progenitor: Option[BlockchainNodeRef],
                              val validatorInstance: Validator,
                              val context: ValidatorContextImpl,
                              val downloadBandwidth: Double //in bits/sec
-                           ) {
+                           ) extends BlockchainSimulationEngine.Node {
+
+
 
   /**
     * Set of counters for handling a currently ongoing download.
@@ -43,7 +46,7 @@ private[core] class NodeBox(
     def size: Int = file.brick.binarySize
 
     //sender (agent id)
-    def sender: BlockchainNode = file.sender
+    def sender: BlockchainNodeRef = file.sender
 
     //number of bytes transmitted since last checkpoint (calculated with the assumption that no interruption happened
     //and the download was just progressing using the defined bandwidth)
@@ -118,7 +121,7 @@ private[core] class NodeBox(
   //all messages expected-but-not-yet-delivered are explicitly scheduled for the cloned node, so the cloned node will also get them later.
   //
   //here we have a map: expected message ---> sending agent
-  private val messagesExpectedButNotYetDeliveredX = new mutable.HashMap[Brick, BlockchainNode]
+  private val messagesExpectedButNotYetDeliveredX = new mutable.HashMap[Brick, BlockchainNodeRef]
 
   //we prioritize downloads according to strategy that is defined at the level of concrete implementation of validator
   //possibly this can get quite complex, as the validator can utilize its equivocators registry or analyze its messages buffer
@@ -142,6 +145,8 @@ private[core] class NodeBox(
   var downloadProgressGaugeHolder: Option[DownloadProgressGauge] = None
 
   def status: NodeStatus = statusX
+
+  override def computingPower: TimeDelta = validatorInstance.computingPower
 
   def totalProcessingTime: TimeDelta = totalProcessingTimeX
 
@@ -173,7 +178,7 @@ private[core] class NodeBox(
       statusX = NodeStatus.NORMAL
   }
 
-  def enqueueDownload(sender: BlockchainNode, brick: Brick, arrival: SimTimepoint): Unit = {
+  def enqueueDownload(sender: BlockchainNodeRef, brick: Brick, arrival: SimTimepoint): Unit = {
     downloadsBuffer.enqueue(DownloadsBufferItem(sender, brick, arrival))
     downloadsBufferSizeX += brick.binarySize
   }
@@ -196,7 +201,7 @@ private[core] class NodeBox(
     desQueue.addEngineEvent(downloadProgressGaugeHolder.get.estimatedCompletionTimepoint, Some(nodeId), EventPayload.DownloadCheckpoint)
   }
 
-  def expectMessage(sender: BlockchainNode, brick: Brick): Unit = {
+  def expectMessage(sender: BlockchainNodeRef, brick: Brick): Unit = {
     messagesExpectedButNotYetDeliveredX += brick -> sender
   }
 
@@ -204,7 +209,7 @@ private[core] class NodeBox(
     messagesExpectedButNotYetDeliveredX -= brick
   }
 
-  def messagesExpectedButNotYetDelivered: Iterable[(Brick, BlockchainNode)] = messagesExpectedButNotYetDeliveredX
+  def messagesExpectedButNotYetDelivered: Iterable[(Brick, BlockchainNodeRef)] = messagesExpectedButNotYetDeliveredX
 
   def crash(): Unit = {
     statusX = NodeStatus.CRASHED

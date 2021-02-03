@@ -74,7 +74,7 @@ object HighwayValidator {
       val st = state.asInstanceOf[HighwayValidator.State]
     }
 
-    override def initialize(nodeId: BlockchainNode, context: ValidatorContext, config: ValidatorBaseImpl.Config): Unit = {
+    override def initialize(nodeId: BlockchainNodeRef, context: ValidatorContext, config: ValidatorBaseImpl.Config): Unit = {
       super.initialize(nodeId, context, config)
       val cf = config.asInstanceOf[HighwayValidator.Config]
       val secondaryFinalizerCfg = BGamesDrivenFinalizerWithForkchoiceStartingAtLfb.Config(
@@ -238,13 +238,13 @@ object HighwayValidator {
   * is used for lambda-responses only.
   */
 class HighwayValidator private (
-                                 blockchainNode: BlockchainNode,
+                                 blockchainNode: BlockchainNodeRef,
                                  context: ValidatorContext,
                                  config: HighwayValidator.Config,
                                  state: HighwayValidator.State
                                ) extends ValidatorBaseImpl[HighwayValidator.Config, ValidatorBaseImpl.State](blockchainNode, context, config, state) {
 
-  def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: HighwayValidator.Config) =
+  def this(blockchainNode: BlockchainNodeRef, context: ValidatorContext, config: HighwayValidator.Config) =
     this(
       blockchainNode,
       context,
@@ -266,7 +266,7 @@ class HighwayValidator private (
     leaderSeq = config.leadersSequencer.findLeaderForRound
   )
 
-  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
+  override def clone(bNode: BlockchainNodeRef, vContext: ValidatorContext): Validator = {
     val validatorInstance = new HighwayValidator(bNode, vContext, config, state.createDetachedCopy())
     val nextRoundId: Tick = state.currentRoundId + roundLengthAsNumberOfTicks(state.currentRoundExponent)
     validatorInstance.prepareForRound(nextRoundId, shouldPerformExponentAutoAdjustment = false)

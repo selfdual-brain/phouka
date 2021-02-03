@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.blockchain_structure.{Ballot, Block, BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, Block, BlockchainNodeRef, Brick, ValidatorId}
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui.model.SimulationDisplayModel.Ev
@@ -190,7 +190,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       return coll.mkString(",")
     }
     private val EMPTY: String = ""
-    private def eventDetails(event: Event[BlockchainNode, EventPayload]): String = event match {
+    private def eventDetails(event: Event[BlockchainNodeRef, EventPayload]): String = event match {
 
       case Event.External(id, timepoint, destination, payload) =>
         payload match {

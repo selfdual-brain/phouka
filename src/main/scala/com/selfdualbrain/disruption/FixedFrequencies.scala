@@ -1,6 +1,6 @@
 package com.selfdualbrain.disruption
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.data_structures.FastIntMap
 import com.selfdualbrain.des.{EventStreamsMerge, ExtEventIngredients}
 import com.selfdualbrain.randomness.LongSequence
@@ -125,7 +125,7 @@ class FixedFrequencies(
             node2vid += nid -> vid
             node2Status += nid -> NodeStatus.NORMAL
             node2outageLevel += nid -> 0
-            Some(ExtEventIngredients(timepoint, BlockchainNode(nid), EventPayload.Bifurcation(numberOfClones = 1)))
+            Some(ExtEventIngredients(timepoint, BlockchainNodeRef(nid), EventPayload.Bifurcation(numberOfClones = 1)))
         }
 
       case Item.Crash(timepoint) =>
@@ -134,7 +134,7 @@ class FixedFrequencies(
           case Some((nid, vid)) =>
             aliveNodes -= nid
             node2Status(nid) = NodeStatus.CRASHED
-            Some(ExtEventIngredients(timepoint, BlockchainNode(nid), EventPayload.NodeCrash))
+            Some(ExtEventIngredients(timepoint, BlockchainNodeRef(nid), EventPayload.NodeCrash))
         }
 
       case Item.OutageBegin(timepoint, hook, duration) =>
@@ -144,7 +144,7 @@ class FixedFrequencies(
             hook2nodeId += hook -> nid
             node2Status(nid) = NodeStatus.NETWORK_OUTAGE
             node2outageLevel(nid) += 1
-            Some(ExtEventIngredients(timepoint, BlockchainNode(nid), EventPayload.NetworkDisruptionBegin(duration)))
+            Some(ExtEventIngredients(timepoint, BlockchainNodeRef(nid), EventPayload.NetworkDisruptionBegin(duration)))
         }
 
       case Item.OutageEnd(timepoint, hook) =>

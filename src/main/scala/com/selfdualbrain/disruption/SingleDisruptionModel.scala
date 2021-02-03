@@ -1,11 +1,11 @@
 package com.selfdualbrain.disruption
 
-import com.selfdualbrain.blockchain_structure.BlockchainNode
+import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
 import com.selfdualbrain.des.ExtEventIngredients
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.SimTimepoint
 
-abstract class SingleDisruptionModel(disasterTimepoint: SimTimepoint, targetBlockchainNode: BlockchainNode) extends DisruptionModel {
+abstract class SingleDisruptionModel(disasterTimepoint: SimTimepoint, targetBlockchainNode: BlockchainNodeRef) extends DisruptionModel {
 
   private var isBombAlreadyBlown: Boolean = false
 

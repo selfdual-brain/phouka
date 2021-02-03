@@ -1,6 +1,6 @@
 package com.selfdualbrain.network
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, Brick}
 import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
@@ -25,7 +25,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
                                              latencyAverageGen: LongSequence.Generator, //here we interpret integers as microseconds
                                              latencyStdDeviationNormalized: Double, //standard deviation of latency expressed as fraction of latency expected value
                                              bandwidthGen: LongSequence.Generator //transfer bandwidth generator connection graph [bits/sec]
-                                            ) extends NetworkModel[BlockchainNode, Brick] {
+                                            ) extends NetworkModel[BlockchainNodeRef, Brick] {
 
   case class ConnectionParams(latencyGenerator: LongSequence.Generator, bandwidth: Long)
 
@@ -40,7 +40,7 @@ class SymmetricLatencyBandwidthGraphNetwork(
   private var numberOfNodes: Int = initialNumberOfNodes
   private var growthIncrement: Int = 4
 
-  override def calculateMsgDelay(msg: Brick, sender: BlockchainNode, destination: BlockchainNode, sendingTime: SimTimepoint): TimeDelta = {
+  override def calculateMsgDelay(msg: Brick, sender: BlockchainNodeRef, destination: BlockchainNodeRef, sendingTime: SimTimepoint): TimeDelta = {
     if (sender.address >= numberOfNodes || destination.address >= numberOfNodes) {
       grow(numberOfNodes + growthIncrement)
       growthIncrement = growthIncrement * 2

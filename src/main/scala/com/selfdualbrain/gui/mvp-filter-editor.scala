@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.blockchain_structure.BlockchainNode
+import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.MvpView.JCheckBoxOps
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
@@ -29,7 +29,7 @@ class FilterEditorPresenter extends Presenter[SimulationDisplayModel, Simulation
     //do nothing
   }
 
-  def toggleSingleNode(node: BlockchainNode, newState: Boolean): Unit = {
+  def toggleSingleNode(node: BlockchainNodeRef, newState: Boolean): Unit = {
     val oldFilter: EventsFilter.Standard = model.getFilter.asInstanceOf[EventsFilter.Standard]
     val newFilter: EventsFilter.Standard = EventsFilter.Standard(
       nodes = if (newState) oldFilter.nodes + node else oldFilter.nodes - node,
@@ -78,7 +78,7 @@ class FilterEditorPresenter extends Presenter[SimulationDisplayModel, Simulation
 class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model: SimulationDisplayModel)
   extends StaticSplitPanel(guiLayoutConfig, PanelEdge.EAST) with MvpViewWithSealedModel[SimulationDisplayModel, FilterEditorPresenter] {
 
-  private val node2checkbox = new mutable.HashMap[BlockchainNode, JCheckBox]
+  private val node2checkbox = new mutable.HashMap[BlockchainNodeRef, JCheckBox]
   private val eventTag2checkbox = new mutable.HashMap[Int, JCheckBox]
   private val allNodesCheckbox = new JCheckBox("show all")
   private val allEventsCheckbox = new JCheckBox("show all")
@@ -134,11 +134,11 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
       gbc.insets = new Insets(0, 0, 0, 0)
       val nodeId = col * numberOfRows + row
       val checkbox = new JCheckBox(nodeId.toString)
-      node2checkbox += BlockchainNode(nodeId) -> checkbox
+      node2checkbox += BlockchainNodeRef(nodeId) -> checkbox
       panel.add(checkbox, gbc)
       checkbox ~~> {
         if (checkboxHandlersEnabled)
-          presenter.toggleSingleNode(BlockchainNode(nodeId), checkbox.isSelected)
+          presenter.toggleSingleNode(BlockchainNodeRef(nodeId), checkbox.isSelected)
       }
     }
 

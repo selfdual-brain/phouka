@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.pingpong
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine.{Validator, ValidatorContext, ValidatorsFactory}
 
@@ -12,7 +12,7 @@ class PingPongValidatorsFactory(
                                maxNumberOfNodes: Int
                                ) extends ValidatorsFactory {
 
-  override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator = {
+  override def create(node: BlockchainNodeRef, vid: ValidatorId, context: ValidatorContext): Validator = {
     return new PingPongValidator(
       node,
       vid,

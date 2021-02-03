@@ -89,7 +89,7 @@ object ValidatorBaseImpl {
 
     def createEmpty() = new State
 
-    def initialize(nodeId: BlockchainNode, context: ValidatorContext, config: Config): Unit = {
+    def initialize(nodeId: BlockchainNodeRef, context: ValidatorContext, config: Config): Unit = {
       messagesBuffer = new MsgBufferImpl[Brick]
       mySwimlaneLastMessageSequenceNumber = -1
       mySwimlane = new ArrayBuffer[Brick](10000)
@@ -122,7 +122,7 @@ object ValidatorBaseImpl {
   * @tparam ST state snapshot type
   */
 abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorBaseImpl.State](
-                                                                                                blockchainNode: BlockchainNode,
+                                                                                                blockchainNode: BlockchainNodeRef,
                                                                                                 context: ValidatorContext,
                                                                                                 config: CF,
                                                                                                 state: ST) extends Validator {
@@ -155,7 +155,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
 
   override def validatorId: ValidatorId = config.validatorId
 
-  override def blockchainNodeId: BlockchainNode = blockchainNode
+  override def blockchainNodeId: BlockchainNodeRef = blockchainNode
 
   override def computingPower: Long = config.computingPower
 

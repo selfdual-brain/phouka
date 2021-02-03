@@ -1,10 +1,10 @@
 package com.selfdualbrain
 
-import com.selfdualbrain.blockchain_structure.BlockchainNode
+import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
 import com.selfdualbrain.des.ExtEventIngredients
 import com.selfdualbrain.simulator_engine.{EventPayload}
 
 package object disruption {
-  type Disruption = ExtEventIngredients[BlockchainNode, EventPayload]
+  type Disruption = ExtEventIngredients[BlockchainNodeRef, EventPayload]
 
 }

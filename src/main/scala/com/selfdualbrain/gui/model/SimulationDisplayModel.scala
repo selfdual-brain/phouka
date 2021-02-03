@@ -108,11 +108,11 @@ class SimulationDisplayModel(
   import SimulationDisplayModel.Ev
 
   //ever-growing collection of (all) events: step-id ----> event
-  private val allEvents = new FastMapOnIntInterval[Event[BlockchainNode, EventPayload]](expectedNumberOfEvents)
+  private val allEvents = new FastMapOnIntInterval[Event[BlockchainNodeRef, EventPayload]](expectedNumberOfEvents)
 
   //Subset of all-events - obtained via applying current filter. This is what "events log" table is showing in the main window.
   //This collection is recalculated from scratch after every filter change.
-  private var filteredEvents = new ArrayBuffer[(Int, Event[BlockchainNode, EventPayload])]
+  private var filteredEvents = new ArrayBuffer[(Int, Event[BlockchainNodeRef, EventPayload])]
 
   //This is a map: stepId ---> state snapshot
   //For step (n,e) we keep an entry n -> snapshotOf(e.loggingAgent)
@@ -136,7 +136,7 @@ class SimulationDisplayModel(
   private var selectedStepX: Int = 0
 
   //The id of selected node (= for which the jdag graph is displayed).
-  private var selectedNodeX: BlockchainNode = BlockchainNode(0)
+  private var selectedNodeX: BlockchainNodeRef = BlockchainNodeRef(0)
 
   //Currently selected brick (in the jdag window). None = no selection.
   private var selectedBrickX: Option[Brick] = None
@@ -155,7 +155,7 @@ class SimulationDisplayModel(
     */
   case class AgentStateSnapshot(
                                  step: Int, //pretty redundant information here, kept to make debugging easier
-                                 agent: BlockchainNode, //pretty redundant information here, kept to make debugging easier
+                                 agent: BlockchainNodeRef, //pretty redundant information here, kept to make debugging easier
                                  jDagBricksSnapshot: Int,
                                  jDagSize: Int,
                                  jDagDepth: Int,
@@ -191,7 +191,7 @@ class SimulationDisplayModel(
 
   def perValidatorStats(vid: ValidatorId): NodeLocalStats = simulationStatistics.perValidatorStats(vid)
 
-  def perNodeStats(node: BlockchainNode): NodeLocalStats = simulationStatistics.perNodeStats(node)
+  def perNodeStats(node: BlockchainNodeRef): NodeLocalStats = simulationStatistics.perNodeStats(node)
 
   //--------------------- HORIZON -------------------------
 
@@ -289,9 +289,9 @@ class SimulationDisplayModel(
 
   //--------------------- CURRENT SELECTION -------------------------
 
-  def selectedNode: BlockchainNode = selectedNodeX
+  def selectedNode: BlockchainNodeRef = selectedNodeX
 
-  def selectedNode_=(node: BlockchainNode): Unit = {
+  def selectedNode_=(node: BlockchainNodeRef): Unit = {
     if (node != selectedNode) {
       selectedNodeX = node
       trigger(Ev.NodeSelectionChanged(selectedNodeX))
@@ -337,9 +337,9 @@ class SimulationDisplayModel(
 
   //--------------------- EVENTS LOG -------------------------
 
-  def eventsAfterFiltering: ArrayBuffer[(Int, Event[BlockchainNode, EventPayload])] = filteredEvents
+  def eventsAfterFiltering: ArrayBuffer[(Int, Event[BlockchainNodeRef, EventPayload])] = filteredEvents
 
-  def getEvent(step: Int): Event[BlockchainNode, EventPayload] = allEvents(step)
+  def getEvent(step: Int): Event[BlockchainNodeRef, EventPayload] = allEvents(step)
 
   def getFilter: EventsFilter = eventsFilter
 
@@ -364,7 +364,7 @@ class SimulationDisplayModel(
 
 //################################### PRIVATE ############################################
 
-  private def extractStateSnapshotOf(node: BlockchainNode): AgentStateSnapshot = {
+  private def extractStateSnapshotOf(node: BlockchainNodeRef): AgentStateSnapshot = {
     val nodeStats: NodeLocalStats = stats.perNodeStats(node)
 
     return new AgentStateSnapshot(
@@ -450,7 +450,7 @@ object SimulationDisplayModel {
       *
       * @param node validator that became the "currently observed validator"
       */
-    case class NodeSelectionChanged(node: BlockchainNode) extends Ev
+    case class NodeSelectionChanged(node: BlockchainNodeRef) extends Ev
 
     /**
       * The user picked another simulation step as the "current step" that the GUI should focus on.
@@ -472,11 +472,11 @@ object SimulationDisplayModel {
   sealed abstract class SimulationEngineStopCondition {
     def caseTag: Int
     def render(): String
-    def createNewChecker(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker
+    def createNewChecker(engine: SimulationEngine[BlockchainNodeRef, EventPayload]): EngineStopConditionChecker
   }
 
   trait EngineStopConditionChecker {
-    def checkStop(step: Long, event: Event[BlockchainNode, EventPayload]): Boolean
+    def checkStop(step: Long, event: Event[BlockchainNodeRef, EventPayload]): Boolean
   }
 
   object SimulationEngineStopCondition {
@@ -543,45 +543,45 @@ object SimulationDisplayModel {
     case class NextNumberOfSteps(n: Int) extends SimulationEngineStopCondition {
       override def caseTag: Int = 0
       override def render(): String = n.toString
-      override def createNewChecker(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+      override def createNewChecker(engine: SimulationEngine[BlockchainNodeRef, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
         private val start = engine.lastStepExecuted
         private val stop = start + n
-        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = step == stop
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNodeRef, EventPayload]): Boolean = step == stop
       }
     }
 
     case class ReachExactStep(n: Int) extends SimulationEngineStopCondition {
       override def caseTag: Int = 1
       override def render(): String = n.toString
-      override def createNewChecker(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
-        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = step == n
+      override def createNewChecker(engine: SimulationEngine[BlockchainNodeRef, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNodeRef, EventPayload]): Boolean = step == n
       }
     }
 
     case class SimulatedTimeDelta(delta: TimeDelta) extends SimulationEngineStopCondition {
       override def caseTag: Int = 2
       override def render(): String = SimTimepoint.render(delta)
-      override def createNewChecker(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+      override def createNewChecker(engine: SimulationEngine[BlockchainNodeRef, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
         private val stop = engine.currentTime + delta
-        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = engine.currentTime >= stop
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNodeRef, EventPayload]): Boolean = engine.currentTime >= stop
       }
     }
 
     case class ReachExactSimulatedTimePoint(point: SimTimepoint) extends SimulationEngineStopCondition {
       override def caseTag: BlockdagVertexId = 3
       override def render(): String = point.toString
-      override def createNewChecker(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
-        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = engine.currentTime >= point
+      override def createNewChecker(engine: SimulationEngine[BlockchainNodeRef, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNodeRef, EventPayload]): Boolean = engine.currentTime >= point
       }
     }
 
     case class WallClockTimeDelta(hours: Int, minutes: Int, seconds: Int) extends SimulationEngineStopCondition {
       override def caseTag: BlockdagVertexId = 4
       override def render(): String = s"$hours:$minutes:$seconds"
-      override def createNewChecker(engine: SimulationEngine[BlockchainNode, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
+      override def createNewChecker(engine: SimulationEngine[BlockchainNodeRef, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
         private val start = System.currentTimeMillis()
         private val stop = start + (TimeDelta.hours(hours) + TimeDelta.minutes(minutes) + TimeDelta.seconds(seconds)) / 1000
-        override def checkStop(step: TimeDelta, event: Event[BlockchainNode, EventPayload]): Boolean = System.currentTimeMillis() >= stop
+        override def checkStop(step: TimeDelta, event: Event[BlockchainNodeRef, EventPayload]): Boolean = System.currentTimeMillis() >= stop
       }
     }
 

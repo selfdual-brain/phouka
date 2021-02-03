@@ -1,12 +1,12 @@
 package com.selfdualbrain.simulator_engine.core
 
-import com.selfdualbrain.blockchain_structure.{AbstractGenesis, BlockchainNode, BlockdagVertexId, Brick}
+import com.selfdualbrain.blockchain_structure.{AbstractGenesis, BlockchainNodeRef, BlockdagVertexId, Brick}
 import com.selfdualbrain.simulator_engine.{EventPayload, Validator, ValidatorContext}
 import com.selfdualbrain.time.SimTimepoint
 
 import scala.util.Random
 
-private[core] class ValidatorContextImpl(engine: PhoukaEngine, nodeId: BlockchainNode, initialTimepointOfLocalClock: SimTimepoint) extends ValidatorContext {
+private[core] class ValidatorContextImpl(engine: PhoukaEngine, nodeId: BlockchainNodeRef, initialTimepointOfLocalClock: SimTimepoint) extends ValidatorContext {
   private var localClock: SimTimepoint = initialTimepointOfLocalClock
   private[core] var validatorInstance: Validator = _
 

@@ -1,7 +1,7 @@
 package com.selfdualbrain.disruption
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.des.ExtEventIngredients
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.SimTimepoint
@@ -22,10 +22,10 @@ class BifurcationsRainfallCloseToAbsoluteFtt(
   //selecting critical subset
   private val subset: Set[ValidatorId] = CriticalSubsetSelection.pickSubset(random, absoluteFtt, weightsMap, numberOfValidators, fttApproxMode)
   //transforming it into collection of events
-  private val events: Set[ExtEventIngredients[BlockchainNode, EventPayload]] =
-    subset map (vid => ExtEventIngredients(disasterTimepoint, BlockchainNode(vid), EventPayload.Bifurcation(1)))
+  private val events: Set[ExtEventIngredients[BlockchainNodeRef, EventPayload]] =
+    subset map (vid => ExtEventIngredients(disasterTimepoint, BlockchainNodeRef(vid), EventPayload.Bifurcation(1)))
   //... and running an iterator over this collection
-  private val iter: Iterator[ExtEventIngredients[BlockchainNode, EventPayload]] = events.iterator
+  private val iter: Iterator[ExtEventIngredients[BlockchainNodeRef, EventPayload]] = events.iterator
 
   override def hasNext: Boolean = iter.hasNext
 

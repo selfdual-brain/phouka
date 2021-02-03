@@ -1,6 +1,6 @@
 package com.selfdualbrain.network
 
-import com.selfdualbrain.blockchain_structure.BlockchainNode
+import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
 import com.selfdualbrain.data_structures.FastIntMap
 import com.selfdualbrain.randomness.LongSequence
 
@@ -23,10 +23,10 @@ class UniformBandwidthModel[A](downloadBandwidth: Double) extends DownloadBandwi
 /**
   * @param bandwidthGen random distribution of bandwidth; we use [bits/sec] units
   */
-class GenericBandwidthModel(initialNumberOfNodes: Int, bandwidthGen: LongSequence.Generator) extends DownloadBandwidthModel[BlockchainNode] {
+class GenericBandwidthModel(initialNumberOfNodes: Int, bandwidthGen: LongSequence.Generator) extends DownloadBandwidthModel[BlockchainNodeRef] {
   private val node2downloadBandwidth = new FastIntMap[Double](initialNumberOfNodes)
 
-  override def bandwidth(agent: BlockchainNode): Double = {
+  override def bandwidth(agent: BlockchainNodeRef): Double = {
     node2downloadBandwidth.get(agent.address) match {
       case Some(b) => b
       case None =>

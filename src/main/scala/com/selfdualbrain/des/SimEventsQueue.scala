@@ -148,5 +148,4 @@ object Event  {
     override def loggingAgent: Option[A] = Some(source)
   }
 
-
 }

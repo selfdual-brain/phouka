@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine.highway
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.simulator_engine.{NaiveLeaderSequencer, Validator, ValidatorContext, ValidatorsFactory}
 import com.selfdualbrain.time.TimeDelta
@@ -34,7 +34,7 @@ class HighwayValidatorsFactory(
 
 ) extends ValidatorsFactory {
 
-  override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator = {
+  override def create(node: BlockchainNodeRef, vid: ValidatorId, context: ValidatorContext): Validator = {
     val conf = new HighwayValidator.Config
     conf.validatorId = vid
     conf.numberOfValidators = numberOfValidators

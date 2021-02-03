@@ -37,8 +37,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   }
   private val transactionsStream: TransactionsStream = TransactionsStream.fromConfig(config.transactionsStreamModel, randomGenerator)
   private val blockPayloadGenerator: BlockPayloadBuilder = BlockPayloadBuilder.fromConfig(config.blocksBuildingStrategy, transactionsStream)
-  val networkModel: NetworkModel[BlockchainNode, Brick] = buildNetworkModel()
-  val downloadBandwidthModel: DownloadBandwidthModel[BlockchainNode] = buildDownloadBandwidthModel()
+  val networkModel: NetworkModel[BlockchainNodeRef, Brick] = buildNetworkModel()
+  val downloadBandwidthModel: DownloadBandwidthModel[BlockchainNodeRef] = buildDownloadBandwidthModel()
   val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(config.disruptionModel, randomGenerator, absoluteFTT, weightsOfValidatorsAsFunction, config.numberOfValidators)
   private val computingPowersGenerator: LongSequence.Generator = LongSequence.Generator.fromConfig(config.nodesComputingPowerModel, randomGenerator)
   private val runForkChoiceFromGenesis: Boolean = config.forkChoiceStrategy match {
@@ -135,7 +135,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   )
 
   private val chassis = new BlockchainSimulationEngineChassis(coreEngine)
-  override val engine: BlockchainSimulationEngine with ObservableSimulationEngine[BlockchainNode, EventPayload] = chassis
+  override val engine: BlockchainSimulationEngine with ObservableSimulationEngine[BlockchainNodeRef, EventPayload] = chassis
 
   private var guiCompatibleStatsX: Option[BlockchainSimulationStats] = None
 
@@ -154,11 +154,11 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   //###################################################################################
 
-  private def buildNetworkModel(): NetworkModel[BlockchainNode, Brick] =
+  private def buildNetworkModel(): NetworkModel[BlockchainNodeRef, Brick] =
     config.networkModel match {
       case NetworkConfig.HomogenousNetworkWithRandomDelays(delaysConfig) =>
         val delaysGenerator = LongSequence.Generator.fromConfig(delaysConfig, randomGenerator)
-        new HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth[BlockchainNode, Brick](delaysGenerator)
+        new HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth[BlockchainNodeRef, Brick](delaysGenerator)
 
       case NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(connGraphLatencyAverageGenCfg, connGraphLatencyStdDeviationNormalized, connGraphBandwidthGenCfg) =>
         val latencyAverageGen = LongSequence.Generator.fromConfig(connGraphLatencyAverageGenCfg, randomGenerator)
@@ -172,7 +172,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         )
     }
 
-  private def buildDownloadBandwidthModel(): DownloadBandwidthModel[BlockchainNode] =
+  private def buildDownloadBandwidthModel(): DownloadBandwidthModel[BlockchainNodeRef] =
     config.downloadBandwidthModel match {
       case DownloadBandwidthConfig.Uniform(bandwidth) =>
         new UniformBandwidthModel(bandwidth)
@@ -183,7 +183,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         )
     }
 
-  private def buildObserver(cfg: ObserverConfig): SimulationObserver[BlockchainNode, EventPayload] = cfg match {
+  private def buildObserver(cfg: ObserverConfig): SimulationObserver[BlockchainNodeRef, EventPayload] = cfg match {
     case ObserverConfig.DefaultStatsProcessor(latencyMovingWindow, throughputMovingWindow, throughputCheckpointsDelta) =>
       new DefaultStatsProcessor(
         latencyMovingWindow,

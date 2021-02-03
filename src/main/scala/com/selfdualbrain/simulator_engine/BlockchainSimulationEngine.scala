@@ -1,16 +1,20 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.des.SimulationEngine
+import com.selfdualbrain.time.SimTimepoint
 
 /**
   * Contract of blockchain simulation engines.
   *
   * Implementation remark: here we specialize the "abstract simulation engine" for the purpose of blockchain simulation.
   */
-trait BlockchainSimulationEngine extends SimulationEngine[BlockchainNode, EventPayload] {
+trait BlockchainSimulationEngine extends SimulationEngine[BlockchainNodeRef, EventPayload] {
 
-  def validatorIdUsedBy(node: BlockchainNode): ValidatorId
+  def node(ref: BlockchainNodeRef): BlockchainSimulationEngine.Node
+
+  @deprecated
+  def validatorIdUsedBy(node: BlockchainNodeRef): ValidatorId
 
   /**
     * Allows traversing the cloning tree of nodes.
@@ -21,14 +25,31 @@ trait BlockchainSimulationEngine extends SimulationEngine[BlockchainNode, EventP
     * @param node node in question
     * @return None if node is genuine, Some(p) if node was spawned as a clone of previously existing node p
     */
-  def progenitorOf(node: BlockchainNode): Option[BlockchainNode]
+  @deprecated
+  def progenitorOf(node: BlockchainNodeRef): Option[BlockchainNodeRef]
 
   /**
     * Returns computing power of given node (in gas/sec).
     */
-  def computingPowerOf(node: BlockchainNode): Long
+  @deprecated
+  def computingPowerOf(node: BlockchainNodeRef): Long
 
   //in bits/sec
-  def downloadBandwidthOf(node: BlockchainNode): Double
+  @deprecated
+  def downloadBandwidthOf(node: BlockchainNodeRef): Double
 
 }
+
+object BlockchainSimulationEngine {
+
+  trait Node {
+    def validatorId: ValidatorId
+    def progenitor: Option[BlockchainNodeRef]
+    def computingPower: Long
+    def downloadBandwidth: Double
+    def startupTimepoint: SimTimepoint
+  }
+
+}
+
+

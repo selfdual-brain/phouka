@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.leaders_seq
 
-import com.selfdualbrain.blockchain_structure.{Block, BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Block, BlockchainNodeRef, Brick, ValidatorId}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.transactions.BlockPayload
@@ -36,13 +36,13 @@ object LeadersSeqValidator {
   * Remark 2: We do not simulate block production rules violation.
   */
 class LeadersSeqValidator private (
-                                    blockchainNode: BlockchainNode,
+                                    blockchainNode: BlockchainNodeRef,
                                     context: ValidatorContext,
                                     config: LeadersSeqValidator.Config,
                                     state: ValidatorBaseImpl.State
                                   ) extends ValidatorBaseImpl[LeadersSeqValidator.Config, ValidatorBaseImpl.State](blockchainNode, context, config, state) {
 
-  def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: LeadersSeqValidator.Config) =
+  def this(blockchainNode: BlockchainNodeRef, context: ValidatorContext, config: LeadersSeqValidator.Config) =
     this(
       blockchainNode,
       context,
@@ -54,7 +54,7 @@ class LeadersSeqValidator private (
       }
     )
 
-  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator = {
+  override def clone(bNode: BlockchainNodeRef, vContext: ValidatorContext): Validator = {
     val validatorInstance = new LeadersSeqValidator(bNode, vContext, config, state.createDetachedCopy())
     validatorInstance.scheduleNextWakeup(beAggressive = false)
     return validatorInstance

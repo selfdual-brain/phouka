@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 
 /**
   * PhoukaEngine supports pluggable validators, i.e. we allow different implementation of validators to coexist.
@@ -15,6 +15,6 @@ trait ValidatorsFactory {
     * @param context agent context
     * @return new instance of an agent (= validator)
     */
-  def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator
+  def create(node: BlockchainNodeRef, vid: ValidatorId, context: ValidatorContext): Validator
 
 }

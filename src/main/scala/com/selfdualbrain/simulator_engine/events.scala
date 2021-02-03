@@ -33,7 +33,7 @@ object EventPayload {
         EventTag.BROADCAST_BALLOT
   }
 
-  case class ProtocolMsgAvailableForDownload(sender: BlockchainNode, brick: Brick) extends EventPayload {
+  case class ProtocolMsgAvailableForDownload(sender: BlockchainNodeRef, brick: Brick) extends EventPayload {
     override val filteringTag: Int = EventTag.MSG_AVAILABLE_FOR_DOWNLOAD
   }
 
@@ -45,7 +45,7 @@ object EventPayload {
     override val filteringTag: Int = EventTag.NETWORK_DISRUPTION_END
   }
 
-  case class NewAgentSpawned(validatorId: ValidatorId, progenitor: Option[BlockchainNode]) extends EventPayload {
+  case class NewAgentSpawned(validatorId: ValidatorId, progenitor: Option[BlockchainNodeRef]) extends EventPayload {
     override val filteringTag: Int = EventTag.NEW_AGENT_SPAWNED
   }
 
@@ -87,7 +87,7 @@ object EventPayload {
     override val filteringTag: Int = EventTag.BRICK_ARRIVED_HANDLER_BEGIN
   }
 
-  case class BrickArrivedHandlerEnd(msgDeliveryEventId: Long, processorTimeUsed: TimeDelta, brick: Brick) extends EventPayload {
+  case class BrickArrivedHandlerEnd(msgDeliveryEventId: Long, handlerCpuTimeUsed: TimeDelta, brick: Brick, totalCpuTimeUsedSoFar: TimeDelta) extends EventPayload {
     override val filteringTag: Int = EventTag.BRICK_ARRIVED_HANDLER_END
   }
 
@@ -95,7 +95,7 @@ object EventPayload {
     override val filteringTag: Int = EventTag.WAKEUP_HANDLER_BEGIN
   }
 
-  case class WakeUpHandlerEnd(consumedEventId: Long, processorTimeUsed: TimeDelta) extends EventPayload {
+  case class WakeUpHandlerEnd(consumedEventId: Long, handlerCpuTimeUsed: TimeDelta, totalCpuTimeUsedSoFar: TimeDelta) extends EventPayload {
     override val filteringTag: Int = EventTag.WAKEUP_HANDLER_END
   }
 
@@ -182,9 +182,9 @@ object EventTag {
     STRATEGY_SPECIFIC_OUTPUT -> "strategy-specific"
   )
 
-  def of(event: Event[BlockchainNode, EventPayload]): Int = event.payload.filteringTag
+  def of(event: Event[BlockchainNodeRef, EventPayload]): Int = event.payload.filteringTag
 
-  def asString(event: Event[BlockchainNode, EventPayload]): String = collection(EventTag.of(event))
+  def asString(event: Event[BlockchainNodeRef, EventPayload]): String = collection(EventTag.of(event))
 
   def tag2description(eventTag: Int): String = collection(eventTag)
 }

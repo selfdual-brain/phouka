@@ -34,7 +34,7 @@ class DefaultStatsProcessor(
                              val totalWeight: Ether,
                              genesis: Block,
                              engine: BlockchainSimulationEngine
-                         ) extends SimulationObserver[BlockchainNode, EventPayload] with BlockchainSimulationStats {
+                         ) extends SimulationObserver[BlockchainNodeRef, EventPayload] with BlockchainSimulationStats {
 
   assert (throughputMovingWindow % throughputCheckpointsDelta == 0)
 
@@ -42,8 +42,6 @@ class DefaultStatsProcessor(
   private var lastStepId: Long = -1
   //counter of processed steps
   private var eventsCounter: Long = 0
-  //timepoint of last step that we processed
-  private var lastStepTimepoint: SimTimepoint = _
   //agent id ---> validator id (which is non-trivial only because of our approach to simulating equivocators)
   private val agentId2validatorId = new FastMapOnIntInterval[Int](numberOfValidators)
   //counter of published blocks
@@ -112,10 +110,9 @@ class DefaultStatsProcessor(
     * Caution: the complexity of updating stats is O(1) with respect to stepId and O(n) with respect to number of validators.
     * Several optimizations are applied to ensure that all calculations are incremental.
     */
-  def onSimulationEvent(stepId: Long, event: Event[BlockchainNode, EventPayload]): Unit = {
+  def onSimulationEvent(stepId: Long, event: Event[BlockchainNodeRef, EventPayload]): Unit = {
     assert (stepId == lastStepId + 1, s"stepId=$stepId, lastStepId=$lastStepId")
     lastStepId = stepId
-    lastStepTimepoint = event.timepoint
     eventsCounter += 1
 
     event match {
@@ -126,7 +123,7 @@ class DefaultStatsProcessor(
             agentId2validatorId(newNodeAddress) = vid
             node2stats(newNodeAddress) = progenitor match {
               //creating per-node stats processor for new node
-              case None => new NodeLocalStatsProcessor(vid, BlockchainNode(newNodeAddress), globalStats = this, absoluteWeightsMap, genesis, engine)
+              case None => new NodeLocalStatsProcessor(vid, BlockchainNodeRef(newNodeAddress), globalStats = this, absoluteWeightsMap, genesis, engine)
               //cloning per-node stats processor after bifurcation
               case Some(p) => node2stats(p.address).createDetachedCopy(agent.get)
             }
@@ -171,6 +168,11 @@ class DefaultStatsProcessor(
 
       case other =>
         //ignore
+    }
+
+    event.loggingAgent match {
+      case Some(nodeRef) => node2stats(nodeRef.address).handleEvent(event)
+      case None => //just ignore
     }
 
   }
@@ -269,7 +271,7 @@ class DefaultStatsProcessor(
 
     //save a snapshot of node stats
     faultyValidatorsFreezingPoints(vid) = Some(timepoint)
-    validator2frozenStats(vid) = node2stats(vid).createDetachedCopy(BlockchainNode(vid))
+    validator2frozenStats(vid) = node2stats(vid).createDetachedCopy(BlockchainNodeRef(vid))
 
     //a validator turning faulty may cause a cascade of finality map elements to turn into "completely finalized" state
     //this cascade is implemented as the loop below
@@ -295,9 +297,9 @@ class DefaultStatsProcessor(
 
   override def averageWeight: Double = totalWeight.toDouble / numberOfValidators
 
-  override def averageComputingPower: Double = (0 until numberOfValidators).map(i => engine.computingPowerOf(BlockchainNode(i))).sum.toDouble / numberOfValidators
+  override def averageComputingPower: Double = (0 until numberOfValidators).map(i => engine.node(BlockchainNodeRef(i)).computingPower).sum.toDouble / numberOfValidators
 
-  override def totalTime: SimTimepoint = lastStepTimepoint
+  override def totalTime: SimTimepoint = engine.currentTime
 
   override def numberOfEvents: Long = eventsCounter
 
@@ -365,7 +367,7 @@ class DefaultStatsProcessor(
   private val throughputMovingWindowAsSeconds: Double = throughputMovingWindow.toDouble
 
   override val movingWindowThroughput: SimTimepoint => Double = (timepoint: SimTimepoint) => {
-    assert(timepoint < lastStepTimepoint + throughputMovingWindow) //we do not support asking for throughput for yet-unexplored future
+    assert(timepoint < engine.currentTime + throughputMovingWindow) //we do not support asking for throughput for yet-unexplored future
     assert(timepoint >= SimTimepoint.zero)
     if (timepoint == SimTimepoint.zero)
       0.0
@@ -384,7 +386,7 @@ class DefaultStatsProcessor(
       node2stats(validator)
   }
 
-  override def perNodeStats(node: BlockchainNode): NodeLocalStats = node2stats(node.address)
+  override def perNodeStats(node: BlockchainNodeRef): NodeLocalStats = node2stats(node.address)
 
   override def isFaulty(vid: ValidatorId): Boolean = faultyValidatorsMap(vid)
 

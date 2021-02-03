@@ -1,7 +1,7 @@
 package com.selfdualbrain.disruption
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.des.ExtEventIngredients
 import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.simulator_engine.config.{DisruptionEventDesc, DisruptionModelConfig}
@@ -62,7 +62,7 @@ object DisruptionModel {
       new SingleBifurcationBomb(targetBlockchainNode, disasterTimepoint, numberOfClones)
   }
 
-  private def disruptionEventDesc2ingredients(desc: DisruptionEventDesc): ExtEventIngredients[BlockchainNode, EventPayload] =
+  private def disruptionEventDesc2ingredients(desc: DisruptionEventDesc): ExtEventIngredients[BlockchainNodeRef, EventPayload] =
     desc match {
       case DisruptionEventDesc.Bifurcation(targetNode, timepoint, numberOfClones) => ExtEventIngredients(timepoint, targetNode, EventPayload.Bifurcation(numberOfClones))
       case DisruptionEventDesc.NetworkOutage(targetNode, timepoint, outagePeriod) => ExtEventIngredients(timepoint, targetNode, EventPayload.NetworkDisruptionBegin(outagePeriod))

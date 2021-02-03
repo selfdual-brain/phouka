@@ -25,7 +25,7 @@ object NcbValidator {
       st.brickProposeDelaysGenerator = brickProposeDelaysGenerator.createDetachedCopy()
     }
 
-    override def initialize(nodeId: BlockchainNode, context: ValidatorContext, config: ValidatorBaseImpl.Config): Unit = {
+    override def initialize(nodeId: BlockchainNodeRef, context: ValidatorContext, config: ValidatorBaseImpl.Config): Unit = {
       super.initialize(nodeId, context, config)
       val cf = config.asInstanceOf[NcbValidator.Config]
       blockVsBallot = new Picker[String](context.random, Map("block" -> cf.blocksFraction, "ballot" -> (100.0 - cf.blocksFraction)))
@@ -55,13 +55,13 @@ object NcbValidator {
   * @param state state snapshot
   */
 class NcbValidator private (
-                             blockchainNode: BlockchainNode,
+                             blockchainNode: BlockchainNodeRef,
                              context: ValidatorContext,
                              config: NcbValidator.Config,
                              state: NcbValidator.State
                            ) extends ValidatorBaseImpl[NcbValidator.Config, NcbValidator.State](blockchainNode, context, config, state) {
 
-  def this(blockchainNode: BlockchainNode, context: ValidatorContext, config: NcbValidator.Config) =
+  def this(blockchainNode: BlockchainNodeRef, context: ValidatorContext, config: NcbValidator.Config) =
     this(
       blockchainNode,
       context,
@@ -73,7 +73,7 @@ class NcbValidator private (
       }
     )
 
-  override def clone(bNode: BlockchainNode, vContext: ValidatorContext): Validator= {
+  override def clone(bNode: BlockchainNodeRef, vContext: ValidatorContext): Validator= {
     val validatorInstance = new NcbValidator(bNode, vContext, config, state.createDetachedCopy())
     validatorInstance.scheduleNextWakeup()
     return validatorInstance

@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, Brick, ValidatorId}
 import com.selfdualbrain.simulator_engine.core.DownloadsBufferItem
 
 /**
@@ -26,7 +26,7 @@ trait Validator {
     * This is the identifier of the communication-level agent/process. On the level of simulation engine,
     * this id is used as the DES agent-id.
     */
-  def blockchainNodeId: BlockchainNode
+  def blockchainNodeId: BlockchainNodeRef
 
   /**
     * Computing power of this node [gas/second].
@@ -72,7 +72,7 @@ trait Validator {
     * Two (or more) blockchain nodes that share the same validator-id but otherwise operate independently,
     * effectively are seen as an equivocator.
     */
-  def clone(blockchainNode: BlockchainNode, context: ValidatorContext): Validator
+  def clone(blockchainNode: BlockchainNodeRef, context: ValidatorContext): Validator
 
 }
 

@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.config
 
-import com.selfdualbrain.blockchain_structure.BlockchainNode
+import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
 import com.selfdualbrain.config_files_support.ConfigParsingSupport
 import com.selfdualbrain.disruption.FttApproxMode
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
@@ -108,14 +108,14 @@ object DisruptionModelConfig {
   case class ExplicitDisruptionsSchedule(events: Seq[DisruptionEventDesc]) extends DisruptionModelConfig
   //frequencies using [events/hour] units
   case class FixedFrequencies(bifurcationsFreq: Option[Double], crashesFreq: Option[Double],outagesFreq: Option[Double], outageLengthMinMax: Option[(TimeDelta, TimeDelta)]) extends DisruptionModelConfig
-  case class SingleBifurcationBomb(targetBlockchainNode: BlockchainNode, disasterTimepoint: SimTimepoint, numberOfClones: Int) extends DisruptionModelConfig
+  case class SingleBifurcationBomb(targetBlockchainNode: BlockchainNodeRef, disasterTimepoint: SimTimepoint, numberOfClones: Int) extends DisruptionModelConfig
 }
 
 sealed abstract class DisruptionEventDesc
 object DisruptionEventDesc {
-  case class Bifurcation(targetBlockchainNode: BlockchainNode, timepoint: SimTimepoint, numberOfClones: Int) extends DisruptionEventDesc
-  case class NodeCrash(targetBlockchainNode: BlockchainNode, timepoint: SimTimepoint) extends DisruptionEventDesc
-  case class NetworkOutage(targetBlockchainNode: BlockchainNode, timepoint: SimTimepoint, outagePeriod: TimeDelta) extends DisruptionEventDesc
+  case class Bifurcation(targetBlockchainNode: BlockchainNodeRef, timepoint: SimTimepoint, numberOfClones: Int) extends DisruptionEventDesc
+  case class NodeCrash(targetBlockchainNode: BlockchainNodeRef, timepoint: SimTimepoint) extends DisruptionEventDesc
+  case class NetworkOutage(targetBlockchainNode: BlockchainNodeRef, timepoint: SimTimepoint, outagePeriod: TimeDelta) extends DisruptionEventDesc
 }
 
 sealed abstract class ObserverConfig
@@ -125,7 +125,7 @@ object ObserverConfig {
                                    throughputMovingWindow: Int, //in seconds
                                    throughputCheckpointsDelta: Int //in seconds
                                  ) extends ObserverConfig
-  case class FileBasedRecorder(targetDir: File, agentsToBeLogged: Option[Seq[BlockchainNode]]) extends ObserverConfig
+  case class FileBasedRecorder(targetDir: File, agentsToBeLogged: Option[Seq[BlockchainNodeRef]]) extends ObserverConfig
 
 }
 
@@ -167,7 +167,7 @@ object ExperimentConfig {
     msgBufferSherlockMode = true,
     observers = Seq(
       ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
-      ObserverConfig.FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Some(Seq(BlockchainNode(0))))
+      ObserverConfig.FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Some(Seq(BlockchainNodeRef(0))))
     )
   )
 

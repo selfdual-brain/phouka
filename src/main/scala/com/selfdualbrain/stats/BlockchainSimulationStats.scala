@@ -1,7 +1,7 @@
 package com.selfdualbrain.stats
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.des.SimulationStats
 import com.selfdualbrain.time.SimTimepoint
 
@@ -238,7 +238,7 @@ trait BlockchainSimulationStats extends SimulationStats {
   //For a faulty validator it returns stats from the freezing point.
   def perValidatorStats(validator: ValidatorId): NodeLocalStats
 
-  def perNodeStats(node: BlockchainNode): NodeLocalStats
+  def perNodeStats(node: BlockchainNodeRef): NodeLocalStats
 
   //asSeconds
   def topConsumptionDelay: Double

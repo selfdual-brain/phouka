@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine.ncb
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.simulator_engine.{Validator, ValidatorContext, ValidatorsFactory}
 import com.selfdualbrain.transactions.BlockPayloadBuilder
@@ -29,7 +29,7 @@ class NcbValidatorsFactory(
                             singleJustificationSize: Int
                             ) extends ValidatorsFactory {
 
-  override def create(node: BlockchainNode, vid: ValidatorId, context: ValidatorContext): Validator = {
+  override def create(node: BlockchainNodeRef, vid: ValidatorId, context: ValidatorContext): Validator = {
     val conf = new NcbValidator.Config
     conf.validatorId = vid
     conf.numberOfValidators = numberOfValidators

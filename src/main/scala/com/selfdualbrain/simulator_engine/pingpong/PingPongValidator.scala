@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.pingpong
 
-import com.selfdualbrain.blockchain_structure.{BlockchainNode, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, Brick, ValidatorId}
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine.core.DownloadsBufferItem
@@ -8,7 +8,7 @@ import com.selfdualbrain.simulator_engine.pingpong.PingPong.Barrel
 import com.selfdualbrain.simulator_engine.{Validator, ValidatorContext}
 
 class PingPongValidator(
-                         val blockchainNodeId: BlockchainNode,
+                         val blockchainNodeId: BlockchainNodeRef,
                          val validatorId: ValidatorId,
                          context: ValidatorContext,
                          numberOfValidators: Int,
@@ -67,7 +67,7 @@ class PingPongValidator(
     context.scheduleWakeUp(context.time() + delay, ())
   }
 
-  override def clone(blockchainNode: BlockchainNode, context: ValidatorContext): Validator = {
+  override def clone(blockchainNode: BlockchainNodeRef, context: ValidatorContext): Validator = {
     val result = new PingPongValidator(
       blockchainNode,
       validatorId,
