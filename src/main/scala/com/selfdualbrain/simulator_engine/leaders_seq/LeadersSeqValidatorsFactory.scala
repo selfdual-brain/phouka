@@ -23,7 +23,8 @@ class LeadersSeqValidatorsFactory(
                                    brickHeaderCoreSize: Int,
                                    singleJustificationSize: Int,
                                    roundLength: TimeDelta,
-                                   leadersSequencer: NaiveLeaderSequencer
+                                   leadersSequencer: NaiveLeaderSequencer,
+                                   finalizerCostConversionRateMicrosToGas: Double
                                  ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNodeRef, vid: ValidatorId, context: ValidatorContext): Validator = {
@@ -40,6 +41,7 @@ class LeadersSeqValidatorsFactory(
     conf.computingPower = computingPowersGenerator.next()
     conf.msgValidationCostModel = msgValidationCostModel
     conf.msgCreationCostModel = msgCreationCostModel
+    conf.finalizerCostConversionRateMicrosToGas = finalizerCostConversionRateMicrosToGas
     conf.msgBufferSherlockMode = msgBufferSherlockMode
     conf.brickHeaderCoreSize = brickHeaderCoreSize
     conf.singleJustificationSize = singleJustificationSize

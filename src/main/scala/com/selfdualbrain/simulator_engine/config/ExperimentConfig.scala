@@ -27,6 +27,7 @@ case class ExperimentConfig(
                              blocksBuildingStrategy: BlocksBuildingStrategyModel,
                              brickCreationCostModel: LongSequence.Config,
                              brickValidationCostModel: LongSequence.Config,
+                             finalizerCostConversionRateMicrosToGas: Double,
                              brickHeaderCoreSize: Int,//unit = bytes
                              singleJustificationSize: Int,//unit = bytes
                              msgBufferSherlockMode: Boolean,
@@ -162,6 +163,7 @@ object ExperimentConfig {
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
     brickCreationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
     brickValidationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
+    finalizerCostConversionRateMicrosToGas = 1.0,
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,

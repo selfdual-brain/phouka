@@ -98,7 +98,7 @@ trait NodeLocalStats {
   /** Amount of time passed since this node was launched. */
   def timeSinceBoot: TimeDelta
 
-  /** Amount of time this node was alive (= after boot, not crashed yet). */
+  /** Amount of time this node was alive (i.e. from boot up to crash). */
   def timeAlive: TimeDelta
 
   /** Amount of time this node was online (= alive and not experiencing network outage) */
@@ -354,6 +354,11 @@ trait NodeLocalStats {
     * Average per-incoming-ballot time that this node spends executing the received ballot handler [sec].
     */
   def averageIncomingBallotProcessingTime: Double
+
+  /**
+    * Average per-incoming-brick time that this node spends executing the received brick handler [sec].
+    */
+  def averageIncomingBrickProcessingTime: Double
 
   /**
     * Average time spent on creating a new block [sec].

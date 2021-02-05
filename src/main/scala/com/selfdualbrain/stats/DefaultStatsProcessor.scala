@@ -101,9 +101,7 @@ class DefaultStatsProcessor(
   latencyMovingWindowAverage.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
   latencyMovingWindowStandardDeviation.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
 
-//#################################################################################################################################################
-//                                                          EVENTS PROCESSING
-//#################################################################################################################################################
+  /*                                                        EVENTS PROCESSING                                                                    */
 
   /**
     * Updates statistics by taking into account given event.

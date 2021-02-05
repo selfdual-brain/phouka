@@ -65,7 +65,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         computingPowersGenerator,
         config.msgBufferSherlockMode,
         config.brickHeaderCoreSize,
-        config.singleJustificationSize
+        config.singleJustificationSize,
+        config.finalizerCostConversionRateMicrosToGas
       )
 
     case ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds(roundLength) =>
@@ -85,7 +86,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.brickHeaderCoreSize,
         config.singleJustificationSize,
         roundLength,
-        new NaiveLeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap)
+        new NaiveLeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap),
+        config.finalizerCostConversionRateMicrosToGas
       )
 
     case c: ProposeStrategyConfig.Highway =>
@@ -104,6 +106,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.msgBufferSherlockMode,
         config.brickHeaderCoreSize,
         config.singleJustificationSize,
+        config.finalizerCostConversionRateMicrosToGas,
         new NaiveLeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap),
         c.initialRoundExponent,
         c.exponentAccelerationPeriod,
@@ -152,7 +155,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
 
   override def guiCompatibleStats: Option[BlockchainSimulationStats] = guiCompatibleStatsX
 
-  //###################################################################################
+  /*                                                                                PRIVATE                                                                                          */
 
   private def buildNetworkModel(): NetworkModel[BlockchainNodeRef, Brick] =
     config.networkModel match {

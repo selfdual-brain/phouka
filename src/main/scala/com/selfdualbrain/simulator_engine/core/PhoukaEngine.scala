@@ -68,7 +68,7 @@ class PhoukaEngine(
 
   log.info(s"init completed")
 
-  //####################################### PUBLIC ########################################
+  /*                                                                               PUBLIC                                                                                         */
 
   override def hasNext: Boolean = internalIterator.hasNext
 
@@ -130,7 +130,7 @@ class PhoukaEngine(
   //low-level access to validator instance is here for diagnostic purposes only
   def validatorInstance(agentId: BlockchainNodeRef): Validator = nodes(agentId.address).validatorInstance
 
-  //###################################### PRIVATE ########################################
+  /*                                                                                PRIVATE                                                                                   */
 
   /**
     * All events are scheduled via DES queue. This includes also some "technical" events that the engine is using as part of internal machinery.

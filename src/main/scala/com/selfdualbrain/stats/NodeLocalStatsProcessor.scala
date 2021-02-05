@@ -27,13 +27,30 @@ class NodeLocalStatsProcessor(
   private var nodeStatus: NodeStatus = NodeStatus.NORMAL
 
   //todo
-  private var consumedCpuTime: TimeDelta = 0L
+  private var totalCpuTime: TimeDelta = 0L
 
   //todo
-  private var nodeIsDownSinceX: Option[SimTimepoint] = None
+  private var totalCpuTimeConsumedByIncomingBlockHandler: TimeDelta = 0L
 
   //todo
-  private var closedNetworkOutagesTotalTime: TimeDelta = 0L
+  private var totalCpuTimeConsumedByIncomingBallotHandler: TimeDelta = 0L
+
+  //todo
+  private var totalCpuTimeConsumedByScheduledWakeupHandler: TimeDelta = 0L
+
+  //todo
+  private var totalCpuTimeConsumedByScheduledBlockCreation: TimeDelta = 0L
+
+  private var timepointOfLastWakeupHandlerBegin: SimTimepoint = SimTimepoint.zero
+
+  //todo
+  private var lastNetworkOutageStartX: Option[SimTimepoint] = None
+
+  //todo
+  private var nodeCrashTimepoint: Option[SimTimepoint] = None
+
+  //todo
+  private var endedNetworkOutagesTotalTime: TimeDelta = 0L
 
   //brick delivery and wakeup events counter
   private var eventConsumptionsCounter: Long = 0L
@@ -93,17 +110,23 @@ class NodeLocalStatsProcessor(
   /*                                  LOCAL BRICKDAG STATS                                   */
 
   //depth of my local j-dag graph
-  private var myBrickdagDepth: Long = 0
+  private var localBrickdagDepth: Long = 0
 
   //number of nodes in my local j-dag graph
-  private var myBrickdagSize: Long = 0
+  private var localBrickdagSize: Long = 0
 
   //by-generation-counters-array for all blocks
   private var allBlocksByGenerationCounters = new TreeNodesByGenerationCounter
   allBlocksByGenerationCounters.nodeAdded(0) //counting genesis
 
   //todo
-  private var allBricksCumulativeBinarySize: Long = 0L
+  private var allBricksTotalBinarySize: Long = 0L
+
+  //todo
+  private var allBlocksTotalPayloadSize: Long = 0L
+
+  //total gas burned in all blocks that landed in local j-dag
+  private var allBlocksTotalGas: Long = 0L
 
   /*                              COUNTERS OF STUFF PUBLISHED BY THIS NODE                                 */
 
@@ -114,13 +137,10 @@ class NodeLocalStatsProcessor(
   private var ownBallotsCounter: Long = 0
 
   //by-generation-counters-array for my blocks
-  private var myBlocksByGenerationCounters = new TreeNodesByGenerationCounter
+  private var ownBlocksByGeneration = new TreeNodesByGenerationCounter
 
   //last brick that I published
   private var lastBrickPublishedX: Option[Brick] = None
-
-  //todo
-  private var cumulativePayloadSizeInAllPublishedBlocks: Long = 0L
 
   /*                                  FINALIZATION STATUS                                     */
 
@@ -154,28 +174,28 @@ class NodeLocalStatsProcessor(
   /*                               FINALIZED BLOCKS STATISTICS                                */
 
   //counter of these blocks I established finality of, which were published by me
-  private var ownBlocksFinalizedCounter: Long = 0
+  private var ownFinalizedBlocksCounter: Long = 0
 
   //counter of all transactions in blocks that I published and finalized
-  private var transactionsInMyFinalizedBlocksCounter: Long = 0
+  private var ownFinalizedBlocksTransactionsCounter: Long = 0
 
   //total gas in all blocks that I published and finalized
-  private var totalGasInMyFinalizedBlocksCounter: Ether = 0
+  private var ownFinalizedBlocksGasCounter: Ether = 0
 
   //sum of creation->finality intervals for own finalized blocks
-  private var sumOfLatenciesForOwnBlocks: TimeDelta = 0L
+  private var ownFinalizedBlocksCumulativeLatency: TimeDelta = 0L
 
   //sum of creation->finality intervals for all finalized blocks
-  private var sumOfLatenciesForAllFinalizedBlocks: TimeDelta = 0L
+  private var allFinalizedBlocksCumulativeLatency: TimeDelta = 0L
 
   //number of transactions in all finalized blocks
-  private var transactionsInAllFinalizedBlocksCounter: Long = 0L
+  private var allFinalizedBlocksTransactionsCounter: Long = 0L
 
   //total gas burned in all finalized blocks
-  private var totalGasInAllFinalizedBlocksCounter: Long = 0L
+  private var allFinalizedBlocksGasCounter: Long = 0L
 
   //todo
-  private var cumulativePayloadSizeInFinalizedBlocks: Long = 0L
+  private var allFinalizedBlocksCumulativePayloadSize: Long = 0L
 
   /*                                            UPDATING                                              */
 
@@ -185,7 +205,7 @@ class NodeLocalStatsProcessor(
       case Event.External(id, timepoint, destination, payload) => handleExternalEvent(timepoint, payload)
       case Event.Semantic(id, timepoint, source, payload) => handleSemanticEvent(timepoint, payload)
       case Event.Transport(id, timepoint, source, destination, payload) => handleTransportEvent(timepoint, payload)
-      case Event.Loopback(id, timepoint, agent, payload) => //ignore
+      case Event.Loopback(id, timepoint, agent, payload) => handleLoopbackEvent(timepoint, payload)
     }
 
   private def handleEngineEvent(eventTimepoint: SimTimepoint, payload: EventPayload): Unit = {
@@ -195,17 +215,20 @@ class NodeLocalStatsProcessor(
         brick match {
           case block: AbstractNormalBlock =>
             ownBlocksCounter += 1
-            myBlocksByGenerationCounters.nodeAdded(block.generation)
+            ownBlocksByGeneration.nodeAdded(block.generation)
             allBlocksByGenerationCounters.nodeAdded(block.generation)
             lastForkChoiceWinnerX = block.parent
-            cumulativePayloadSizeInAllPublishedBlocks += block.payloadSize
+            allBlocksTotalPayloadSize += block.payloadSize
+            allBlocksTotalGas += block.totalGas
+            totalCpuTimeConsumedByScheduledBlockCreation += eventTimepoint timePassedSince timepointOfLastWakeupHandlerBegin
+
           case ballot: Ballot =>
             ownBallotsCounter += 1
             lastForkChoiceWinnerX = ballot.targetBlock
         }
-        myBrickdagSize += 1
-        myBrickdagDepth = math.max(myBrickdagDepth, brick.daglevel)
-        allBricksCumulativeBinarySize += brick.binarySize
+        localBrickdagSize += 1
+        localBrickdagDepth = math.max(localBrickdagDepth, brick.daglevel)
+        allBricksTotalBinarySize += brick.binarySize
 
       case EventPayload.ProtocolMsgAvailableForDownload(sender, brick) =>
         downloadQueueLengthAsItemsX += 1
@@ -242,17 +265,21 @@ class NodeLocalStatsProcessor(
       case EventPayload.NodeCrash =>
         nodeStatus match {
           case NodeStatus.NORMAL =>
-            nodeIsDownSinceX = Some(eventTimepoint)
+            nodeCrashTimepoint = Some(eventTimepoint)
             nodeStatus = NodeStatus.CRASHED
           case NodeStatus.NETWORK_OUTAGE =>
-            closedNetworkOutagesTotalTime += eventTimepoint timePassedSince nodeIsDownSinceX.get
-            nodeIsDownSinceX = Some(eventTimepoint)
+            endedNetworkOutagesTotalTime += eventTimepoint timePassedSince lastNetworkOutageStartX.get
+            nodeCrashTimepoint = Some(eventTimepoint)
             nodeStatus = NodeStatus.CRASHED
           case NodeStatus.CRASHED =>
             throw new LineUnreachable
         }
 
     }
+  }
+
+  private def handleLoopbackEvent(eventTimepoint: SimTimepoint, payload: EventPayload): Unit = {
+    //todo
   }
 
   private def handleSemanticEvent(eventTimepoint: SimTimepoint, payload: EventPayload): Unit = {
@@ -262,15 +289,17 @@ class NodeLocalStatsProcessor(
           case block: AbstractNormalBlock =>
             acceptedBlocksCounter += 1
             allBlocksByGenerationCounters.nodeAdded(block.generation)
-            cumulativePayloadSizeInAllPublishedBlocks += block.payloadSize
+            allBlocksTotalPayloadSize += block.payloadSize
+            allBlocksTotalGas += block.totalGas
+
           case ballot: Ballot =>
             acceptedBallotsCounter += 1
           case other => throw new RuntimeException(s"unsupported brick type: $brick")
         }
         receivedHandledBricks += 1
-        myBrickdagSize += 1
-        myBrickdagDepth = math.max(myBrickdagDepth, brick.daglevel)
-        allBricksCumulativeBinarySize += brick.binarySize
+        localBrickdagSize += 1
+        localBrickdagDepth = math.max(localBrickdagDepth, brick.daglevel)
+        allBricksTotalBinarySize += brick.binarySize
 
       case EventPayload.AddedIncomingBrickToMsgBuffer(bufferedBrick, missingDependencies, bufferSnapshotAfter) =>
         numberOfBricksThatEnteredMsgBuffer += 1
@@ -284,15 +313,16 @@ class NodeLocalStatsProcessor(
           case block: AbstractNormalBlock =>
             acceptedBlocksCounter += 1
             allBlocksByGenerationCounters.nodeAdded(block.generation)
-            cumulativePayloadSizeInAllPublishedBlocks += block.payloadSize
+            allBlocksTotalPayloadSize += block.payloadSize
+            allBlocksTotalGas += block.totalGas
           case ballot: Ballot =>
             acceptedBallotsCounter += 1
           case other => throw new RuntimeException(s"unsupported brick type: $brick")
         }
-        myBrickdagSize += 1
-        myBrickdagDepth = math.max(myBrickdagDepth, brick.daglevel)
+        localBrickdagSize += 1
+        localBrickdagDepth = math.max(localBrickdagDepth, brick.daglevel)
         sumOfBufferingTimes += eventTimepoint.micros - brick.timepoint.micros
-        allBricksCumulativeBinarySize += brick.binarySize
+        allBricksTotalBinarySize += brick.binarySize
 
       case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
         currentBGameStatusX = Some(partialSummit.level -> partialSummit.consensusValue)
@@ -300,20 +330,20 @@ class NodeLocalStatsProcessor(
 
       case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
         if (vid == finalizedBlock.creator) {
-          ownBlocksFinalizedCounter += 1
-          sumOfLatenciesForOwnBlocks += eventTimepoint timePassedSince finalizedBlock.timepoint
-          transactionsInMyFinalizedBlocksCounter += finalizedBlock.numberOfTransactions
-          totalGasInMyFinalizedBlocksCounter += finalizedBlock.totalGas
+          ownFinalizedBlocksCounter += 1
+          ownFinalizedBlocksCumulativeLatency += eventTimepoint timePassedSince finalizedBlock.timepoint
+          ownFinalizedBlocksTransactionsCounter += finalizedBlock.numberOfTransactions
+          ownFinalizedBlocksGasCounter += finalizedBlock.totalGas
         }
         lastFinalizedBlockX = finalizedBlock
         summitForLastFinalizedBlockX = Some(summit)
         lastPartialSummitForCurrentBGameX = None
         lastFinalizedBlockGeneration = finalizedBlock.generation
         currentBGameStatusX = None
-        sumOfLatenciesForAllFinalizedBlocks += eventTimepoint timePassedSince finalizedBlock.timepoint
-        transactionsInAllFinalizedBlocksCounter += finalizedBlock.numberOfTransactions
-        cumulativePayloadSizeInFinalizedBlocks += finalizedBlock.payloadSize
-        totalGasInAllFinalizedBlocksCounter += finalizedBlock.totalGas
+        allFinalizedBlocksCumulativeLatency += eventTimepoint timePassedSince finalizedBlock.timepoint
+        allFinalizedBlocksTransactionsCounter += finalizedBlock.numberOfTransactions
+        allFinalizedBlocksCumulativePayloadSize += finalizedBlock.payloadSize
+        allFinalizedBlocksGasCounter += finalizedBlock.totalGas
 
       case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
         if (! observedEquivocators.contains(evilValidator)) {
@@ -329,26 +359,35 @@ class NodeLocalStatsProcessor(
         sumOfConsumptionDelays += consumptionDelay
 
       case EventPayload.BrickArrivedHandlerEnd(msgDeliveryEventId: Long, handlerCpuTimeUsed: TimeDelta, brick: Brick, totalCpuTimeUsedSoFar: TimeDelta) =>
-        consumedCpuTime = totalCpuTimeUsedSoFar
+        totalCpuTime = totalCpuTimeUsedSoFar
+        brick match {
+          case block: AbstractNormalBlock =>
+            totalCpuTimeConsumedByIncomingBlockHandler += handlerCpuTimeUsed
+          case ballot: Ballot =>
+            totalCpuTimeConsumedByIncomingBallotHandler += handlerCpuTimeUsed
+        }
+        totalCpuTimeConsumedByIncomingBlockHandler
 
       case EventPayload.WakeUpHandlerBegin(consumedEventId, consumptionDelay, strategySpecificMarker) =>
         eventConsumptionsCounter += 1
         sumOfConsumptionDelays += consumptionDelay
+        timepointOfLastWakeupHandlerBegin = eventTimepoint
 
       case EventPayload.WakeUpHandlerEnd(consumedEventId: Long, handlerCpuTimeUsed: TimeDelta, totalCpuTimeUsedSoFar: TimeDelta) =>
-        consumedCpuTime = totalCpuTimeUsedSoFar
+        totalCpuTime = totalCpuTimeUsedSoFar
+        totalCpuTimeConsumedByScheduledWakeupHandler += handlerCpuTimeUsed
 
       case EventPayload.NetworkConnectionLost =>
         if (nodeStatus == NodeStatus.NORMAL) {
           nodeStatus = NodeStatus.NETWORK_OUTAGE
-          nodeIsDownSinceX = Some(eventTimepoint)
+          lastNetworkOutageStartX = Some(eventTimepoint)
         }
 
       case EventPayload.NetworkConnectionRestored =>
         if (nodeStatus == NodeStatus.NETWORK_OUTAGE) {
-          closedNetworkOutagesTotalTime += eventTimepoint timePassedSince nodeIsDownSinceX.get
+          endedNetworkOutagesTotalTime += eventTimepoint timePassedSince lastNetworkOutageStartX.get
           nodeStatus = NodeStatus.NORMAL
-          nodeIsDownSinceX = None
+          lastNetworkOutageStartX = None
         }
     }
 
@@ -358,22 +397,21 @@ class NodeLocalStatsProcessor(
 
   override def timeSinceBoot: TimeDelta = engine.currentTime timePassedSince engine.node(nodeId).startupTimepoint
 
-  override def timeAlive: TimeDelta = {
-    if (status == NodeStatus.CRASHED)
-
-
-  }
-
-  override def timeOnline: TimeDelta = {
-    val onGoingDownElapsedTime: TimeDelta = nodeIsDownSinceX match {
-      case None => 0L
-      case Some(timepoint) => engine.localClockOfAgent(nodeId) timePassedSince timepoint
-
+  override def timeAlive: TimeDelta =
+    status match {
+      case NodeStatus.NORMAL => timeSinceBoot
+      case NodeStatus.NETWORK_OUTAGE => timeSinceBoot
+      case NodeStatus.CRASHED => nodeCrashTimepoint.get timePassedSince engine.node(nodeId).startupTimepoint
     }
-    val totalNodeDownTimeUpToNow: TimeDelta = closedNetworkOutagesTotalTime + onGoingDownElapsedTime
-  }
 
-  override def status: NodeStatus = ???
+  override def timeOnline: TimeDelta =
+    status match {
+      case NodeStatus.NORMAL => timeSinceBoot - endedNetworkOutagesTotalTime
+      case NodeStatus.NETWORK_OUTAGE => timeSinceBoot - endedNetworkOutagesTotalTime - (engine.currentTime timePassedSince lastNetworkOutageStartX.get)
+      case NodeStatus.CRASHED => timeAlive - endedNetworkOutagesTotalTime
+    }
+
+  override def status: NodeStatus = nodeStatus
 
   override def numberOfBricksInTheBuffer: Long = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
 
@@ -393,9 +431,9 @@ class NodeLocalStatsProcessor(
 
   override def lastPartialSummitForCurrentBGame: Option[ACC.Summit] = lastPartialSummitForCurrentBGameX
 
-  override def jdagSize: Long = myBrickdagSize
+  override def jdagSize: Long = localBrickdagSize
 
-  override def jdagDepth: Long = myBrickdagDepth
+  override def jdagDepth: Long = localBrickdagDepth
 
   override def numberOfObservedEquivocators: Int = observedEquivocators.size
 
@@ -423,29 +461,29 @@ class NodeLocalStatsProcessor(
 
   override def allBallotsAccepted: Long = acceptedBallotsCounter
 
-  override def ownBlocksFinalized: Long = ownBlocksFinalizedCounter
+  override def ownBlocksFinalized: Long = ownFinalizedBlocksCounter
 
-  override def ownBlocksUncertain: Long = ownBlocksCounter - myBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt)
+  override def ownBlocksUncertain: Long = ownBlocksCounter - ownBlocksByGeneration.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt)
 
-  override def ownBlocksOrphaned: Long = myBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt) - ownBlocksFinalizedCounter
+  override def ownBlocksOrphaned: Long = ownBlocksByGeneration.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt) - ownFinalizedBlocksCounter
 
   override def ownBlocksAverageLatency: Double =
     if (ownBlocksFinalized == 0)
       0
     else
-      sumOfLatenciesForOwnBlocks.toDouble / 1000000 / ownBlocksFinalized //scaling to seconds
+      ownFinalizedBlocksCumulativeLatency.toDouble / 1000000 / ownBlocksFinalized //scaling to seconds
 
   override def ownBlocksThroughputBlocksPerSecond: Double = ownBlocksFinalized / globalStats.totalTime.asSeconds
 
-  override def ownBlocksThroughputTransactionsPerSecond: Double = transactionsInMyFinalizedBlocksCounter.toDouble / globalStats.totalTime.asSeconds
+  override def ownBlocksThroughputTransactionsPerSecond: Double = ownFinalizedBlocksTransactionsCounter.toDouble / globalStats.totalTime.asSeconds
 
-  override def ownBlocksThroughputGasPerSecond: Double = totalGasInMyFinalizedBlocksCounter.toDouble / globalStats.totalTime.asSeconds
+  override def ownBlocksThroughputGasPerSecond: Double = ownFinalizedBlocksGasCounter.toDouble / globalStats.totalTime.asSeconds
 
   override def ownBlocksOrphanRate: Double =
     if (ownBlocksPublished == 0)
       0.0
     else
-      ownBlocksOrphaned.toDouble / myBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt)
+      ownBlocksOrphaned.toDouble / ownBlocksByGeneration.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt)
 
   override def averageBufferingTimeOverBricksThatWereBuffered: Double = sumOfBufferingTimes.toDouble / 1000000 / numberOfBricksThatLeftMsgBuffer
 
@@ -470,21 +508,23 @@ class NodeLocalStatsProcessor(
   override def downloadQueueMaxLengthAsItems: Long = maxDownloadQueueLengthAsItemsX
 
   override def nodeAvailability: Double = {
-    val onGoingDownElapsedTime: TimeDelta = nodeIsDownSinceX match {
+    val onGoingDownElapsedTime: TimeDelta = lastNetworkOutageStartX match {
       case None => 0L
       case Some(timepoint) => engine.localClockOfAgent(nodeId) timePassedSince timepoint
 
     }
-    val totalNodeDownTimeUpToNow: TimeDelta = closedNetworkOutagesTotalTime + onGoingDownElapsedTime
+    val totalNodeDownTimeUpToNow: TimeDelta = endedNetworkOutagesTotalTime + onGoingDownElapsedTime
     val t = timeSinceBoot
     return (t - totalNodeDownTimeUpToNow).toDouble / t
   }
 
-  override def averageIncomingBlockProcessingTime: Double = ???
+  override def averageIncomingBlockProcessingTime: Double = totalCpuTimeConsumedByIncomingBlockHandler.toDouble / receivedBlocksCounter
 
   override def averageIncomingBlockPayloadProcessingTimeAsFraction: Double = ???
 
   override def averageIncomingBallotProcessingTime: Double = ???
+
+  override def averageIncomingBrickProcessingTime: Double = ???
 
   override def averageBlockCreationProcessingTime: Double = ???
 
@@ -498,15 +538,15 @@ class NodeLocalStatsProcessor(
 
   override def blockchainThroughputBlocksPerSecond: Double = lastFinalizedBlock.generation.toDouble / globalStats.totalTime.asSeconds
 
-  override def blockchainThroughputTransactionsPerSecond: Double = transactionsInAllFinalizedBlocksCounter.toDouble / globalStats.totalTime.asSeconds
+  override def blockchainThroughputTransactionsPerSecond: Double = allFinalizedBlocksTransactionsCounter.toDouble / globalStats.totalTime.asSeconds
 
-  override def blockchainThroughputGasPerSecond: Double = totalGasInAllFinalizedBlocksCounter.toDouble / globalStats.totalTime.asSeconds
+  override def blockchainThroughputGasPerSecond: Double = allFinalizedBlocksGasCounter.toDouble / globalStats.totalTime.asSeconds
 
   override def blockchainLatency: Double =
     if (lastFinalizedBlock == genesis)
       0
     else
-      sumOfLatenciesForAllFinalizedBlocks.toDouble / 1000000 / lastFinalizedBlock.generation //scaling to seconds
+      allFinalizedBlocksCumulativeLatency.toDouble / 1000000 / lastFinalizedBlock.generation //scaling to seconds
 
   override def blockchainRunahead: TimeDelta = globalStats.totalTime timePassedSince lastFinalizedBlock.timepoint
 
@@ -521,7 +561,7 @@ class NodeLocalStatsProcessor(
       orphaned.toDouble / allBlocksUpToLfbGeneration
   }
 
-  override def dataProtocolOverhead: Double = (allBricksCumulativeBinarySize - cumulativePayloadSizeInFinalizedBlocks).toDouble / allBricksCumulativeBinarySize
+  override def dataProtocolOverhead: Double = (allBricksTotalBinarySize - allFinalizedBlocksCumulativePayloadSize).toDouble / allBricksTotalBinarySize
 
   /*                                                     CLONING SUPPORT                                                               */
 
@@ -544,17 +584,17 @@ class NodeLocalStatsProcessor(
     copy.receivedHandledBricks = receivedHandledBricks
     copy.acceptedBlocksCounter = acceptedBlocksCounter
     copy.acceptedBallotsCounter = acceptedBallotsCounter
-    copy.myBlocksByGenerationCounters = myBlocksByGenerationCounters.createDetachedCopy()
-    copy.ownBlocksFinalizedCounter = ownBlocksFinalizedCounter
-    copy.transactionsInMyFinalizedBlocksCounter = transactionsInMyFinalizedBlocksCounter
-    copy.totalGasInMyFinalizedBlocksCounter = totalGasInMyFinalizedBlocksCounter
-    copy.myBrickdagDepth = myBrickdagDepth
-    copy.myBrickdagSize = myBrickdagSize
+    copy.ownBlocksByGeneration = ownBlocksByGeneration.createDetachedCopy()
+    copy.ownFinalizedBlocksCounter = ownFinalizedBlocksCounter
+    copy.ownFinalizedBlocksTransactionsCounter = ownFinalizedBlocksTransactionsCounter
+    copy.ownFinalizedBlocksGasCounter = ownFinalizedBlocksGasCounter
+    copy.localBrickdagDepth = localBrickdagDepth
+    copy.localBrickdagSize = localBrickdagSize
     copy.lastBrickPublishedX = lastBrickPublishedX
     copy.lastFinalizedBlockX = lastFinalizedBlockX
     copy.lastForkChoiceWinnerX  = lastForkChoiceWinnerX
     copy.currentBGameStatusX  = currentBGameStatusX
-    copy.sumOfLatenciesForOwnBlocks = sumOfLatenciesForOwnBlocks
+    copy.ownFinalizedBlocksCumulativeLatency = ownFinalizedBlocksCumulativeLatency
     copy.sumOfBufferingTimes = sumOfBufferingTimes
     copy.numberOfBricksThatEnteredMsgBuffer = numberOfBricksThatEnteredMsgBuffer
     copy.numberOfBricksThatLeftMsgBuffer = numberOfBricksThatLeftMsgBuffer
@@ -567,12 +607,12 @@ class NodeLocalStatsProcessor(
     copy.weightOfObservedEquivocatorsX = weightOfObservedEquivocatorsX
     copy.eventConsumptionsCounter = eventConsumptionsCounter
     copy.sumOfConsumptionDelays = sumOfConsumptionDelays
-    copy.transactionsInAllFinalizedBlocksCounter = transactionsInAllFinalizedBlocksCounter
-    copy.totalGasInAllFinalizedBlocksCounter = totalGasInAllFinalizedBlocksCounter
-    copy.sumOfLatenciesForAllFinalizedBlocks = sumOfLatenciesForAllFinalizedBlocks
+    copy.allFinalizedBlocksTransactionsCounter = allFinalizedBlocksTransactionsCounter
+    copy.allFinalizedBlocksGasCounter = allFinalizedBlocksGasCounter
+    copy.allFinalizedBlocksCumulativeLatency = allFinalizedBlocksCumulativeLatency
     copy.allBlocksByGenerationCounters = allBlocksByGenerationCounters.createDetachedCopy()
-    copy.allBricksCumulativeBinarySize = allBricksCumulativeBinarySize
-    copy.cumulativePayloadSizeInAllPublishedBlocks = cumulativePayloadSizeInAllPublishedBlocks
+    copy.allBricksTotalBinarySize = allBricksTotalBinarySize
+    copy.allBlocksTotalPayloadSize = allBlocksTotalPayloadSize
 
     return copy
   }

@@ -7,7 +7,6 @@ import com.selfdualbrain.hashing.{CryptographicDigester, FakeSha256Digester}
 import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.simulator_engine.core.DownloadsBufferItem
 import com.selfdualbrain.simulator_engine.finalizer.BGamesDrivenFinalizerWithForkchoiceStartingAtLfb
-import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.transactions.BlockPayloadBuilder
 
 import scala.collection.mutable
@@ -51,6 +50,9 @@ object ValidatorBaseImpl {
 
     //todo: doc
     var msgCreationCostModel: LongSequence.Config = _
+
+    //todo: doc
+    var finalizerCostConversionRateMicrosToGas: Double = _
 
     //flag that enables emitting semantic events around msg buffer operations
     var msgBufferSherlockMode: Boolean = _
@@ -163,7 +165,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! state.finalizer.knowsAbout(j))
 
     //simulation of incoming message processing time
-    val payloadValidationCost: TimeDelta = msg match {
+    val payloadValidationCost: Long = msg match {
       case x: AbstractNormalBlock => x.totalGas
       case x: Ballot => 0L
     }
@@ -171,7 +173,17 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
 
     if (missingDependencies.isEmpty) {
       context.addOutputEvent(EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
+      //instead of allowing to plug-in any mathematical formula to calculate finalization processing effort, we rather measure
+      //the actual wall-clock time it takes in the simulator, and then we use the predefined conversion rate micros --> as
+      //this solution is quite a dirty hack - but we consider it to be a tradeoff between configuration simplicity and simulation accuracy
+      //the problem is that the whole work of finalizer/fork-choice computation is quite non-linear (highly depends on the current structure of the jdag)
+      //the solution we use here is in principle wrong, because here in the sim we use different approach to calculating finality/fork-choice than
+      //the production code would do (especially the fork choice is different, because we can afford come shortcuts)
+      val t1 = System.nanoTime()
       runBufferPruningCascadeFor(msg)
+      val t2 = System.nanoTime()
+      val micros = (t2 - t1)/1000
+      context.registerProcessingGas((config.finalizerCostConversionRateMicrosToGas * micros).toLong)
     } else {
       if (config.msgBufferSherlockMode) {
         val bufferSnapshot = doBufferOp {state.messagesBuffer.addMessage(msg, missingDependencies)}

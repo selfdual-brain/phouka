@@ -62,11 +62,11 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
                            ) extends Finalizer with CloningSupport[BGamesDrivenFinalizerWithForkchoiceStartingAtLfb] {
 
   //------- outside cloning -----------------------------------------
-  var currentFinalityDetector: Option[ACC.FinalityDetector] = None
-  var output: Option[Finalizer.Listener] = None
+  private var currentFinalityDetector: Option[ACC.FinalityDetector] = None
+  private var output: Option[Finalizer.Listener] = None
   //-----------------------------------------------------------------
 
-  //################################################## PUBLIC ###########################################################
+  /*                                                                                    PUBLIC                                                                                     */
 
   def this(config: Config) =
     this(config, {
@@ -161,7 +161,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
 
   override def lastFinalizedBlock: Block = state.lastFinalizedBlock
 
-  //############################################### PRIVATE ######################################################
+  /*                                                                                      PRIVATE                                                                                           */
 
   @tailrec
   private def applyNewVoteToBGamesChain(vote: Brick, tipOfTheChain: Block): Unit = {

@@ -22,6 +22,7 @@ class HighwayValidatorsFactory(
                                 msgBufferSherlockMode: Boolean,
                                 brickHeaderCoreSize: Int,
                                 singleJustificationSize: Int,
+                                finalizerCostConversionRateMicrosToGas: Double,
                                 leadersSequencer: NaiveLeaderSequencer,
                                 bootstrapRoundExponent: Int,
                                 exponentAccelerationPeriod: Int,
@@ -48,6 +49,7 @@ class HighwayValidatorsFactory(
     conf.computingPower = computingPowersGenerator.next()
     conf.msgValidationCostModel = msgValidationCostModel
     conf.msgCreationCostModel = msgCreationCostModel
+    conf.finalizerCostConversionRateMicrosToGas = finalizerCostConversionRateMicrosToGas
     conf.msgBufferSherlockMode = msgBufferSherlockMode
     conf.brickHeaderCoreSize = brickHeaderCoreSize
     conf.singleJustificationSize = singleJustificationSize
