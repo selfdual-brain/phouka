@@ -54,5 +54,7 @@ trait AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
   trait FinalityDetector {
     def onLocalJDagUpdated(latestPanorama: Panorama): Option[Summit]
     def getAbsoluteFtt: Ether
+    def numberOfInvocations: Long
+    def averageExecutionTime(summitLevel: Int): Long //as microseconds
   }
 }

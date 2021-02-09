@@ -96,7 +96,7 @@ object ValidatorBaseImpl {
       mySwimlaneLastMessageSequenceNumber = -1
       mySwimlane = new ArrayBuffer[Brick](10000)
       myLastMessagePublished = None
-      val finalizerCfg = new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb.Config(
+      val finalizerCfg = BGamesDrivenFinalizerWithForkchoiceStartingAtLfb.Config(
         config.numberOfValidators,
         config.weightsOfValidators,
         config.totalWeight,
@@ -137,9 +137,13 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
       context.addOutputEvent(EventPayload.PreFinality(bGameAnchor, partialSummit))
       onPreFinality(bGameAnchor, partialSummit)
     }
-    override def blockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit): Unit = {
+    override def blockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit, finalityDetectorUsed: ACC.FinalityDetector): Unit = {
       context.addOutputEvent(EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit))
       onBlockFinalized(bGameAnchor, finalizedBlock, summit)
+      if (config.validatorId == 0) {
+        val finalityDetectorStats = (0 to summit.level).map(level => s"$level->${finalityDetectorUsed.averageExecutionTime(level)}").mkString(",")
+        println(s"FINALITY generation=${finalizedBlock.generation} detector-invocations=${finalityDetectorUsed.numberOfInvocations} : $finalityDetectorStats")
+      }
     }
     override def equivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit = {
       context.addOutputEvent(EventPayload.EquivocationDetected(evilValidator, brick1, brick2))

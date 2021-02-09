@@ -17,23 +17,38 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                                    estimator: Estimator
                                  ) extends FinalityDetector {
 
-    val quorum: Ether = {
+    private val quorum: Ether = {
       val q: Double = (absoluteFTT.toDouble / (1 - math.pow(2, - ackLevel)) + totalWeight.toDouble) / 2
       math.ceil(q).toLong
     }
 
+    private val summitLevel2executionTimeInMicros: Array[Long] = Array.fill[Long](ackLevel + 1)(0)
+    private val summitLevel2numberOfCases: Array[Int] = Array.fill[Int](ackLevel + 1)(0)
+    private var invocationsCounter: Long = 0L
+
     override def getAbsoluteFtt: Ether = absoluteFTT
 
+    override def numberOfInvocations: Ether = invocationsCounter
+
+    override def averageExecutionTime(summitLevel: Int): Long =
+      if (summitLevel2numberOfCases(summitLevel) == 0)
+        0L
+      else
+        summitLevel2executionTimeInMicros(summitLevel) / summitLevel2numberOfCases(summitLevel)
+
     def onLocalJDagUpdated(latestPanorama: Panorama): Option[Summit] = {
-      estimator.winnerConsensusValue match {
+      invocationsCounter += 1
+      val t1 = System.nanoTime()
+
+      val result: Option[Summit] = estimator.winnerConsensusValue match {
         case None =>
-          return None
+          None
         case Some(winnerConsensusValue) =>
           val validatorsVotingForThisValue: Iterable[ValidatorId] = estimator.supportersOfTheWinnerValue
           val baseTrimmer: Trimmer = findBaseTrimmer(winnerConsensusValue, validatorsVotingForThisValue, latestPanorama)
 
           if (sumOfWeights(baseTrimmer.validators) < quorum)
-            return None
+            None
           else {
             @tailrec
             def detectSummit(committeesStack: List[Trimmer], levelEstablished: Int): Summit =
@@ -46,9 +61,22 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                     detectSummit(trimmer :: committeesStack, levelEstablished + 1)
               }
 
-            return Some(detectSummit(List(baseTrimmer), levelEstablished = 0))
+            Some(detectSummit(List(baseTrimmer), levelEstablished = 0))
           }
       }
+
+      val t2: Long = System.nanoTime()
+      val microsConsumed: Long = (t2 - t1) / 1000
+      result match {
+        case None =>
+          summitLevel2numberOfCases(0) += 1
+          summitLevel2executionTimeInMicros(0) += microsConsumed
+        case Some(Summit(consensusValue, relativeFtt, level, committees, isFinalized)) =>
+          summitLevel2numberOfCases(level) += 1
+          summitLevel2executionTimeInMicros(level) += microsConsumed
+      }
+
+      return result
     }
 
     private def findBaseTrimmer(consensusValue: Con, validatorsSubset: Iterable[ValidatorId], latestPanorama: Panorama): Trimmer = {

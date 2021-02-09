@@ -21,7 +21,7 @@ import scala.util.Random
 
 object ChartsSandbox {
   private val log = LoggerFactory.getLogger(s"chart-sandbox")
-  private val NUMBER_OF_STEPS: Int = 200000
+  private val NUMBER_OF_STEPS: Int = 600000
 
   private val headerSize: Int =
     32 + //message id
@@ -40,7 +40,7 @@ object ChartsSandbox {
     ),
     downloadBandwidthModel = DownloadBandwidthConfig.Uniform(NetworkSpeed.megabitsPerSecond(8)),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 150000, alpha = 1.2),
-    numberOfValidators = 25,
+    numberOfValidators = 60,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
     forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,

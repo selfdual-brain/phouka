@@ -203,8 +203,10 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
           case EventPayload.BroadcastProtocolMsg(brick, cpuTimeConsumed) => s"$brick"
+          case EventPayload.ProtocolMsgAvailableForDownload(sender, brick) => s"sender=$sender brick=$brick"
           case EventPayload.NetworkDisruptionEnd(disruptionEventId) => s"disruption-begin = event $disruptionEventId"
           case EventPayload.NewAgentSpawned(validatorId, progenitor) => if (progenitor.isEmpty) s"validator-id=$validatorId" else s"cloned from node $progenitor (validator-id=$validatorId)"
+          case EventPayload.Halt(reason) => reason
           case other => throw new RuntimeException(s"unexpected payload: $payload")
         }
 
@@ -232,8 +234,12 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           case EventPayload.BrickArrivedHandlerBegin(consumedEventId, consumptionDelay, brick) =>
             val desc = if (brick.isInstanceOf[Block]) "block" else "ballot"
             s"$desc=${brick.id} delay=${TimeDelta.toString(consumptionDelay)} delivery-event=$consumedEventId"
+          case EventPayload.BrickArrivedHandlerEnd(msgDeliveryEventId, handlerCpuTimeUsed, brick, totalCpuTimeUsedSoFar) =>
+            s"cpu-time-used=$handlerCpuTimeUsed delivery-event=$msgDeliveryEventId"
           case EventPayload.WakeUpHandlerBegin(consumedEventId, consumptionDelay, strategySpecificMarker) =>
             s"marker=$strategySpecificMarker delay=${TimeDelta.toString(consumptionDelay)} delivery-event=$consumedEventId"
+          case EventPayload.WakeUpHandlerEnd(consumedEventId, handlerCpuTimeUsed, totalCpuTimeUsedSoFar) =>
+            s"cpu-time-used=$handlerCpuTimeUsed delivery-event=$consumedEventId"
           case EventPayload.NetworkConnectionLost => EMPTY
           case EventPayload.NetworkConnectionRestored => EMPTY
           case EventPayload.StrategySpecificOutput(cargo) => cargo.toString

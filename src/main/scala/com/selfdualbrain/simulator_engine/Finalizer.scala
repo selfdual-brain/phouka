@@ -34,7 +34,7 @@ trait Finalizer extends CloningSupport[Finalizer]{
 object Finalizer {
   trait Listener {
     def preFinality(bGameAnchor: Block, partialSummit: ACC.Summit)
-    def blockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit)
+    def blockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit, finalityDetectorInstance: ACC.FinalityDetector)
     def equivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit
     def equivocationCatastrophe(validators: Iterable[ValidatorId], absoluteFttExceededBy: Ether, relativeFttExceededBy: Double): Unit
   }

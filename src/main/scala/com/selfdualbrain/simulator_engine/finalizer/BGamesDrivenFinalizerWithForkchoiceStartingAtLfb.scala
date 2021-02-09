@@ -185,7 +185,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
         if (! summit.isFinalized && output.isDefined)
           output.get.preFinality(state.lastFinalizedBlock, summit)
         if (summit.isFinalized && output.isDefined) {
-          output.get.blockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit)
+          output.get.blockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit, currentFinalityDetector.get)
           state.lastFinalizedBlock = summit.consensusValue
           state.block2bgame.pruneLevelsBelow(state.lastFinalizedBlock.generation)
           state.brick2nextBrickInTheSwimlane.pruneLevelsBelow(state.lastFinalizedBlock.daglevel)

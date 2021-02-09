@@ -140,6 +140,9 @@ class DefaultStatsProcessor(
                 publishedBallotsCounter += 1
                 cumulativeBinarySizeOfAllBricks += ballot.binarySize
             }
+
+          case other =>
+            //ignore
         }
         node2stats(agent.get.address).handleEvent(event)
 
@@ -152,6 +155,9 @@ class DefaultStatsProcessor(
           case EventPayload.NodeCrash =>
             val vid = agentId2validatorId(destination.address)
             ensureValidatorIsMarkedAsFaulty(vid, timepoint)
+
+          case other =>
+            //ignore
         }
 
       case Event.Semantic(id, eventTimepoint, source, eventPayload) =>
