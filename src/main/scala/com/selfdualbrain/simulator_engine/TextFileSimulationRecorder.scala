@@ -1,6 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.des.{Event, SimulationObserver}
+import com.selfdualbrain.util.LineUnreachable
 
 import java.io.{BufferedWriter, File, FileWriter}
 
@@ -43,18 +44,21 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
             "node crash"
           case EventPayload.NetworkDisruptionBegin(period) =>
             s"network disruption begin (period=$period)"
+          case other => throw new LineUnreachable
         }
 
       case Event.Transport(id, timepoint, source, destination, payload) =>
         payload match {
           case EventPayload.BrickDelivered(brick) =>
             s"download completed for brick $brick "
+          case other => throw new LineUnreachable
         }
 
       case Event.Loopback(id, timepoint, agent, payload) =>
         payload match {
           case EventPayload.WakeUp(strategySpecificMarker) =>
             s"wakeup - arrived, marker=$strategySpecificMarker"
+          case other => throw new LineUnreachable
         }
 
       case Event.Engine(id, timepoint, agent, payload) =>
@@ -65,7 +69,7 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
               case None => ""
             }
             s"spawned new agent ${agent.get} using validator-id $vid $progenitorDesc"
-          case EventPayload.BroadcastProtocolMsg(brick) =>
+          case EventPayload.BroadcastProtocolMsg(brick, cpuTimeConsumed) =>
             s"published $brick"
           case EventPayload.NetworkDisruptionEnd(eventId) =>
             s"network disruption end (disruption $eventId)"
@@ -73,6 +77,9 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
             s"brick $brick appended to download queue of $agent, sender = $sender"
           case EventPayload.DownloadCheckpoint =>
             s"download checkpoint at $agent"
+          case EventPayload.Halt(reason) =>
+            s"Simulation halted by $agent, reason was: $reason"
+          case other => throw new LineUnreachable
         }
 
       case Event.Semantic(id, timepoint, source, payload) =>
@@ -95,15 +102,20 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
           case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
             s"detected equivocation catastrophe - evil validators are ${validators.mkString(",")} absolute ftt exceeded by $absoluteFttExceededBy"
           case EventPayload.BrickArrivedHandlerBegin(consumedEventId, consumptionDelay, brick) =>
-            s"brick $brick delivery - consumption (-> event $consumedEventId) delay=$consumptionDelay"
+            s"arrived brick handler begin for $brick (-> event $consumedEventId) delay=$consumptionDelay"
+          case EventPayload.BrickArrivedHandlerEnd(msgDeliveryEventId, handlerCpuTimeUsed, brick, totalCpuTimeUsedSoFar) =>
+            s"arrived brick handler end for $brick (-> event $msgDeliveryEventId) cpuTimeUsed=$handlerCpuTimeUsed"
           case EventPayload.WakeUpHandlerBegin(consumedEventId, consumptionDelay, strategySpecificMarker) =>
-            s"wakeup - consumed (-> event $consumedEventId) delay=$consumptionDelay"
+            s"wakeup - handler begin (-> event $consumedEventId) delay=$consumptionDelay"
+          case EventPayload.WakeUpHandlerEnd(consumedEventId, handlerCpuTimeUsed, totalCpuTimeUsedSoFar) =>
+            s"wakeup - handle end (-> event $consumedEventId) cpuTimeUsed=$handlerCpuTimeUsed"
           case EventPayload.NetworkConnectionLost =>
             s"network connection lost"
           case EventPayload.NetworkConnectionRestored =>
             s"network connection restored"
           case EventPayload.StrategySpecificOutput(cargo) =>
             s"strategy specific: $cargo"
+          case other => throw new LineUnreachable
         }
 
     }

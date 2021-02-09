@@ -132,7 +132,7 @@ object NetworkingBarrelsTest {
     for (nid <- engine.agents) {
       val validator: PingPongValidator = engine.validatorInstance(nid).asInstanceOf[PingPongValidator]
       println(s"node ${nid.address}")
-      println(f"  configured download bandwidth [Mbit/s]: ${engine.downloadBandwidthOf(nid) / 1000000}%.3f")
+      println(f"  configured download bandwidth [Mbit/s]: ${engine.node(nid).downloadBandwidth / 1000000}%.3f")
       println(f"  average download speed [Mbit/s]: ${validator.averageDownloadSpeed / 1000000}%.3f")
       println(f"  average upload speed [Mbit/s]: ${validator.averageUploadSpeed / 1000000}%.3f")
     }

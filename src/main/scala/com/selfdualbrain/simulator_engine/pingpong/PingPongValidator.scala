@@ -55,7 +55,7 @@ class PingPongValidator(
     mySwimlane(myFirstAvailablePositionInSwimlane) = newBarrel
     myFirstAvailablePositionInSwimlane += 1
     myLastPublishedBarrel = Some(newBarrel)
-    context.broadcast(context.time(), newBarrel)
+    context.broadcast(context.time(), newBarrel, 1)
     myBarrelsTotalSize += newBarrel.binarySize
 
     if (numberOfBarrelsPublished < numberOfBarrelsToBePublished)

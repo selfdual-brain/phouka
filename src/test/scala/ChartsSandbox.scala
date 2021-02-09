@@ -56,6 +56,7 @@ object ChartsSandbox {
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 1000),
     brickCreationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000),
     brickValidationCostModel = LongSequence.Config.PseudoGaussian(500, 1000),
+    finalizerCostConversionRateMicrosToGas = 1,
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,

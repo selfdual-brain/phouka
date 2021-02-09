@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
 import com.selfdualbrain.blockchain_structure.{AbstractGenesis, BlockdagVertexId, Brick}
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.util.Random
 
@@ -46,7 +46,7 @@ trait ValidatorContext {
     * @param timepointOfPassingTheBrickToCommsLayer time at the moment of sending; must be equal or later than context.time()
     * @param brick brick to be delivered to everyone
     */
-  def broadcast(timepointOfPassingTheBrickToCommsLayer: SimTimepoint, brick: Brick): Unit
+  def broadcast(timepointOfPassingTheBrickToCommsLayer: SimTimepoint, brick: Brick, cpuTimeConsumed: TimeDelta): Unit
 
   /**
     * Schedules a wake-up event for the nested agent.

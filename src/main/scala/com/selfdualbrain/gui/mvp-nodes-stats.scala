@@ -61,7 +61,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         name = "Vid",
         headerTooltip = "Validator id",
         runtimeClassOfValues = classOf[Int],
-        cellValueFunction = (rowIndex: Int) => model.engine.validatorIdUsedBy(BlockchainNodeRef(rowIndex)),
+        cellValueFunction = (rowIndex: Int) => model.engine.node(BlockchainNodeRef(rowIndex)).validatorId,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
         preferredWidth = 30,
@@ -72,7 +72,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         headerTooltip = "Progenitor id (not-empty only for cloned nodes",
         runtimeClassOfValues = classOf[String],
         cellValueFunction = (rowIndex: Int) => {
-          model.engine.progenitorOf(BlockchainNodeRef(rowIndex)) match {
+          model.engine.node(BlockchainNodeRef(rowIndex)).progenitor match {
             case None => ""
             case Some(p) => p.address.toString
           }
@@ -87,7 +87,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         headerTooltip = "Absolute weight [ether]",
         runtimeClassOfValues = classOf[Ether],
         cellValueFunction = (rowIndex: Int) => {
-          val vid = model.engine.validatorIdUsedBy(BlockchainNodeRef(rowIndex))
+          val vid = model.engine.node(BlockchainNodeRef(rowIndex)).validatorId
           model.simulationStatistics.absoluteWeightsMap(vid)
         },
         textAlignment = TextAlignment.RIGHT,
@@ -100,7 +100,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         headerTooltip = "Relative weight [%]",
         runtimeClassOfValues = classOf[Double],
         cellValueFunction = (rowIndex: Int) => {
-          val vid = model.engine.validatorIdUsedBy(BlockchainNodeRef(rowIndex))
+          val vid = model.engine.node(BlockchainNodeRef(rowIndex)).validatorId
           model.simulationStatistics.relativeWeightsMap(vid) * 100
         },
         decimalRounding = Some(4),
@@ -113,7 +113,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         name = "C-Power",
         headerTooltip = "Computing power [sprockets]",
         runtimeClassOfValues = classOf[Double],
-        cellValueFunction = (rowIndex: Int) => model.engine.computingPowerOf(BlockchainNodeRef(rowIndex)).toDouble / 1000000,
+        cellValueFunction = (rowIndex: Int) => model.engine.node(BlockchainNodeRef(rowIndex)).computingPower.toDouble / 1000000,
         decimalRounding = Some(4),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,

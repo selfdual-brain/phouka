@@ -97,10 +97,12 @@ class NcbValidator private (
   //################## PUBLISHING OF NEW MESSAGES ############################
 
   protected def publishNewBrick(shouldBeBlock: Boolean): Unit = {
+    val t1 = context.time()
     val brick = createNewBrick(shouldBeBlock)
     state.finalizer.addToLocalJdag(brick)
     onBrickAddedToLocalJdag(brick, isLocallyCreated = true)
-    context.broadcast(context.time(), brick)
+    val t2 = context.time()
+    context.broadcast(t2, brick, t2 timePassedSince t1)
     state.mySwimlane.append(brick)
     state.myLastMessagePublished = Some(brick)
   }

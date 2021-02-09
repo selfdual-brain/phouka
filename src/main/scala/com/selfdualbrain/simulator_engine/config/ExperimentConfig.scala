@@ -119,6 +119,13 @@ object DisruptionEventDesc {
   case class NetworkOutage(targetBlockchainNode: BlockchainNodeRef, timepoint: SimTimepoint, outagePeriod: TimeDelta) extends DisruptionEventDesc
 }
 
+sealed abstract class FinalizationCostModelConfig
+object FinalizationCostModelConfig {
+  case class ScalingOfRealImplementationCost(microsToGas: Double) extends FinalizationCostModelConfig
+  //gas(x,y) = ax^2 + bxy + cy^2 + d
+  case class Polynomial() extends FinalizationCostModelConfig
+}
+
 sealed abstract class ObserverConfig
 object ObserverConfig {
   case class DefaultStatsProcessor(

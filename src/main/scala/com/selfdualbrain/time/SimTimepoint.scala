@@ -97,5 +97,7 @@ object TimeDelta {
   def hours(n: Long): TimeDelta = n * 1000000L * 60L * 60L
   def days(n: Long): TimeDelta = n * 1000000L * 60L * 60L * 24L
 
+  def convertToSeconds(n: TimeDelta): Double = n.toDouble / 1000000
+
   def toString(time: TimeDelta): String = SimTimepoint.render(time)
 }

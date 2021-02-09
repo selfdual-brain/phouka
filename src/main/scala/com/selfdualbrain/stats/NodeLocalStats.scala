@@ -93,7 +93,12 @@ import com.selfdualbrain.time.TimeDelta
   */
 trait NodeLocalStats {
 
-  /*                                     LOCAL NODE STATE                                            */
+  /*                                        NODE STATE                                            */
+
+  /**
+    * Computing power of the virtual processor running this node [gas/sec].
+    */
+  def configuredComputingPower: Long
 
   /** Amount of time passed since this node was launched. */
   def timeSinceBoot: TimeDelta
@@ -180,7 +185,39 @@ trait NodeLocalStats {
     */
   def isAfterObservingEquivocationCatastrophe: Boolean
 
-  /*                                  LOCAL NODE STATISTICS                                     */
+  /*                                         GENERAL STATS                                     */
+
+  /**
+    * Fraction of (simulation) time when this node was "alive" i.e.
+    *   (1) its network connection was up (i.e. not during outage)
+    *   (2) the node itself was not crashed
+    * In terms of the actual implementation we calculate this as the amount of time this node had "NodeStatus.NORMAL" (expressed as fraction).
+    * Caution: we explicitly simulate outages and node crashes - see DisruptionModel class.
+    */
+  def nodeAvailability: Double
+
+  /**
+    * The fraction of this node "alive time" that the virtual processor of this node was busy.
+    */
+  def averageComputingPowerUtilization: Double
+
+  //the amount of (simulation) time that the virtual processor of this node was busy [as number of microseconds].
+  def totalComputingTimeUsed: TimeDelta
+
+  //Fraction of processing time the virtual processor of this node is busy doing things other than
+  //executing transactions in FINALIZED blocks.
+  //Caution: we assume that for every blocks this node knows about, the processor executes all enclosed transactions just once.
+  //Any other activities are what makes the "computational overhead" of running the blockchain protocol.
+  //Here we calculate what fraction of the overall computing time is taken by this "computational overhead".
+  def cpuProtocolOverhead: Double
+
+  /**
+    * Average per-block time spent to execute transactions (i.e. the payload) of a block.
+    * This average is calculated over all blocks in the local j-dag.
+    */
+  def averageBlockPayloadExecutionTime: Double
+
+  /*                                     BRICKS CREATION STATS                                     */
 
   /**
     * Number of blocks published by this node.
@@ -196,37 +233,6 @@ trait NodeLocalStats {
 
   /** Number of bricks (= blocks + ballots) published by this node. */
   def ownBricksPublished: Long = ownBlocksPublished + ownBallotsPublished
-
-  /**
-    * Number of blocks for which download was completed.
-    * Formally: simulation(t).receivedBlocks(v).size
-    */
-  def allBlocksReceived: Long
-
-  /**
-    * Number of ballots for which download was completed.
-    * simulation(t).receivedBallots(v).size
-    */
-  def allBallotsReceived: Long
-
-  /**
-    * Number of bricks for which download was completed.
-    */
-  def allBricksReceived: Long = allBlocksReceived + allBallotsReceived
-
-  /**
-    * Number of blocks received and accepted from network by this node, i.e. only blocks that were successfully
-    * integrated into local jdag are counted.
-    * Formally: simulation(t).jdagBlocks(v).filter(b => b.creator != v)
-    */
-  def allBlocksAccepted: Long
-
-  /**
-    * Number of ballots received from network by this node.
-    * Only ballots that were successfully integrated into local jdag are counted
-    * Formally: simulation(t).jdagBallots(v).filter(b => b.creator != v)
-    */
-  def allBallotsAccepted: Long
 
   /**
     * Number of own blocks which this node can see as finalized.
@@ -276,24 +282,42 @@ trait NodeLocalStats {
   def ownBlocksOrphanRate: Double
 
   /**
-    * Average time (in seconds) for an incoming brick to spend in the message buffer.
-    * This average is calculated over the collection of these accepted bricks that were passing via buffering phase.
-    * Formally: simulation(t).acceptedBricks(v).filter(b => b.wasBuffered).map(b => b.exitBuffer(v) - b.enterBuffer(v)).average
+    * Average time spent on creating a new block [sec].
+    * Caution: this average is calculated only for blocks that got published.
+    * If a node spends time creating a new block, but then drops the block for any reason - this effort will not be counted in the average.
     */
-  def averageBufferingTimeOverBricksThatWereBuffered: Double
+  def averageBlockCreationProcessingTime: Double
 
   /**
-    * Average time (in seconds) for an incoming brick to spend in the message buffer.
-    * This average is calculated over the collection of all accepted bricks.
-    * simulation(t).acceptedBricks(v).map(b => b.exitBuffer(v) - b.enterBuffer(v)).average
+    * Average fraction of block-creation-wakeup-handler-time spent on just included transactions execution.
     */
-  def averageBufferingTimeOverAllBricksAccepted: Double
+  def averageBlockCreationPayloadProcessingTimeAsFraction: Double
 
   /**
-    * Fraction of received bricks that landed in msg-buffer.
-    * simulation(t).jdagBricks(v).filter(b => b.wasBuffered).size / simulation(t).acceptedBricks(v)
+    * Average time spent in wake-up handler [sec].
+    * Caution: wake-up handlers are scheduled by the validator itself. They are heavily dependent on details of particular
+    * consensus algorithm in use. Usually validators schedule wake-ups for creating new bricks, but this is not enforced in any way.
     */
-  def averageBufferingChanceForIncomingBricks: Double
+  def averageWakeupEventProcessingTime: Double
+
+  /*                                       INCOMING BRICKS - DOWNLOAD STATS                                     */
+
+  /**
+    * Number of blocks for which download was completed.
+    * Formally: simulation(t).receivedBlocks(v).size
+    */
+  def allBlocksReceived: Long
+
+  /**
+    * Number of ballots for which download was completed.
+    * simulation(t).receivedBallots(v).size
+    */
+  def allBallotsReceived: Long
+
+  /**
+    * Number of bricks for which download was completed.
+    */
+  def allBricksReceived: Long = allBlocksReceived + allBallotsReceived
 
   /**
     * Average creation -> delivery delay for blocks [sec].
@@ -319,14 +343,45 @@ trait NodeLocalStats {
     */
   def downloadQueueMaxLengthAsItems: Long
 
+
+  /*                                       INCOMING BRICKS - MSG BUFFER STATS                                     */
+
   /**
-    * Fraction of (simulation) time when this node was "alive" i.e.
-    *   (1) its network connection was up (i.e. not during outage)
-    *   (2) the node itself was not crashed
-    * In terms of the actual implementation we calculate this as the amount of time this node had "NodeStatus.NORMAL" (expressed as fraction).
-    * Caution: we explicitly simulate outages and node crashes - see DisruptionModel class.
+    * Average time (in seconds) for an incoming brick to spend in the message buffer.
+    * This average is calculated over the collection of these accepted bricks that were passing via buffering phase.
+    * Formally: simulation(t).acceptedBricks(v).filter(b => b.wasBuffered).map(b => b.exitBuffer(v) - b.enterBuffer(v)).average
     */
-  def nodeAvailability: Double
+  def averageBufferingTimeOverBricksThatWereBuffered: Double
+
+  /**
+    * Average time (in seconds) for an incoming brick to spend in the message buffer.
+    * This average is calculated over the collection of all accepted bricks.
+    * simulation(t).acceptedBricks(v).map(b => b.exitBuffer(v) - b.enterBuffer(v)).average
+    */
+  def averageBufferingTimeOverAllBricksAccepted: Double
+
+  /**
+    * Fraction of received bricks that landed in msg-buffer.
+    * simulation(t).jdagBricks(v).filter(b => b.wasBuffered).size / simulation(t).acceptedBricks(v)
+    */
+  def averageBufferingChanceForIncomingBricks: Double
+
+
+  /*                                       INCOMING BRICKS - PROCESSING STATS                                     */
+
+  /**
+    * Number of blocks received and accepted from network by this node, i.e. only blocks that were successfully
+    * integrated into local jdag are counted.
+    * Formally: simulation(t).jdagBlocks(v).filter(b => b.creator != v)
+    */
+  def allBlocksAccepted: Long
+
+  /**
+    * Number of ballots received from network by this node.
+    * Only ballots that were successfully integrated into local jdag are counted
+    * Formally: simulation(t).jdagBallots(v).filter(b => b.creator != v)
+    */
+  def allBallotsAccepted: Long
 
   /**
     * Average "brick delivery -> beginning of brick processing" delay [sec].
@@ -334,11 +389,6 @@ trait NodeLocalStats {
     * This value is mainly a reflection of the performance of the local processor in relation to the overall bricks production rate.
     */
   def averageConsumptionDelay: Double
-
-  /**
-    * Computing power of the virtual processor running this node [gas/sec].
-    */
-  def configuredComputingPower: Long
 
   /**
     * Average per-incoming-block time that this node spends executing the received block handler [sec].
@@ -360,31 +410,9 @@ trait NodeLocalStats {
     */
   def averageIncomingBrickProcessingTime: Double
 
-  /**
-    * Average time spent on creating a new block [sec].
-    */
-  def averageBlockCreationProcessingTime: Double
 
-  /**
-    * Average fraction of block-creation-wakeup-handler-time spent on just included transactions execution.
-    */
-  def averageBlockCreationPayloadProcessingTimeAsFraction: Double
 
-  /**
-    * Average per-block time spent to execute transactions (i.e. the payload) of a block.
-    * This average is calculated over all blocks in the local j-dag.
-    */
-  def averageBlockPayloadExecutionTime: Double
-
-  /**
-    * The fraction of this node "alive time" that the virtual processor of this node was busy.
-    */
-  def averageComputingPowerUtilization: Double
-
-  //the amount of (simulation) time that the virtual processor of this node was busy [as number of microseconds].
-  def totalComputingTimeUsed: TimeDelta
-
-  //############################ BLOCKCHAIN STATISTICS ################################################
+  /*                           BLOCKCHAIN STATS (COMPUTED FROM DATA AVAILABLE AT THIS NODE)                        */
 
   //Average blocks-per-second calculated for all blocks
   //simulation(t).blocks.filter(b => b.creator == v and b.seenFinalizedAt(v)).size / t.asSeconds
@@ -403,13 +431,6 @@ trait NodeLocalStats {
 
   //as fraction
   def blockchainOrphanRate: Double
-
-  //Fraction of processing time the virtual processor of this node is busy doing things other than
-  //executing transactions in FINALIZED blocks.
-  //Caution: we assume that for every blocks this node knows about, the processor executes all enclosed transactions just once.
-  //Any other activities are what makes the "computational overhead" of running the blockchain protocol.
-  //Here we calculate what fraction of the overall computing time is taken by this "computational overhead".
-  def cpuProtocolOverhead: Double
 
   //Within all data transmitted so far, tells the fraction that is not part of transactions in FINALIZED blocks.
   def dataProtocolOverhead: Double

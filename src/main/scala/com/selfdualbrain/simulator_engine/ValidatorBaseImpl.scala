@@ -165,11 +165,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     val missingDependencies: Iterable[Brick] = msg.justifications.filter(j => ! state.finalizer.knowsAbout(j))
 
     //simulation of incoming message processing time
-    val payloadValidationCost: Long = msg match {
-      case x: AbstractNormalBlock => x.totalGas
-      case x: Ballot => 0L
-    }
-    context.registerProcessingGas(state.msgValidationCostGenerator.next() + payloadValidationCost)
+    context.registerProcessingGas(state.msgValidationCostGenerator.next())
 
     if (missingDependencies.isEmpty) {
       context.addOutputEvent(EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
@@ -211,6 +207,11 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     while (queue.nonEmpty) {
       val nextBrick = queue.dequeue()
       if (! state.finalizer.knowsAbout(nextBrick)) {
+        val payloadValidationCost: Long = nextBrick match {
+          case x: AbstractNormalBlock => x.totalGas
+          case x: Ballot => 0L
+        }
+        context.registerProcessingGas(payloadValidationCost)
         state.finalizer.addToLocalJdag(nextBrick)
         this.onBrickAddedToLocalJdag(nextBrick, isLocallyCreated = false)
         val waitingForThisOne = state.messagesBuffer.findMessagesWaitingFor(nextBrick)

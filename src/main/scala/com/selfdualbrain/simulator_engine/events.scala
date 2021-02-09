@@ -25,7 +25,7 @@ object EventPayload {
 
   //#################### ENGINE ####################
 
-  case class BroadcastProtocolMsg(brick: Brick) extends EventPayload {
+  case class BroadcastProtocolMsg(brick: Brick, cpuTimeConsumed: TimeDelta) extends EventPayload {
     override val filteringTag: Int =
       if (brick.isInstanceOf[Block])
         EventTag.BROADCAST_BLOCK

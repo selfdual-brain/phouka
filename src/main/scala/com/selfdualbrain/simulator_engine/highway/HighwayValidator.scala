@@ -594,11 +594,13 @@ class HighwayValidator private (
   //################## PUBLISHING OF NEW MESSAGES ############################
 
   protected def publishNewBrick(role: BrickRole, roundId: Long): Unit = {
+    val t1 = context.time()
     val brick = createNewBrick(role)
     if (state.currentRoundId == roundId && context.time() < state.currentRoundEnd) {
       state.finalizer.addToLocalJdag(brick)
       onBrickAddedToLocalJdag(brick, isLocallyCreated = true)
-      context.broadcast(context.time(), brick)
+      val t2 = context.time()
+      context.broadcast(t2, brick, t2 timePassedSince t1)
       state.mySwimlane.append(brick)
       state.myLastMessagePublished = Some(brick)
       onTimeBricksCounter.beep(brick.id, context.time().micros)

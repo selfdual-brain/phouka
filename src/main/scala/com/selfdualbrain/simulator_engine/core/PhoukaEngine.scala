@@ -117,14 +117,6 @@ class PhoukaEngine(
 
   override def totalConsumedProcessingTimeOfAgent(agent: BlockchainNodeRef): TimeDelta = nodes(agent.address).totalProcessingTime
 
-  override def validatorIdUsedBy(node: BlockchainNodeRef): ValidatorId = nodeId2validatorId(node.address)
-
-  override def progenitorOf(node: BlockchainNodeRef): Option[BlockchainNodeRef] = ???
-
-  override def computingPowerOf(node: BlockchainNodeRef): TimeDelta = nodes(node.address).validatorInstance.computingPower
-
-  override def downloadBandwidthOf(node: BlockchainNodeRef): Double = nodes(node.address).downloadBandwidth
-
   override def node(ref: BlockchainNodeRef): BlockchainSimulationEngine.Node = nodes(ref.address)
 
   //low-level access to validator instance is here for diagnostic purposes only
@@ -261,7 +253,7 @@ class PhoukaEngine(
       case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
         EventMaskingDecision.Emit
 
-      case EventPayload.BroadcastProtocolMsg(brick) =>
+      case EventPayload.BroadcastProtocolMsg(brick, cpuTimeConsumed) =>
         box.status match {
           case NodeStatus.CRASHED => throw new LineUnreachable
           case NodeStatus.NETWORK_OUTAGE =>

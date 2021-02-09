@@ -52,6 +52,7 @@ object PresentersSandbox {
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
     brickCreationCostModel = LongSequence.Config.PseudoGaussian(TimeDelta.millis(1), TimeDelta.millis(3)),
     brickValidationCostModel = LongSequence.Config.PseudoGaussian(300, 1000),
+    finalizerCostConversionRateMicrosToGas = 1,
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,

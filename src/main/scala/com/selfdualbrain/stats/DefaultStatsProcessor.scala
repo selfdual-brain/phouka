@@ -126,7 +126,7 @@ class DefaultStatsProcessor(
               case Some(p) => node2stats(p.address).createDetachedCopy(agent.get)
             }
 
-          case EventPayload.BroadcastProtocolMsg(brick) =>
+          case EventPayload.BroadcastProtocolMsg(brick, cpuTimeConsumed) =>
             brick match {
               case block: AbstractNormalBlock =>
                 publishedBlocksCounter += 1
@@ -141,7 +141,7 @@ class DefaultStatsProcessor(
                 cumulativeBinarySizeOfAllBricks += ballot.binarySize
             }
         }
-        node2stats(agent.get.address).handleEvent(timepoint, payload)
+        node2stats(agent.get.address).handleEvent(event)
 
       case Event.External(id, timepoint, destination, payload) =>
         payload match {
@@ -159,10 +159,10 @@ class DefaultStatsProcessor(
         if (! faultyValidatorsMap(vid)) {
           handleSemanticEvent(vid, eventTimepoint, eventPayload)
         }
-        node2stats(source.address).handleEvent(eventTimepoint, eventPayload)
+        node2stats(source.address).handleEvent(event)
 
       case Event.Transport(id, timepoint, source, destination, payload) =>
-        node2stats(destination.address).handleEvent(timepoint, payload)
+        node2stats(destination.address).handleEvent(event)
 
       case other =>
         //ignore

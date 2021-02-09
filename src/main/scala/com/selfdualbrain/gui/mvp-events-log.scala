@@ -129,7 +129,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.loggingAgent match {
-            case Some(agentId) => simulationDisplayModel.engine.validatorIdUsedBy(agentId).toString
+            case Some(agentId) => simulationDisplayModel.engine.node(agentId).validatorId.toString
             case None => ""
           }
         },
@@ -202,7 +202,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
-          case EventPayload.BroadcastProtocolMsg(brick) => s"$brick"
+          case EventPayload.BroadcastProtocolMsg(brick, cpuTimeConsumed) => s"$brick"
           case EventPayload.NetworkDisruptionEnd(disruptionEventId) => s"disruption-begin = event $disruptionEventId"
           case EventPayload.NewAgentSpawned(validatorId, progenitor) => if (progenitor.isEmpty) s"validator-id=$validatorId" else s"cloned from node $progenitor (validator-id=$validatorId)"
           case other => throw new RuntimeException(s"unexpected payload: $payload")

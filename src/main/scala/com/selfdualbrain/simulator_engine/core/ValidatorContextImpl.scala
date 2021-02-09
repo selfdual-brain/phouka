@@ -2,7 +2,7 @@ package com.selfdualbrain.simulator_engine.core
 
 import com.selfdualbrain.blockchain_structure.{AbstractGenesis, BlockchainNodeRef, BlockdagVertexId, Brick}
 import com.selfdualbrain.simulator_engine.{EventPayload, Validator, ValidatorContext}
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.util.Random
 
@@ -20,8 +20,8 @@ private[core] class ValidatorContextImpl(engine: PhoukaEngine, nodeId: Blockchai
 
   override def random: Random = engine.random
 
-  override def broadcast(timepointOfPassingTheBrickToCommsLayer: SimTimepoint, brick: Brick): Unit = {
-    engine.desQueue.addEngineEvent(timepointOfPassingTheBrickToCommsLayer, Some(nodeId), EventPayload.BroadcastProtocolMsg(brick))
+  override def broadcast(timepointOfPassingTheBrickToCommsLayer: SimTimepoint, brick: Brick, cpuTimeConsumed: TimeDelta): Unit = {
+    engine.desQueue.addEngineEvent(timepointOfPassingTheBrickToCommsLayer, Some(nodeId), EventPayload.BroadcastProtocolMsg(brick, cpuTimeConsumed))
   }
 
   override def scheduleWakeUp(wakeUpTimepoint: SimTimepoint, strategySpecificMarker: Any): Unit = {
