@@ -219,7 +219,9 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
       nextInSwimlane,
       vote = brick => bgame.decodeVote(brick),
       message2panorama = state.panoramasBuilder.panoramaOf,
-      estimator = bgame)
+      estimator = bgame,
+      anchorDaglevel = bGameAnchor.daglevel
+    )
   }
 
   /**

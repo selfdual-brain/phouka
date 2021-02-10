@@ -1,12 +1,14 @@
 package com.selfdualbrain.abstract_consensus
 
+import com.selfdualbrain.data_structures.LayeredMap
+
 import scala.collection.mutable
 
 trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] extends AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
 
   class PanoramaBuilder {
 
-    private val message2panorama = new mutable.HashMap[ConsensusMessage,Panorama]
+    private val message2panorama = new LayeredMap[ConsensusMessage,Panorama](levelIdExtractor = cmApi.daglevel)
 
     /**
       * Calculates panorama of given msg.

@@ -129,6 +129,9 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
                                                                                                 config: CF,
                                                                                                 state: ST) extends Validator {
 
+  private var averageSummitExecutionSum: Long = 0L
+  private var summitExecutionsCounter: Long = 0L
+
   //wiring finalizer instance to local processing
   //caution: this is also crucial while cloning (cloned Finalizer has output in "not-connected" state
   //and here we properly connect it to the cloned instance of validator)
@@ -140,6 +143,10 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     override def blockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit, finalityDetectorUsed: ACC.FinalityDetector): Unit = {
       context.addOutputEvent(EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit))
       onBlockFinalized(bGameAnchor, finalizedBlock, summit)
+      summitExecutionsCounter += 1
+      averageSummitExecutionSum += finalityDetectorUsed.averageExecutionTime(summit.level)
+      if (config.validatorId == 0)
+        println(s"FIN AV: ${averageSummitExecutionSum / summitExecutionsCounter}")
       if (config.validatorId == 0) {
         val finalityDetectorStats = (0 to summit.level).map(level => s"$level->${finalityDetectorUsed.averageExecutionTime(level)}").mkString(",")
         println(s"FINALITY generation=${finalizedBlock.generation} detector-invocations=${finalityDetectorUsed.numberOfInvocations} : $finalityDetectorStats")

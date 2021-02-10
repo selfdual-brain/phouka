@@ -1,6 +1,7 @@
 package com.selfdualbrain.abstract_consensus
 
 import scala.annotation.tailrec
+import com.selfdualbrain.util.LanguageTweaks._
 
 trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusMessage] extends AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
 
@@ -14,7 +15,8 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                                    nextInSwimlane: ConsensusMessage => Option[ConsensusMessage],
                                    vote: ConsensusMessage => Option[Con],
                                    message2panorama: ConsensusMessage => Panorama,
-                                   estimator: Estimator
+                                   estimator: Estimator,
+                                   anchorDaglevel: Int //messages below this daglevel can be ignored
                                  ) extends FinalityDetector {
 
     private val quorum: Ether = {
@@ -45,7 +47,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
           None
         case Some(winnerConsensusValue) =>
           val validatorsVotingForThisValue: Iterable[ValidatorId] = estimator.supportersOfTheWinnerValue
-          val baseTrimmer: Trimmer = findBaseTrimmer(winnerConsensusValue, validatorsVotingForThisValue, latestPanorama)
+          val baseTrimmer: Trimmer = findBaseTrimmerOptimized(winnerConsensusValue, validatorsVotingForThisValue, latestPanorama)
 
           if (sumOfWeights(baseTrimmer.validators) < quorum)
             None
@@ -79,23 +81,88 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
       return result
     }
 
+    //Clean FP-style implementation we keep here for reference only.
+    //This method happens to be one of "hot performance spots" of the whole simulator, so we attempt to optimize it as much as possible.
+    //See the optimized version below.
     private def findBaseTrimmer(consensusValue: Con, validatorsSubset: Iterable[ValidatorId], latestPanorama: Panorama): Trimmer = {
       val pairs: Iterable[(ValidatorId, ConsensusMessage)] =
         for {
           validator <- validatorsSubset
           swimlaneTip = latestPanorama.honestSwimlanesTips(validator)
-          oldestZeroLevelMessageOption = swimlaneIterator(swimlaneTip)
-            .filter(m => vote(m).isDefined)
-            .takeWhile(m => vote(m).get == consensusValue)
-            .toSeq
-            .lastOption
-          msg <- oldestZeroLevelMessageOption
-
+          (msg, _) <- swimlaneIterator(swimlaneTip)
+            .map(m => (m, vote(m)))
+            .filter {case (m, vote) =>  vote.isDefined}
+            .takeWhile {case (m, vote)  => cmApi.daglevel(m) > anchorDaglevel && vote.get == consensusValue}
+            .last
         }
           yield (validator, msg)
 
       return Trimmer(pairs.toMap)
     }
+
+    //Performance-Optimized implementation of 'findBaseTrimmer'.
+    //This one is (hopefully) equivalent to the FP-style version (see above).
+    private def findBaseTrimmerOptimized(consensusValue: Con, validatorsSubset: Iterable[ValidatorId], latestPanorama: Panorama): Trimmer = {
+      val pairs: Iterable[(ValidatorId, ConsensusMessage)] =
+        for {
+          validator <- validatorsSubset
+          swimlaneTip = latestPanorama.honestSwimlanesTips(validator)
+          msg <- findOldestZeroLevelMessageForGivenSwimlane(swimlaneTip, consensusValue)
+        }
+          yield (validator, msg)
+
+
+      return Trimmer(pairs.toMap)
+    }
+
+    private def findOldestZeroLevelMessageForGivenSwimlane(swimlaneTip: ConsensusMessage, consensusValue: Con): Option[ConsensusMessage] = {
+      var currentMsg: ConsensusMessage = swimlaneTip
+      var resultCandidate: Option[ConsensusMessage] = None
+      var currentMsgVote: Option[Con] = vote(currentMsg)
+
+      while (cmApi.daglevel(currentMsg) > anchorDaglevel) {
+        currentMsgVote match {
+          case None =>
+            //keep current result candidate and continue traversing down the swimlane
+          case Some(v) =>
+            if (v == consensusValue)
+              resultCandidate = Some(currentMsg)
+            else
+              return resultCandidate
+        }
+
+        cmApi.prevInSwimlane(currentMsg) match {
+          case None =>
+            return resultCandidate
+          case Some(p) =>
+            currentMsg = p
+            currentMsgVote = vote(p)
+        }
+      }
+
+      return resultCandidate
+    }
+
+//OLD IMPLEMENTATION (WHICH - SURPRISINGLY- TURNED OUT TO BE THE TOP PERFORMANCE BOTTLENECK IN THE WHOLE SIMULATOR)
+//LEFT HERE FOR REFERENCE
+//
+//    private def findBaseTrimmer(consensusValue: Con, validatorsSubset: Iterable[ValidatorId], latestPanorama: Panorama): Trimmer = {
+//      val pairs: Iterable[(ValidatorId, ConsensusMessage)] =
+//        for {
+//          validator <- validatorsSubset
+//          swimlaneTip = latestPanorama.honestSwimlanesTips(validator)
+//          oldestZeroLevelMessageOption = swimlaneIterator(swimlaneTip)
+//            .filter(m => vote(m).isDefined)
+//            .takeWhile(m => vote(m).get == consensusValue)
+//            .toSeq
+//            .lastOption
+//          msg <- oldestZeroLevelMessageOption
+//
+//        }
+//          yield (validator, msg)
+//
+//      return Trimmer(pairs.toMap)
+//    }
 
     @tailrec
     private def findCommittee(context: Trimmer, candidatesConsidered: Set[ValidatorId]): Option[Trimmer] = {
