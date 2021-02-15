@@ -67,14 +67,29 @@ Network structure, individual per-node download bandwidth and per-node computing
 use the same finalizer setup: fault tolerance set to 0.30, and acknowledgement level set to 3. Validators will use
 "naive casper" blocks production strategy.
 
-The simulation will stop after processing 1 million events. Upon stopping, the GUI window containing log of events will open.
-Additionally, simulation statistics will be printed on System.out.
+The simulation will stop after processing 1 million events. This will take some 3 minutes on an average laptop. You will see
+a counter of processed events showing up on system console. Upon stopping, the following things will happen:
+
+- complete simulation stats will be printed on System.out
+- a window "Simulation events log" will open
+- a window "Blockchain performance history" will open
+- a window "Per-node stats" will open  the GUI window containing log of events will open.
+
+You may find the contents of the GUI a little cryptic at first. When a mouse pointer stops at the header of a table, a tooltip
+with short explanation will be displayed.
 
 Feel free to adjust parameters in the Demo1 yourself. You can also use `ReferenceExpConfig` class, which contains a handful
 of ready-to-use blockchain configurations.
 
-Caution: `Demo1` instructs the engine to use a different random seed on ever run, so each time you start a simulation, you will
-see a different outcome. If needed, you can fix the seed in the `ExperimentConfig.randomSeed` parameter.
+Caution 1: `Demo1` instructs the engine to use a different random seed on ever run, so each time you start a simulation, you will
+see a different outcome. If needed, you can fix the seed in the `ExperimentConfig.randomSeed` parameter. It is possible to
+re-run the exact same simulation by providing the random seed. This is why the random seed is printed on System.out at the
+beginning of the simulation. In case of bug reports, the experiment configuration and the seed are needed to replicate the problem.
+
+Caution 2: The simulator will push your CPU to the limits. Always ensure your computer has optimal cooling conditions before
+running the simulator, as it may easily overheat your computer.
+
+Caution 3: The currently available GUI is just a teaser. Do not consider it as an approximation of final user interface.  
 
 ## Explanation of the "Phouka" name.
 
@@ -113,26 +128,25 @@ Future plans:
 - Docker support
 - storage support (currently the sim runs in RAM)  
 - hosting a web version
-- full consensus model support (endorsements, eras, validators rotation)  
-- enhanced P2P network model (explicit implementation RPS-over-DES, gossip protocol, Kademlia discovery)
+- full Highway consensus model support (endorsements/spam protection, eras with slots, validators rotation)
+- enhanced P2P network model (explicit implementation RPC-over-DES, gossip protocol over RPC, Kademlia-based discovery)
 - parallel simulation engine (PDES)
+- javascript frontend
 
 # Features (in a nutshell)
 
-_Caution: info below is REALLY concise. Complete Users's Manual will cover the description of the protocol in
+_Caution: info below is REALLY concise. Users's Manual will cover the description of the protocol in
 great detail. Stay tuned._
 
 ## Blockchain consensus model
 
-Phouka is based around "Casper the friendly ghost" line of consensus protocol research, and the especially influencing
+Phouka is based around "Casper the friendly ghost" line of consensus protocols research, and the especially influencing
 paper was [Highway: Efficient Consensus with Flexible Finality](https://arxiv.org/abs/2101.02159). Nevertheless,
-the implementation is a rather loose/creative interpretation of the ideas described in paper, plus we use own naming:
+the implementation is a rather loose/creative interpretation of the ideas described in the paper, plus we use own naming:
 
-- we use blocks and ballots (instead of "units with a block" and "units without a block"); "brick" is a name we use for
-  denoting a block or ballot
-- bricks form a DAG (brickdag)
-- we use more descriptive naming of structures in the brickdag (this includes things like panorama,
-  base trimmer, committee, summit, partial summit etc)
+- we use blocks and ballots (instead of "units with a block" and "units without a block")
+- "brick" is a name we use for denoting a block or ballot; bricks form a DAG (brickdag)
+- we use more descriptive naming of structures in the brickdag (panorama, base trimmer, committee, summit, partial summit etc)
 
 The current version of Phouka implements only a sub-protocol of the described solution:
 
@@ -162,10 +176,10 @@ interfere with consensus:
 - network failures
 - node crashes
 
-Currently we implement only the "cloning" model of equivocators, so when a validator node splits into N identical, independent validator
-nodes, which are not "aware" they are part of split (something like this may happen in real life when a master-slave failover
-configuration fails, and the slave node - using same credentials as the master - joins the blockchain network,
-using the most up-to-date state snapshot of master).
+Currently, we implement only the "cloning" model of equivocators, so a situation when a validator node "splits" into
+N identical, independent validator nodes, which are not "aware" they are part of split (something like this may happen
+in real life when a master-slave failover configuration fails, and the slave node - using same credentials as the
+master - joins the blockchain network, using the most up-to-date state snapshot of master).
 
 The network model covers:
 
@@ -175,7 +189,7 @@ The network model covers:
 - node crashing
 
 To achieve meaningful statistics, we distinguish the binary size of messages in the simulated protocol form
-the binary size of messages used in the actual implementaton of Phouka. So for example one can configure the header binary size,
+the binary size of messages used in the actual implementation of Phouka. So for example one can configure the header binary size,
 validator id binary size and so on to correctly reflect characteristics of a real system to be simulated.
 
 ## Nodes model

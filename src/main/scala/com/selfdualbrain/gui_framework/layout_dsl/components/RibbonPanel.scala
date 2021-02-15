@@ -172,16 +172,16 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
     val gbc = new GridBagConstraints
     orientation match {
       case Orientation.HORIZONTAL =>
-        gbc.gridx = 0
-        gbc.gridy = position
+        gbc.gridx = position
+        gbc.gridy = 0
         gbc.anchor = GridBagConstraints.CENTER
         gbc.weightx = if (wantGrow) 1.0 else 0.0
         gbc.weighty = if (wantGrow) 1.0 else 0.0
         gbc.fill = GridBagConstraints.BOTH
         gbc.insets = new Insets(0, preGap, 0, postGap)
       case Orientation.VERTICAL =>
-        gbc.gridx = position
-        gbc.gridy = 0
+        gbc.gridx = 0
+        gbc.gridy = position
         gbc.anchor = GridBagConstraints.CENTER
         gbc.weightx = if (wantGrow) 1.0 else 0.0
         gbc.weighty = if (wantGrow) 1.0 else 0.0

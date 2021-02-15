@@ -170,12 +170,12 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
       onBlockFinalized(bGameAnchor, finalizedBlock, summit)
       summitExecutionsCounter += 1
       averageSummitExecutionSum += finalityDetectorUsed.averageExecutionTime(summit.level)
-      if (config.validatorId == 0)
-        println(s"FIN AV: ${averageSummitExecutionSum / summitExecutionsCounter}")
-      if (config.validatorId == 0) {
-        val finalityDetectorStats = (0 to summit.level).map(level => s"$level->${finalityDetectorUsed.averageExecutionTime(level)}").mkString(",")
-        println(s"FINALITY generation=${finalizedBlock.generation} detector-invocations=${finalityDetectorUsed.numberOfInvocations} : $finalityDetectorStats")
-      }
+//diagnostics hook- to be kept here over the period of beta-testing
+//      if (config.validatorId == 0) {
+//        println(s"FIN AV: ${averageSummitExecutionSum / summitExecutionsCounter}")
+//        val finalityDetectorStats = (0 to summit.level).map(level => s"$level->${finalityDetectorUsed.averageExecutionTime(level)}").mkString(",")
+//        println(s"FINALITY generation=${finalizedBlock.generation} detector-invocations=${finalityDetectorUsed.numberOfInvocations} : $finalityDetectorStats")
+//      }
     }
     override def equivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit = {
       context.addOutputEvent(EventPayload.EquivocationDetected(evilValidator, brick1, brick2))

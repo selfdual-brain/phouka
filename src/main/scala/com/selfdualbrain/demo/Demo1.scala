@@ -1,10 +1,14 @@
+package com.selfdualbrain.demo
+
 import com.selfdualbrain.blockchain_structure.AbstractGenesis
+import com.selfdualbrain.gui.{EventsLogPresenter, NodeStatsPresenter}
 import com.selfdualbrain.gui.model.SimulationDisplayModel
-import com.selfdualbrain.gui_framework.SwingSessionManager
+import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, RibbonPanel}
+import com.selfdualbrain.gui_framework.{Orientation, SwingSessionManager}
 import com.selfdualbrain.network.NetworkSpeed
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine._
-import com.selfdualbrain.simulator_engine.config.{BlocksBuildingStrategyModel, ConfigBasedSimulationSetup, DisruptionModelConfig, DownloadBandwidthConfig, ExperimentConfig, FinalizationCostModel, FinalizerConfig, ForkChoiceStrategy, NetworkConfig, ObserverConfig, ProposeStrategyConfig, TransactionsStreamConfig}
+import com.selfdualbrain.simulator_engine.config._
 import com.selfdualbrain.stats.{BlockchainSimulationStats, StatsPrinter}
 import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
@@ -15,13 +19,13 @@ import org.jfree.chart.{ChartPanel, JFreeChart}
 import org.jfree.data.xy.{DefaultXYDataset, XYDataset, YIntervalSeries, YIntervalSeriesCollection}
 import org.slf4j.LoggerFactory
 
-import java.awt.{BasicStroke, Color, Dimension}
-import javax.swing.UIManager
+import java.awt.{BasicStroke, BorderLayout, Color, Dimension}
+import javax.swing.{JPanel, UIManager}
 import scala.util.Random
 
-object ChartsSandbox {
-  private val log = LoggerFactory.getLogger(s"chart-sandbox")
-  private val NUMBER_OF_STEPS: Int = 100000
+object Demo1 {
+  private val log = LoggerFactory.getLogger(s"demo")
+  private val NUMBER_OF_STEPS: Int = 1000000
 
   private val headerSize: Int =
     32 + //message id
@@ -33,8 +37,11 @@ object ChartsSandbox {
     32 + //target block
     32   //signature
 
+  private val random = new Random
+  private val seed = random.nextLong
+
   val config: ExperimentConfig = ExperimentConfig(
-    randomSeed = Some(new Random(42).nextLong()),
+    randomSeed = Some(seed),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(5))
     ),
@@ -80,6 +87,9 @@ object ChartsSandbox {
     //initialize engine
     log.info("engine initialized")
 
+    //print random seed, so the user can come back to the same simulation later if needed
+    println(s"random seed used: $seed")
+
     //initialize display model
     val simulationDisplayModel: SimulationDisplayModel = new SimulationDisplayModel(
       experimentConfig = config,
@@ -87,19 +97,39 @@ object ChartsSandbox {
       stats = simulationSetup.guiCompatibleStats.get,
       genesis,
       expectedNumberOfBricks = 10000,
-      expectedNumberOfEvents = 100000,
+      expectedNumberOfEvents = 1000000,
       maxNumberOfAgents = 100,
       lfbChainMaxLengthEstimation = 1000
     )
 
+    //run simulation
     //run short simulation
     log.info("starting the simulation")
-    simulationDisplayModel.advanceTheSimulationBy(NUMBER_OF_STEPS)
-    log.info(s"simulation completed")
+    val t1 = measureExecutionTime {
+      simulationDisplayModel.advanceTheSimulationBy(NUMBER_OF_STEPS)
+    }
+    log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepExecuted}")
 
+    //print final statistics to System.out
     printStatsToConsole()
-    displayLatencyChart("final")
-    displayThroughputChart("final")
+
+    //display charts
+    val latencyChart = createLatencyChart("finalization delay as seconds")
+    val throughputChart = createThroughputChart("finalized blocks per hour")
+    val chartsPanel = new RibbonPanel(sessionManager.guiLayoutConfig, Orientation.VERTICAL)
+    chartsPanel.addPanel(latencyChart, preGap = 0, postGap = 0, wantGrow = true)
+    chartsPanel.addPanel(throughputChart, preGap = 0, postGap = 0, wantGrow = true)
+    sessionManager.encapsulateViewInFrame(chartsPanel, "Blockchain performance history")
+
+    //display events log
+    val eventsLogPresenter = new EventsLogPresenter
+    eventsLogPresenter.model = simulationDisplayModel
+    sessionManager.mountTopPresenter(eventsLogPresenter, Some("Simulation events log"))
+
+    //display node stats
+    val nodeStatsPresenter = new NodeStatsPresenter
+    nodeStatsPresenter.model = simulationDisplayModel
+    sessionManager.mountTopPresenter(nodeStatsPresenter, Some("Per-node stats"))
   }
 
   def printStatsToConsole(): Unit = {
@@ -115,7 +145,7 @@ object ChartsSandbox {
     return stop - start
   }
 
-  def displayThroughputChart(label: String): Unit = {
+  def createThroughputChart(label: String): JPanel = {
     //generating data for the chart
     val startTime: Long = 0
     val endTime: Long = engine.currentTime.micros
@@ -130,24 +160,19 @@ object ChartsSandbox {
       val y: Double = displayedFunction(timepoint) * 3600
       points(0)(i) = x / 1000000 / 60 //time as minutes
       points(1)(i) = y // throughput as blocks-per-hour
-      println(s"$i: $timepoint - $y")
+//      println(s"$i: $timepoint - $y")
     }
 
     //wrapping data into jfreechart-friendly structure
     val dataset = new DefaultXYDataset()
     dataset.addSeries(1, points)
 
-    //    val chart = ChartFactory.createXYLineChart("Throughput", "Time", "Throughput", dataset, PlotOrientation.VERTICAL, false, false, false)
-    //    val renderer = new XYSplineRenderer()
-    //    renderer.setDefaultShapesVisible(false)
-    //    renderer.setDrawOutlines(false)
-
     //displaying as XY chart
     val renderer = new XYLineAndShapeRenderer(true, false)
-    showChart(dataset, renderer, s"Blockchain throughput ($label)")
+    return createChartPanel(dataset, renderer, s"Blockchain throughput ($label)")
   }
 
-  def displayLatencyChart(label: String): Unit = {
+  def createLatencyChart(label: String): JPanel = {
     //generating data for the chart
     val n = stats.numberOfCompletelyFinalizedBlocks.toInt
     val points = new YIntervalSeries(0, false, false)
@@ -166,10 +191,10 @@ object ChartsSandbox {
     renderer.setSeriesStroke(0, new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND))
     renderer.setSeriesStroke(0, new BasicStroke(3.0f))
     renderer.setSeriesFillPaint(0, new Color(200, 200, 255))
-    showChart(dataset, renderer,s"Blockchain latency ($label)")
+    return createChartPanel(dataset, renderer,s"Blockchain latency ($label)")
   }
 
-  private def showChart(dataset: XYDataset, renderer: XYItemRenderer, title: String): Unit = {
+  private def createChartPanel(dataset: XYDataset, renderer: XYItemRenderer, title: String): JPanel = {
     val xAxis: NumberAxis = new NumberAxis
     xAxis.setAutoRangeIncludesZero(false)
     val yAxis: NumberAxis = new NumberAxis
@@ -178,7 +203,10 @@ object ChartsSandbox {
     val chart: JFreeChart = new JFreeChart(null, JFreeChart.DEFAULT_TITLE_FONT, plot, false)
     val panel = new ChartPanel(chart)
     panel.setPreferredSize(new Dimension(1000, 150))
-    sessionManager.encapsulateViewInFrame(panel, title)
+    val result = new PlainPanel(sessionManager.guiLayoutConfig)
+    result.add(panel, BorderLayout.CENTER)
+    result.surroundWithTitledBorder(title)
+    return result
   }
 
 }

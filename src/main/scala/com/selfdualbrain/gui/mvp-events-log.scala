@@ -41,7 +41,7 @@ object EventsLogPresenter {
 
 class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, EventsLogPresenter] {
   private val events_Table = new SmartTable(guiLayoutConfig)
-  this.setPreferredSize(new Dimension(1000,800))
+  this.setPreferredSize(new Dimension(1400,800))
   this.add(events_Table, BorderLayout.CENTER)
   this.surroundWithTitledBorder("Simulation events (filtered)")
 
@@ -84,7 +84,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 100
       ),
       ColumnDefinition[SimTimepoint](
-        name = "Time",
+        name = "Time [sec]",
         headerTooltip = "Event's timepoint (in simulated time, microseconds precision)",
         runtimeClassOfValues = classOf[Long],
         cellValueFunction = (rowIndex: Int) => {
@@ -139,7 +139,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 40
       ),
       ColumnDefinition[String](
-        name = "Type",
+        name = "Event type",
         headerTooltip = "Event type",
         runtimeClassOfValues = classOf[String],
         cellValueFunction = (rowIndex: Int) => {
@@ -157,8 +157,8 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
             case other => None
           }
         },
-        preferredWidth = 130,
-        maxWidth = 160
+        preferredWidth = 200,
+        maxWidth = 200
       ),
       ColumnDefinition(
         name = "Details",
