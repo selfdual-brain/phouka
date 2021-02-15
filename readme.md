@@ -72,7 +72,7 @@ a counter of processed events showing up on system console. Upon stopping, the f
 
 - complete simulation stats will be printed on System.out
 - a window "Simulation events log" will open
-- a window "Blockchain performance history" will open
+- a window "Blockchain performance history" will open (throughput and latency charts)
 - a window "Per-node stats" will open  the GUI window containing log of events will open.
 
 You may find the contents of the GUI a little cryptic at first. When a mouse pointer stops at the header of a table, a tooltip
@@ -81,15 +81,20 @@ with short explanation will be displayed.
 Feel free to adjust parameters in the Demo1 yourself. You can also use `ReferenceExpConfig` class, which contains a handful
 of ready-to-use blockchain configurations.
 
-Caution 1: `Demo1` instructs the engine to use a different random seed on ever run, so each time you start a simulation, you will
+**Remarks**
+
+1. `Demo1` instructs the engine to use a different random seed on ever run, so each time you start a simulation, you will
 see a different outcome. If needed, you can fix the seed in the `ExperimentConfig.randomSeed` parameter. It is possible to
 re-run the exact same simulation by providing the random seed. This is why the random seed is printed on System.out at the
 beginning of the simulation. In case of bug reports, the experiment configuration and the seed are needed to replicate the problem.
 
-Caution 2: The simulator will push your CPU to the limits. Always ensure your computer has optimal cooling conditions before
+2. The simulator will push your CPU to the limits. Always ensure your computer has optimal cooling conditions before
 running the simulator, as it may easily overheat your computer.
 
-Caution 3: The currently available GUI is just a teaser. Do not consider it as an approximation of final user interface.  
+3. The currently available GUI is just a teaser. Do not consider it as an approximation of final user interface.
+
+4. On the latency chart, the red curve is surrounded with mysterious blue ribbon. The red curve represents the average value,
+   while the blue ribbon represents standard deviation.
 
 ## Explanation of the "Phouka" name.
 
