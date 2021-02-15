@@ -79,7 +79,8 @@ see a different outcome. If needed, you can fix the seed in the `ExperimentConfi
 ## Explanation of the "Phouka" name.
 
 Phouka is a character from Celtic folklore. See [here](https://en.wikipedia.org/wiki/P%C3%BAca).
-Phouka image
+
+[Phouka image](https://github.com/selfdual-brain/phouka/blob/master/phouka-image.jpg)
 
 # Development
 
