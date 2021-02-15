@@ -15,50 +15,75 @@ import scala.collection.mutable.ArrayBuffer
 object ValidatorBaseImpl {
 
   class Config {
-    //integer id of a validator; simulation engine allocates these ids from 0,...,n-1 interval
+    //Integer id of a validator. Simulation engine allocates these ids from 0,...,n-1 interval.
+    //Caution: in a real blockchain implementation, a validator-id will usually be much bigger value, you may expect something like "SHA-256 hash
+    //of the public key" or something in this style. This has strong implications on sizing of bricks, so also on the amount of data exchanged by nodes
+    //in the blockchain P2P network, hence on the delays, hence on the blockchain performance (and the protocol overhead in particular).
+    //We handle this aspect explicitly - see "brickHeaderCoreSize" config parameter below.
     var validatorId: ValidatorId = _
 
-    //number of validators (not to be mistaken with number of active nodes)
+    //Number of validators (not to be mistaken with number of active nodes).
     var numberOfValidators: Int = _
 
-    //absolute weights of validators
+    //Map of absolute weights of validators (validator-id -----> weight).
     var weightsOfValidators: ValidatorId => Ether = _
 
-    //total weight of validators
+    //Total weight of validators (i.e. sum of all individual weights).
     var totalWeight: Ether = _
 
-    //todo: doc
+    //If true, it instructs the finalizer to start every fork-choice calculation from Genesis block.
+    //If false, it instructs the finalizer to start every fork-choice calculation from the last finalized block.
+    //Caution: this parameter is currently ignored, only the "false" variant is implemented. todo: add support for fork-choice running always from Genesis
     var runForkChoiceFromGenesis: Boolean = _
 
-    //todo: doc
+    //"absolute fault tolerance threshold" value to be used by the finalizer inside this node (finalizer is embedded as part of Node implementation)
     var relativeFTT: Double = _
 
-    //todo: doc
+    //"absolute fault tolerance threshold" value to be used by the finalizer inside this node (finalizer is embedded as part of Node implementation)
     var absoluteFTT: Ether = _
 
-    //todo: doc
+    //"acknowledgement level" value to be used by the finalizer inside this node (finalizer is embedded as part of Node implementation)
     var ackLevel: Int = _
 
-    //todo: doc
+    //randomized stream of simulated block "payloads"
+    //caution: we do not create real transactions, we just simulate the size of them (both in terms of binary volume and also execution cost as gas)
     var blockPayloadBuilder: BlockPayloadBuilder = _
 
-    //using [gas/second] units
+    //simulated cpu computing power of this node (using [gas/second] units here)
     var computingPower: Long = _
 
-    //todo: doc
+    //generator of computation cost of single brick validation effort
     var msgValidationCostModel: LongSequence.Config = _
 
-    //todo: doc
+    //generator of computation cost of single brick creation effort
     var msgCreationCostModel: LongSequence.Config = _
 
-    //todo: doc
-    var finalizerCostConversionRateMicrosToGas: Double = _
+    //function we use to simulate summits computation cost
+    var finalizationCostFormula: Option[ACC.Summit => Long] = _
+
+    //wall-clock to gat conversion rate (used only if enableFinalizationCostScaledFromWallClock == true)
+    var microsToGasConversionRate: Double = _
+
+    //true = finalization cost will be simulated via wall-clock scaling
+    //false = finalization cost will be simulated via explicit formula
+    var enableFinalizationCostScaledFromWallClock: Boolean = _
 
     //flag that enables emitting semantic events around msg buffer operations
     var msgBufferSherlockMode: Boolean = _
 
+    //Simulated binary size of brick's header (as bytes).
+    //This value does not include the size of the justifications list (which is also considered part of a header), hence the "core" prefix here.
+    //We need this value to correctly simulate network transfer delays and to calculate the protocol overhead).
+    //Brick headers consume significant portion of the overall blockchain network traffic.
     var brickHeaderCoreSize: Int = _
 
+    //Simulated binary size of a single justification (i.e. citation of other brick) as bytes.
+    //For example if the production blockchain will use 256-bit cryptographic hash value as the brick id,
+    //this means a single reference to another brick is 32-bytes value.
+    //However, the PROD implementation may opt to use (validator-id, brick-id) pair as an item in the justifications list.
+    //In such case, if validator-id is, say, also 32 bytes, then a single justification would be 32+32 = 64 bytes.
+    //We need this value to correctly simulate network transfer delays and to calculate the protocol overhead.
+    //Justification lists, which are part of a brick's header, consume significant portion of the overall blockchain network traffic.
     var singleJustificationSize: Int = _
   }
 
@@ -180,17 +205,10 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
 
     if (missingDependencies.isEmpty) {
       context.addOutputEvent(EventPayload.AcceptedIncomingBrickWithoutBuffering(msg))
-      //instead of allowing to plug-in any mathematical formula to calculate finalization processing effort, we rather measure
-      //the actual wall-clock time it takes in the simulator, and then we use the predefined conversion rate micros --> as
-      //this solution is quite a dirty hack - but we consider it to be a tradeoff between configuration simplicity and simulation accuracy
-      //the problem is that the whole work of finalizer/fork-choice computation is quite non-linear (highly depends on the current structure of the jdag)
-      //the solution we use here is in principle wrong, because here in the sim we use different approach to calculating finality/fork-choice than
-      //the production code would do (especially the fork choice is different, because we can afford come shortcuts)
-      val t1 = System.nanoTime()
-      runBufferPruningCascadeFor(msg)
-      val t2 = System.nanoTime()
-      val micros = (t2 - t1)/1000
-      context.registerProcessingGas((config.finalizerCostConversionRateMicrosToGas * micros).toLong)
+      if (config.enableFinalizationCostScaledFromWallClock)
+        runBufferPruningCascadeWithComputationCostViaScaling(msg)
+      else
+        runBufferPruningCascadeFor(msg)
     } else {
       if (config.msgBufferSherlockMode) {
         val bufferSnapshot = doBufferOp {state.messagesBuffer.addMessage(msg, missingDependencies)}
@@ -210,6 +228,19 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
   }
 
   //#################### HANDLING OF INCOMING MESSAGES ############################
+
+  private def runBufferPruningCascadeWithComputationCostViaScaling(msg: Brick): Unit = {
+    //we measure the actual wall-clock time it takes in the simulator, and then we use the predefined conversion rate micros --> as
+    //this solution is quite a dirty hack - but we consider it to be a tradeoff between configuration simplicity and simulation accuracy
+    //the problem is that the whole work of finalizer/fork-choice computation is quite non-linear (highly depends on the current structure of the jdag)
+    //the solution we use here is in principle wrong, because here in the sim we use different approach to calculating finality/fork-choice than
+    //the production code would do (especially the fork choice is different, because we can afford come shortcuts)
+    val t1 = System.nanoTime()
+    runBufferPruningCascadeFor(msg)
+    val t2 = System.nanoTime()
+    val micros = (t2 - t1)/1000
+    context.registerProcessingGas((config.microsToGasConversionRate * micros).toLong)
+  }
 
   protected def runBufferPruningCascadeFor(msg: Brick): Unit = {
     val queue = new mutable.Queue[Brick]()
@@ -258,11 +289,17 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
   }
 
   protected def onPreFinality(bGameAnchor: Block, partialSummit: ACC.Summit): Unit = {
-    //by default - do nothing
+    if (! config.enableFinalizationCostScaledFromWallClock) {
+      val costAsGas: Long = config.finalizationCostFormula.get.apply(partialSummit)
+      context.registerProcessingGas(costAsGas)
+    }
   }
 
   protected def onBlockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit): Unit = {
-    //by default - do nothing
+    if (! config.enableFinalizationCostScaledFromWallClock) {
+      val costAsGas: Long = config.finalizationCostFormula.get.apply(summit)
+      context.registerProcessingGas(costAsGas)
+    }
   }
 
   protected def onEquivocationDetected(evilValidator: ValidatorId, brick1: Brick, brick2: Brick): Unit = {

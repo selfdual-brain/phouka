@@ -84,6 +84,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
     //Clean FP-style implementation we keep here for reference only.
     //This method happens to be one of "hot performance spots" of the whole simulator, so we attempt to optimize it as much as possible.
     //See the optimized version below.
+    @deprecated
     private def findBaseTrimmer(consensusValue: Con, validatorsSubset: Iterable[ValidatorId], latestPanorama: Panorama): Trimmer = {
       val pairs: Iterable[(ValidatorId, ConsensusMessage)] =
         for {
@@ -100,7 +101,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
       return Trimmer(pairs.toMap)
     }
 
-    //Performance-Optimized implementation of 'findBaseTrimmer'.
+    //Performance-optimized implementation of 'findBaseTrimmer()' method.
     //This one is (hopefully) equivalent to the FP-style version (see above).
     private def findBaseTrimmerOptimized(consensusValue: Con, validatorsSubset: Iterable[ValidatorId], latestPanorama: Panorama): Trimmer = {
       val pairs: Iterable[(ValidatorId, ConsensusMessage)] =
@@ -115,6 +116,14 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
       return Trimmer(pairs.toMap)
     }
 
+    //Performance-optimized reimplementation of this code:
+    //
+    //swimlaneIterator(swimlaneTip)
+    //   .map(m => (m, vote(m)))
+    //   .filter {case (m, vote) =>  vote.isDefined}
+    //   .takeWhile {case (m, vote)  => cmApi.daglevel(m) > anchorDaglevel && vote.get == consensusValue}
+    //   .last
+    //   .map(_._1)
     private def findOldestZeroLevelMessageForGivenSwimlane(swimlaneTip: ConsensusMessage, consensusValue: Con): Option[ConsensusMessage] = {
       var currentMsg: ConsensusMessage = swimlaneTip
       var resultCandidate: Option[ConsensusMessage] = None
@@ -123,7 +132,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
       while (cmApi.daglevel(currentMsg) > anchorDaglevel) {
         currentMsgVote match {
           case None =>
-            //keep current result candidate and continue traversing down the swimlane
+            //do nothing (i.e. keep current result candidate and continue traversing down the swimlane)
           case Some(v) =>
             if (v == consensusValue)
               resultCandidate = Some(currentMsg)
@@ -143,38 +152,17 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
       return resultCandidate
     }
 
-//OLD IMPLEMENTATION (WHICH - SURPRISINGLY- TURNED OUT TO BE THE TOP PERFORMANCE BOTTLENECK IN THE WHOLE SIMULATOR)
-//LEFT HERE FOR REFERENCE
-//
-//    private def findBaseTrimmer(consensusValue: Con, validatorsSubset: Iterable[ValidatorId], latestPanorama: Panorama): Trimmer = {
-//      val pairs: Iterable[(ValidatorId, ConsensusMessage)] =
-//        for {
-//          validator <- validatorsSubset
-//          swimlaneTip = latestPanorama.honestSwimlanesTips(validator)
-//          oldestZeroLevelMessageOption = swimlaneIterator(swimlaneTip)
-//            .filter(m => vote(m).isDefined)
-//            .takeWhile(m => vote(m).get == consensusValue)
-//            .toSeq
-//            .lastOption
-//          msg <- oldestZeroLevelMessageOption
-//
-//        }
-//          yield (validator, msg)
-//
-//      return Trimmer(pairs.toMap)
-//    }
-
     @tailrec
     private def findCommittee(context: Trimmer, candidatesConsidered: Set[ValidatorId]): Option[Trimmer] = {
       //pruning of candidates collection
       //we filter out validators that do not have a 1-level message in provided context
       val approximationOfResult: Map[ValidatorId, ConsensusMessage] =
-      candidatesConsidered
-        .map(validator => (validator, findLevel1Msg(validator, context, candidatesConsidered)))
-        .collect {case (validator, Some(msg)) => (validator, msg)}
-        .toMap
+        candidatesConsidered
+          .map(validator => (validator, findLevel1Msg(validator, context, candidatesConsidered)))
+          .collect {case (validator, Some(msg)) => (validator, msg)}
+          .toMap
 
-      val candidatesAfterPruning: Set[ValidatorId] = approximationOfResult.keys.toSet
+      val candidatesAfterPruning: Set[ValidatorId] = approximationOfResult.keySet
 
       if (sumOfWeights(candidatesAfterPruning) < quorum)
         return None

@@ -2,6 +2,7 @@ package com.selfdualbrain.abstract_consensus
 
 import com.selfdualbrain.data_structures.LayeredMap
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] extends AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
@@ -68,7 +69,8 @@ trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] ex
 
     //Tests if given messages pair from the same swimlane is an equivocation.
     //Caution: we assume that msg.previous and msg.daglevel are correct (= were validated before)
-    def isEquivocation(higher: ConsensusMessage, lower: ConsensusMessage): Boolean = {
+    @tailrec
+    private def isEquivocation(higher: ConsensusMessage, lower: ConsensusMessage): Boolean = {
       require(cmApi.creator(lower) == cmApi.creator(higher))
 
       if (higher == lower)

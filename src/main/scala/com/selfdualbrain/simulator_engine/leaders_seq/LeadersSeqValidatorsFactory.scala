@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine.leaders_seq
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{ACC, BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.simulator_engine.{NaiveLeaderSequencer, Validator, ValidatorContext, ValidatorsFactory}
 import com.selfdualbrain.time.TimeDelta
@@ -24,7 +24,10 @@ class LeadersSeqValidatorsFactory(
                                    singleJustificationSize: Int,
                                    roundLength: TimeDelta,
                                    leadersSequencer: NaiveLeaderSequencer,
-                                   finalizerCostConversionRateMicrosToGas: Double
+                                   finalizationCostFormula: Option[ACC.Summit => Long],
+                                   microsToGasConversionRate: Double,
+                                   enableFinalizationCostScaledFromWallClock: Boolean
+
                                  ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNodeRef, vid: ValidatorId, context: ValidatorContext): Validator = {
@@ -41,7 +44,9 @@ class LeadersSeqValidatorsFactory(
     conf.computingPower = computingPowersGenerator.next()
     conf.msgValidationCostModel = msgValidationCostModel
     conf.msgCreationCostModel = msgCreationCostModel
-    conf.finalizerCostConversionRateMicrosToGas = finalizerCostConversionRateMicrosToGas
+    conf.finalizationCostFormula = finalizationCostFormula
+    conf.enableFinalizationCostScaledFromWallClock = enableFinalizationCostScaledFromWallClock
+    conf.microsToGasConversionRate = microsToGasConversionRate
     conf.msgBufferSherlockMode = msgBufferSherlockMode
     conf.brickHeaderCoreSize = brickHeaderCoreSize
     conf.singleJustificationSize = singleJustificationSize

@@ -4,7 +4,7 @@ import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.network.NetworkSpeed
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine._
-import com.selfdualbrain.simulator_engine.config.{BlocksBuildingStrategyModel, ConfigBasedSimulationSetup, DisruptionModelConfig, DownloadBandwidthConfig, ExperimentConfig, FinalizerConfig, ForkChoiceStrategy, NetworkConfig, ObserverConfig, ProposeStrategyConfig, TransactionsStreamConfig}
+import com.selfdualbrain.simulator_engine.config.{BlocksBuildingStrategyModel, ConfigBasedSimulationSetup, DisruptionModelConfig, DownloadBandwidthConfig, ExperimentConfig, FinalizationCostModel, FinalizerConfig, ForkChoiceStrategy, NetworkConfig, ObserverConfig, ProposeStrategyConfig, TransactionsStreamConfig}
 import com.selfdualbrain.stats.{BlockchainSimulationStats, StatsPrinter}
 import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
@@ -40,7 +40,7 @@ object ChartsSandbox {
     ),
     downloadBandwidthModel = DownloadBandwidthConfig.Uniform(NetworkSpeed.megabitsPerSecond(8)),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 150000, alpha = 1.2),
-    numberOfValidators = 10,
+    numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 1, relativeFTT = 0.30),
     forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
@@ -56,7 +56,7 @@ object ChartsSandbox {
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 1000),
     brickCreationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000),
     brickValidationCostModel = LongSequence.Config.PseudoGaussian(500, 1000),
-    finalizerCostConversionRateMicrosToGas = 1,
+    finalizationCostModel = FinalizationCostModel.DefaultPolynomial(a = 1, b = 0, c = 0),
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,

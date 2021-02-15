@@ -588,6 +588,7 @@ class HighwayValidator private (
   }
 
   override protected def onBlockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit): Unit = {
+    super.onBlockFinalized(bGameAnchor, finalizedBlock, summit)
     perLaneOrphanRateGauge.onBlockFinalized(finalizedBlock.asInstanceOf[Highway.NormalBlock])
   }
 

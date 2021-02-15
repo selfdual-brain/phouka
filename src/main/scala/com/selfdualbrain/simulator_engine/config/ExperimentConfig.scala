@@ -1,6 +1,6 @@
 package com.selfdualbrain.simulator_engine.config
 
-import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
+import com.selfdualbrain.blockchain_structure.{ACC, BlockchainNodeRef}
 import com.selfdualbrain.config_files_support.ConfigParsingSupport
 import com.selfdualbrain.disruption.FttApproxMode
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
@@ -27,9 +27,9 @@ case class ExperimentConfig(
                              blocksBuildingStrategy: BlocksBuildingStrategyModel,
                              brickCreationCostModel: LongSequence.Config,
                              brickValidationCostModel: LongSequence.Config,
-                             finalizerCostConversionRateMicrosToGas: Double,
-                             brickHeaderCoreSize: Int,//unit = bytes
-                             singleJustificationSize: Int,//unit = bytes
+                             finalizationCostModel: FinalizationCostModel,
+                             brickHeaderCoreSize: Int, //unit = bytes
+                             singleJustificationSize: Int, //unit = bytes
                              msgBufferSherlockMode: Boolean,
                              observers: Seq[ObserverConfig]
 )
@@ -119,11 +119,21 @@ object DisruptionEventDesc {
   case class NetworkOutage(targetBlockchainNode: BlockchainNodeRef, timepoint: SimTimepoint, outagePeriod: TimeDelta) extends DisruptionEventDesc
 }
 
-sealed abstract class FinalizationCostModelConfig
-object FinalizationCostModelConfig {
-  case class ScalingOfRealImplementationCost(microsToGas: Double) extends FinalizationCostModelConfig
-  //gas(x,y) = ax^2 + bxy + cy^2 + d
-  case class Polynomial() extends FinalizationCostModelConfig
+sealed abstract class FinalizationCostModel
+object FinalizationCostModel {
+  //using the actual wall clack time measured in the simulator (by System.nanoTime) as an indication of finalizer cost
+  //then scaling this with provided conversion rate
+  //caution: this was we add reality, but a simulation can no longer be restored by just providing the random seed
+  //because System.nanoTime becomes another source od randomization we have no control of
+  //microsToGasConversionRate = gas/time, i.e. conversionRate=1.5 implies that for every microsecond of host time
+  //1.5 gas units will be registered in the virtual processor
+  case class ScalingOfRealImplementationCost(microsToGasConversionRate: Double) extends FinalizationCostModel
+  //summit formula is given explicitly as function
+  case class ExplicitPerSummitFormula(f: ACC.Summit => Long) extends FinalizationCostModel
+  //summit_cost(n,k) = a*n^2*k + b*n + c
+  //where n=number of validators, k=summit level
+  case class DefaultPolynomial(a: Double, b: Double, c: Double) extends FinalizationCostModel
+  case object ZeroCost extends FinalizationCostModel
 }
 
 sealed abstract class ObserverConfig
@@ -170,7 +180,7 @@ object ExperimentConfig {
     blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 100),
     brickCreationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
     brickValidationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000), //this is in microseconds (for a node with computing power = 1 sprocket)
-    finalizerCostConversionRateMicrosToGas = 1.0,
+    finalizationCostModel = FinalizationCostModel.DefaultPolynomial(a = 1, b = 0, c = 0),
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,

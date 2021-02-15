@@ -1,7 +1,7 @@
 package com.selfdualbrain.simulator_engine.highway
 
 import com.selfdualbrain.abstract_consensus.Ether
-import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{ACC, BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.randomness.LongSequence
 import com.selfdualbrain.simulator_engine.{NaiveLeaderSequencer, Validator, ValidatorContext, ValidatorsFactory}
 import com.selfdualbrain.time.TimeDelta
@@ -22,7 +22,9 @@ class HighwayValidatorsFactory(
                                 msgBufferSherlockMode: Boolean,
                                 brickHeaderCoreSize: Int,
                                 singleJustificationSize: Int,
-                                finalizerCostConversionRateMicrosToGas: Double,
+                                finalizationCostFormula: Option[ACC.Summit => Long],
+                                microsToGasConversionRate: Double,
+                                enableFinalizationCostScaledFromWallClock: Boolean,
                                 leadersSequencer: NaiveLeaderSequencer,
                                 bootstrapRoundExponent: Int,
                                 exponentAccelerationPeriod: Int,
@@ -49,7 +51,9 @@ class HighwayValidatorsFactory(
     conf.computingPower = computingPowersGenerator.next()
     conf.msgValidationCostModel = msgValidationCostModel
     conf.msgCreationCostModel = msgCreationCostModel
-    conf.finalizerCostConversionRateMicrosToGas = finalizerCostConversionRateMicrosToGas
+    conf.finalizationCostFormula = finalizationCostFormula
+    conf.enableFinalizationCostScaledFromWallClock = enableFinalizationCostScaledFromWallClock
+    conf.microsToGasConversionRate = microsToGasConversionRate
     conf.msgBufferSherlockMode = msgBufferSherlockMode
     conf.brickHeaderCoreSize = brickHeaderCoreSize
     conf.singleJustificationSize = singleJustificationSize
