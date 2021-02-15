@@ -49,7 +49,7 @@ object Demo1 {
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 150000, alpha = 1.2),
     numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
-    finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 1, relativeFTT = 0.30),
+    finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
     forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
     bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
       brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
