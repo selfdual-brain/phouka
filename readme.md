@@ -86,7 +86,11 @@ running the simulator, as it may easily overheat your computer.
 
 ## Explanation of the "Phouka" name.
 
-Phouka is a character from Celtic folklore. See [here](https://en.wikipedia.org/wiki/P%C3%BAca).
+Phouka is a (rather weird) creature one can find in Celtic folklore. It is something between a cat, a rabbit, 
+a goat and a fairy. It is shocking at first glance and ... just different from whatever you expected.
+Nevertheless, over time you may find you like it.
+
+See [here](https://en.wikipedia.org/wiki/P%C3%BAca).
 
 ![Phouka](./phouka-image.jpg)
 
