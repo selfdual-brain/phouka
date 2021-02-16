@@ -183,6 +183,8 @@ does not produce any new messages).
   considered as nice-to-have(see the section "Dev roadmap" below).
 - The coding style is a proper mix of OO and FP, with OO quite dominating. Partially because we liked it this way, but also
   in many cases this is caused by explicit performance optimizations.
+  
+Caution: tested on Oracle JDK 11.0.8
 
 ## Current status
 
