@@ -21,32 +21,11 @@ Two main use cases are expected:
 
 ## Current dev status
 
-This is work in progress now. Beta status is not achieved yet.
+This is work in progress now.
 
-COMPLETED:
+Beta status is not achieved yet. GUI is incomplete. Features are missing. Engine is under testing. 
 
-- DES simulation core engine
-- network model
-- blockchain simulation engine
-- naive casper model
-- leaders sequence model
-- highway validator model
-- statistics processor
-- simulation recording
-- GUI - mvp framework on top of Java Swing
-- GUI - events log browser
-- GUI - node stats browser
-
-IN PROGRESS: 
-
-- config serialization / deserialization
-- experiments framework
-- engine testing / profiling
-- GUI - projects manager
-- GUI - experiment runner  
-- GUI - brickdag graph
-- binary release
-- user's manual
+(see **Development** section below for details)
 
 ## How to play with this version
 
@@ -75,6 +54,15 @@ a counter of processed events showing up on system console. Upon stopping, the f
 - a window "Blockchain performance history" will open (throughput and latency charts)
 - a window "Per-node stats" will open  the GUI window containing log of events will open.
 
+This is what you will see:
+
+![Screenshot after running Demo1 under IntelliJ Idea](./doc/demo1-screenshot.png)
+
+`Demo1` class accepts two (optional) command-line arguments:
+
+1. Number of steps of the simulation (int value, default is 1000000).
+2. Seed of the random numbers generator; if not provided, a seed will randomly selected.
+
 You may find the contents of the GUI a little cryptic at first. When a mouse pointer stops at the header of a table, a tooltip
 with short explanation will be displayed.
 
@@ -84,7 +72,7 @@ of ready-to-use blockchain configurations.
 **Remarks**
 
 1. `Demo1` instructs the engine to use a different random seed on ever run, so each time you start a simulation, you will
-see a different outcome. If needed, you can fix the seed in the `ExperimentConfig.randomSeed` parameter. It is possible to
+see a different outcome. If needed, you can provide the seed as the second command-line parameter. It is possible to
 re-run the exact same simulation by providing the random seed. This is why the random seed is printed on System.out at the
 beginning of the simulation. In case of bug reports, the experiment configuration and the seed are needed to replicate the problem.
 
@@ -100,43 +88,7 @@ running the simulator, as it may easily overheat your computer.
 
 Phouka is a character from Celtic folklore. See [here](https://en.wikipedia.org/wiki/P%C3%BAca).
 
-https://github.com/selfdual-brain/phouka/blob/master/phouka-image.jpg
-
-# Development
-
-## Tech stack
-
-- The development language is Scala.
-- The GUI is based on Java Swing.
-- The simulation runs totally in RAM (there is no external storage support yet), so it is OutOfMemory exception
-  which eventually blows the sim. For reasonably-sized simulations assume that 32 GB of RAM is a good starting point,
-  while 16 GB is the absolute minimum.
-- DES is implemented in a classic way (priority queue of events), so we do not utilize parallelism. This is for
-  a good reason: parallel-DES impacts the complexity of any simulator a lot. Nevertheless, parallel-DES is
-  considered as nice-to-have(see the section "Dev roadmap" below).
-- The coding style is a proper mix of OO and FP, with OO quite dominating. Partially because we liked it this way, but also
-  in many cases this is caused by explicit performance optimizations.
-
-## Dev roadmap
-
-Current roadmap:
-- Feb 15, 2021: pre-release (demo version)
-- Mar 1st, 2021: engine is feature complete
-- Mar 15th, 2021: GUI is feature-complete
-- Mar 20th, 2021: binary release ready, entering beta-testing period
-- Apr 1st, 2021: User's Manual + demo videos on YouTube
-- May 1st, 2021: beta testing complete, official release date of version 1.0
-  
-Future plans:
-- enhanced support for simulation data export (so that external data-science tooling may be plugged-in)
-- extracting the engine as a separate library
-- Docker support
-- storage support (currently the sim runs in RAM)  
-- hosting a web version
-- full Highway consensus model support (endorsements/spam protection, eras with slots, validators rotation)
-- enhanced P2P network model (explicit implementation RPC-over-DES, gossip protocol over RPC, Kademlia-based discovery)
-- parallel simulation engine (PDES)
-- javascript frontend
+![Phouka](./phouka-image.jpg)
 
 # Features (in a nutshell)
 
@@ -212,6 +164,69 @@ computing power defined in sprockets is configurable.
 
 A node can become crashed. After a crash, a node is deaf (does not react to incoming messages and also
 does not produce any new messages).
+
+# Development
+
+## Tech stack
+
+- The development language is Scala.
+- The GUI is based on Java Swing.
+- The simulation runs totally in RAM (there is no external storage support yet), so it is OutOfMemory exception
+  which eventually blows the sim. For reasonably-sized simulations assume that 32 GB of RAM is a good starting point,
+  while 16 GB is the absolute minimum.
+- DES is implemented in a classic way (priority queue of events), so we do not utilize parallelism. This is for
+  a good reason: parallel-DES impacts the complexity of any simulator a lot. Nevertheless, parallel-DES is
+  considered as nice-to-have(see the section "Dev roadmap" below).
+- The coding style is a proper mix of OO and FP, with OO quite dominating. Partially because we liked it this way, but also
+  in many cases this is caused by explicit performance optimizations.
+
+## Current status
+
+COMPLETED:
+
+- DES simulation core engine
+- network model
+- blockchain simulation engine
+- naive casper model
+- leaders sequence model
+- highway validator model
+- statistics processor
+- simulation recording
+- GUI - mvp framework on top of Java Swing
+- GUI - events log browser
+- GUI - node stats browser
+
+IN PROGRESS:
+
+- config serialization / deserialization
+- experiments framework
+- engine testing / profiling
+- GUI - projects manager
+- GUI - experiment runner
+- GUI - brickdag graph
+- binary release
+- user's manual
+
+## Dev roadmap
+
+Current roadmap:
+- Feb 15, 2021: pre-release (demo version)
+- Mar 1st, 2021: engine is feature complete
+- Mar 15th, 2021: GUI is feature-complete
+- Mar 20th, 2021: binary release ready, entering beta-testing period
+- Apr 1st, 2021: User's Manual + demo videos on YouTube
+- May 1st, 2021: beta testing complete, official release date of version 1.0
+
+Future plans:
+- enhanced support for simulation data export (so that external data-science tooling may be plugged-in)
+- extracting the engine as a separate library
+- Docker support
+- storage support (currently the sim runs in RAM)
+- hosting a web version
+- full Highway consensus model support (endorsements/spam protection, eras with slots, validators rotation)
+- enhanced P2P network model (explicit implementation RPC-over-DES, gossip protocol over RPC, Kademlia-based discovery)
+- parallel simulation engine (PDES)
+- javascript frontend
 
 # Licensing and forking
 This software is covered by GPLv3 license. The text of the license is included in `license.md` file.

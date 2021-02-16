@@ -12,6 +12,7 @@ import com.selfdualbrain.simulator_engine.config._
 import com.selfdualbrain.stats.{BlockchainSimulationStats, StatsPrinter}
 import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
+import com.selfdualbrain.util.LineUnreachable
 import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.renderer.xy.{DeviationRenderer, XYItemRenderer, XYLineAndShapeRenderer}
@@ -25,7 +26,6 @@ import scala.util.Random
 
 object Demo1 {
   private val log = LoggerFactory.getLogger(s"demo")
-  private val NUMBER_OF_STEPS: Int = 1000000
 
   private val headerSize: Int =
     32 + //message id
@@ -37,48 +37,29 @@ object Demo1 {
     32 + //target block
     32   //signature
 
-  private val random = new Random
-  private val seed = random.nextLong
-
-  val config: ExperimentConfig = ExperimentConfig(
-    randomSeed = Some(seed),
-    networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
-      delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(5))
-    ),
-    downloadBandwidthModel = DownloadBandwidthConfig.Uniform(NetworkSpeed.megabitsPerSecond(8)),
-    nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 150000, alpha = 1.2),
-    numberOfValidators = 25,
-    validatorsWeights = IntSequence.Config.Fixed(1),
-    finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
-    forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
-    bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
-      brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
-      blocksFractionAsPercentage = 4
-    ),
-    disruptionModel = DisruptionModelConfig.VanillaBlockchain,
-    transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
-      sizeDistribution = IntSequence.Config.Exponential(mean = 1500), //in bytes
-      costDistribution = LongSequence.Config.Exponential(mean = 500) //in gas
-    ),
-    blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 1000),
-    brickCreationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000),
-    brickValidationCostModel = LongSequence.Config.PseudoGaussian(500, 1000),
-    finalizationCostModel = FinalizationCostModel.DefaultPolynomial(a = 1, b = 0, c = 0),
-    brickHeaderCoreSize = headerSize,
-    singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
-    msgBufferSherlockMode = true,
-    observers = Seq(
-      ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15)
-    )
-  )
-
-  private val simulationSetup: SimulationSetup = new ConfigBasedSimulationSetup(config)
-  private val engine: BlockchainSimulationEngine = simulationSetup.engine
-  private val genesis: AbstractGenesis = simulationSetup.genesis
-  private val stats: BlockchainSimulationStats = simulationSetup.guiCompatibleStats.get
-  val sessionManager = new SwingSessionManager
+  private val sessionManager = new SwingSessionManager
+  private var simulationSetup: SimulationSetup = _
+  private var engine: BlockchainSimulationEngine = _
+  private var genesis: AbstractGenesis = _
+  private var stats: BlockchainSimulationStats = _
 
   def main(args: Array[String]): Unit = {
+    //parse command-line params
+    val numberOfSteps: Long =
+      if (args.isEmpty)
+        1000000
+      else
+        parseLongAndInformUserIfFailed(args(0), 1, "number of steps", expectPositiveValue = true)
+
+    assert (numberOfSteps <= Int.MaxValue) //limitation of the GUI (but the engine can accept Long value)
+
+    val randomSeed: Long =
+      if (args.length <= 1) {
+        val random = new Random
+        random.nextLong
+      } else
+        parseLongAndInformUserIfFailed(args(1), 2, "random seed", expectPositiveValue = false)
+
     //set look-and-feel to mimic local OS
     val lookAndFeel = UIManager.getSystemLookAndFeelClassName
     println(s"using look-and-feel class: $lookAndFeel")
@@ -88,7 +69,16 @@ object Demo1 {
     log.info("engine initialized")
 
     //print random seed, so the user can come back to the same simulation later if needed
-    println(s"random seed used: $seed")
+    println(s"random seed used: $randomSeed")
+
+    //create experiment configuration
+    val config = createSimulationConfig(randomSeed)
+
+    //build simulation engine instance
+    simulationSetup  = new ConfigBasedSimulationSetup(config)
+    engine = simulationSetup.engine
+    genesis = simulationSetup.genesis
+    stats = simulationSetup.guiCompatibleStats.get
 
     //initialize display model
     val simulationDisplayModel: SimulationDisplayModel = new SimulationDisplayModel(
@@ -106,7 +96,7 @@ object Demo1 {
     //run short simulation
     log.info("starting the simulation")
     val t1 = measureExecutionTime {
-      simulationDisplayModel.advanceTheSimulationBy(NUMBER_OF_STEPS)
+      simulationDisplayModel.advanceTheSimulationBy(numberOfSteps.toInt)
     }
     log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepExecuted}")
 
@@ -131,6 +121,39 @@ object Demo1 {
     nodeStatsPresenter.model = simulationDisplayModel
     sessionManager.mountTopPresenter(nodeStatsPresenter, Some("Per-node stats"))
   }
+
+  def createSimulationConfig(randomSeed: Long): ExperimentConfig =
+    ExperimentConfig(
+      randomSeed = Some(randomSeed),
+      networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
+        delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(5))
+      ),
+      downloadBandwidthModel = DownloadBandwidthConfig.Uniform(NetworkSpeed.megabitsPerSecond(8)),
+      nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 150000, alpha = 1.2),
+      numberOfValidators = 25,
+      validatorsWeights = IntSequence.Config.Fixed(1),
+      finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
+      forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
+      bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
+        brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
+        blocksFractionAsPercentage = 4
+      ),
+      disruptionModel = DisruptionModelConfig.VanillaBlockchain,
+      transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
+        sizeDistribution = IntSequence.Config.Exponential(mean = 1500), //in bytes
+        costDistribution = LongSequence.Config.Exponential(mean = 500) //in gas
+      ),
+      blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 1000),
+      brickCreationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000),
+      brickValidationCostModel = LongSequence.Config.PseudoGaussian(500, 1000),
+      finalizationCostModel = FinalizationCostModel.DefaultPolynomial(a = 1, b = 0, c = 0),
+      brickHeaderCoreSize = headerSize,
+      singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
+      msgBufferSherlockMode = true,
+      observers = Seq(
+        ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15)
+      )
+    )
 
   def printStatsToConsole(): Unit = {
     val statsPrinter = new StatsPrinter(TextOutput.overConsole(4, '.'))
@@ -160,7 +183,6 @@ object Demo1 {
       val y: Double = displayedFunction(timepoint) * 3600
       points(0)(i) = x / 1000000 / 60 //time as minutes
       points(1)(i) = y // throughput as blocks-per-hour
-//      println(s"$i: $timepoint - $y")
     }
 
     //wrapping data into jfreechart-friendly structure
@@ -206,6 +228,28 @@ object Demo1 {
     val result = new PlainPanel(sessionManager.guiLayoutConfig)
     result.add(panel, BorderLayout.CENTER)
     result.surroundWithTitledBorder(title)
+    return result
+  }
+
+  private def parseLongAndInformUserIfFailed(s: String, paramIndex: Int, paramInfo: String, expectPositiveValue: Boolean): Long = {
+    val result: Long =
+      try {
+        s.toLong
+      } catch {
+        case ex: Exception =>
+          println(s"command-line parameter $paramIndex ($paramInfo) was [$s], expected Long value")
+          System.exit(1)
+          throw new LineUnreachable
+      }
+
+    if (expectPositiveValue) {
+      if (result <= 0) {
+        println(s"command-line parameter $paramIndex ($paramInfo) was [$s], expected positive value")
+        System.exit(1)
+        throw new LineUnreachable
+      }
+    }
+
     return result
   }
 
