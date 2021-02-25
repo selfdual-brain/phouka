@@ -18,7 +18,7 @@ class FastIntMap[E](initialSize: Int = 16) extends mutable.Map[Int,E] {
     val hadSuchKeyBefore = this.contains(key)
     if (key <= lastIndexInUse)
       storage(key) = None
-    if (! hadSuchKeyBefore)
+    if (hadSuchKeyBefore)
       numberOfEntries -= 1
     return this
   }
@@ -52,7 +52,7 @@ class FastIntMap[E](initialSize: Int = 16) extends mutable.Map[Int,E] {
 
   private def lastIndexInUse: Int = storage.size - 1
 
-  override def size: Int = storage.size
+  override def size: Int = numberOfEntries
 
   override def isEmpty: Boolean = size == 0
 }

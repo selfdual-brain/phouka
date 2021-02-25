@@ -6,6 +6,7 @@ import scala.collection.mutable
 import scala.util.Random
 
 class LayeredMapSpec extends BaseSpec {
+
   case class Car(id: Int) extends Ordered[Car] {
     override def compare(that: Car): Int = this.id.compareTo(that.id)
   }
@@ -14,39 +15,41 @@ class LayeredMapSpec extends BaseSpec {
   val random: Random = new Random(42) //using fixed seed so to have repeatable behaviour of unit tests
 
   class MapOperationsSandbox {
-    val layeredMap = new LayeredMap[Car, User](car => car.id % 7)
+    val mapInstanceUnderTest = new LayeredMap[Car, User](car => car.id % 7)
     val referenceMap = new mutable.HashMap[Car, User]
     val keys = new mutable.HashSet[Car]
 
     def doSomeAdding(numberOfIterations: Int): Unit = {
       for (i <- 1 to numberOfIterations) {
-        val tuple = Car(math.abs(random.nextInt(200))) -> User(random.nextString(5))
+        val tuple = Car(random.nextInt(200)) -> User(random.nextString(5))
         keys += tuple._1
-        layeredMap += tuple
+        mapInstanceUnderTest += tuple
         referenceMap += tuple
-        layeredMap.keys.toSeq.sorted shouldEqual referenceMap.keys.toSeq.sorted
+        mapInstanceUnderTest.keys.toSeq.sorted shouldEqual referenceMap.keys.toSeq.sorted
+        mapInstanceUnderTest.size shouldEqual referenceMap.size
       }
     }
 
     def doSomeMixedOperations(numberOfIterations: Int): Unit = {
       for (i <- 1 to numberOfIterations) {
         if (random.nextBoolean()) {
-          val tuple = Car(math.abs(random.nextInt(200))) -> User(random.nextString(5))
+          val tuple = Car(random.nextInt(200)) -> User(random.nextString(5))
           keys += tuple._1
-          layeredMap += tuple
+          mapInstanceUnderTest += tuple
           referenceMap += tuple
         } else {
           val selectedKey: Car = keys.head
-          layeredMap.remove(selectedKey)
+          mapInstanceUnderTest.remove(selectedKey)
           referenceMap.remove(selectedKey)
           keys.remove(selectedKey)
         }
-        layeredMap.keys.toSeq.sorted shouldEqual referenceMap.keys.toSeq.sorted
+        mapInstanceUnderTest.keys.toSeq.sorted shouldEqual referenceMap.keys.toSeq.sorted
+        mapInstanceUnderTest.size shouldEqual referenceMap.size
       }
     }
   }
 
-  "layered map" should "correctly iterate elements when is empty" in {
+  "layered map" should "return empty iterator when just initialized" in {
     val map = new LayeredMap[Car, User](car => car.id)
     var counter: Int = 0
     for ((k,v) <- map)
@@ -54,10 +57,38 @@ class LayeredMapSpec extends BaseSpec {
     counter shouldBe 0
   }
 
-  it should "behave like a normal mutable map" in {
+  it should "be empty when just initialized" in {
+    val map = new LayeredMap[Car, User](car => car.id)
+    map.size shouldBe 0
+  }
+
+  it should "return empty iterator after pruning all levels" in {
     val sandbox = new MapOperationsSandbox
     sandbox.doSomeAdding(100)
     sandbox.doSomeMixedOperations(100)
+    val levels: Set[Int] = sandbox.keys.map(car => car.id % 7).toSet
+    val maxLevel: Int = levels.max
+    sandbox.mapInstanceUnderTest.pruneLevelsBelow(maxLevel + 1)
+    var counter: Int = 0
+    for ((k,v) <- sandbox.mapInstanceUnderTest)
+      counter += 1
+    counter shouldBe 0
+  }
+
+  it should "behave like a normal mutable map while performing mixed adds and removals" in {
+    val sandbox = new MapOperationsSandbox
+    sandbox.doSomeAdding(100)
+    sandbox.doSomeMixedOperations(100)
+  }
+
+  it should "correctly iterate over elements spanning across several levels" in {
+    val sandbox = new MapOperationsSandbox
+    sandbox.doSomeAdding(100)
+    sandbox.doSomeMixedOperations(100)
+
+    val sortedEntriesOfReferenceMap: Seq[(Car, User)] = sandbox.referenceMap.toSeq.sortBy{case (car, user) => car.id}
+    val sortedEntriesOfLayeredMap: Seq[(Car, User)] = sandbox.mapInstanceUnderTest.toSeq.sortBy{case (car, user) => car.id}
+    sortedEntriesOfReferenceMap should contain theSameElementsInOrderAs sortedEntriesOfLayeredMap
   }
 
   it should "correctly prune levels" in {
@@ -69,7 +100,7 @@ class LayeredMapSpec extends BaseSpec {
 
     //prune levels 0,1,2,3
     val keysAtLevels0123 = sandbox.referenceMap.keys.filter (car => car.id % 7 < 3)
-    sandbox.layeredMap.pruneLevelsBelow(3)
+    sandbox.mapInstanceUnderTest.pruneLevelsBelow(3)
     sandbox.referenceMap --= keysAtLevels0123
     sandbox.keys --= keysAtLevels0123
 

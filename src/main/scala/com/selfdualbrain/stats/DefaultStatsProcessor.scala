@@ -281,7 +281,7 @@ class DefaultStatsProcessor(
     //this cascade is implemented as the loop below
     if (completelyFinalizedBlocksCounter < finalityMap.size) {
       RepeatUntilExitCondition {
-        val criticalLfbElementPosition: Int = (completelyFinalizedBlocksCounter + 1).toInt
+        val criticalLfbElementPosition: Int = completelyFinalizedBlocksCounter.toInt
         val lfbElementInfo = finalityMap(criticalLfbElementPosition)
         lfbElementInfo.onYetAnotherValidatorWentFaulty(timepoint, faultyValidatorsMap)
         if (lfbElementInfo.isCompletelyFinalized)

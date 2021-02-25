@@ -1,4 +1,4 @@
-import com.selfdualbrain.blockchain_structure.AbstractGenesis
+import com.selfdualbrain.blockchain_structure.{AbstractGenesis, BlockchainNodeRef}
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.network.NetworkSpeed
@@ -21,7 +21,7 @@ import scala.util.Random
 
 object ChartsSandbox {
   private val log = LoggerFactory.getLogger(s"chart-sandbox")
-  private val NUMBER_OF_STEPS: Int = 100000
+  private val NUMBER_OF_STEPS: Int = 200000
 
   private val headerSize: Int =
     32 + //message id
@@ -48,7 +48,7 @@ object ChartsSandbox {
       brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
       blocksFractionAsPercentage = 4
     ),
-    disruptionModel = DisruptionModelConfig.VanillaBlockchain,
+    disruptionModel = DisruptionModelConfig.SingleBifurcationBomb(BlockchainNodeRef(0), SimTimepoint.zero + TimeDelta.seconds(270), 1),
     transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
       sizeDistribution = IntSequence.Config.Exponential(mean = 1500), //in bytes
       costDistribution = LongSequence.Config.Exponential(mean = 500) //in gas

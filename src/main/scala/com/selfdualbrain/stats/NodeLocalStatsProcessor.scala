@@ -288,6 +288,12 @@ class NodeLocalStatsProcessor(
             throw new LineUnreachable
         }
 
+      case EventPayload.Bifurcation(numberOfClones) =>
+        //do nothing
+
+      case EventPayload.NetworkDisruptionBegin(period) =>
+        //do nothing
+
     }
   }
 
