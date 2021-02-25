@@ -94,7 +94,7 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
             val bufSnapshot = msgBufferSnapshotDescription(snapshotAfter)
             s"accepted brick from msg buffer, brick=$brick, buffer state after=[$bufSnapshot]"
           case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
-            s"pre-finality - level ${partialSummit.level}"
+            s"pre-finality - level ${partialSummit.ackLevel}"
           case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
             s"finalized $finalizedBlock - generation=${finalizedBlock.generation}"
           case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>

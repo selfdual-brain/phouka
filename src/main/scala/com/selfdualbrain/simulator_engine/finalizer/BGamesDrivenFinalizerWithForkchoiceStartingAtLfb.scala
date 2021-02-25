@@ -17,7 +17,8 @@ object BGamesDrivenFinalizerWithForkchoiceStartingAtLfb {
                      absoluteFTT: Ether,
                      relativeFTT: Double,
                      ackLevel: Int,
-                     genesis: AbstractGenesis
+                     genesis: AbstractGenesis,
+                     sharedPanoramasBuilder: ACC.PanoramaBuilder
                    )
 
   class State {
@@ -25,7 +26,6 @@ object BGamesDrivenFinalizerWithForkchoiceStartingAtLfb {
     var block2bgame: LayeredMap[Block, BGame] = _
     var lastFinalizedBlock: Block = _
     var globalPanorama: ACC.Panorama = _
-    var panoramasBuilder: ACC.PanoramaBuilder = _
     var equivocatorsRegistry: EquivocatorsRegistry = _
     var brick2nextBrickInTheSwimlane: LayeredMap[Brick,Brick] = _
   }
@@ -75,7 +75,6 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
         s.block2bgame = new LayeredMap[Block, BGame](block => block.generation)
         s.lastFinalizedBlock = config.genesis
         s.globalPanorama = ACC.Panorama.empty
-        s.panoramasBuilder = new ACC.PanoramaBuilder
         s.equivocatorsRegistry = new EquivocatorsRegistry(config.numberOfValidators, config.weightsOfValidators, config.absoluteFTT)
         val newBGame = new BGame(config.genesis, config.weightsOfValidators, s.equivocatorsRegistry)
         s.block2bgame += config.genesis -> newBGame
@@ -93,9 +92,6 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
       clonedState.block2bgame += block -> bGame.createDetachedCopy(clonedEquivocatorsRegistry)
     clonedState.lastFinalizedBlock = state.lastFinalizedBlock
     clonedState.globalPanorama = state.globalPanorama
-    //this is a little "dirty" trick - all clones share the same panoramas builder
-    //this does not change the semantics of simulation but violates the principle that mutable data structures are not shared between blockchain nodes
-    clonedState.panoramasBuilder = state.panoramasBuilder
     clonedState.equivocatorsRegistry = clonedEquivocatorsRegistry
     clonedState.brick2nextBrickInTheSwimlane = state.brick2nextBrickInTheSwimlane.createDetachedCopy()
     return new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb(config, clonedState)
@@ -107,8 +103,8 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
 
   def addToLocalJdag(brick: Brick): Unit = {
     state.knownBricks += brick
-    state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, state.panoramasBuilder.panoramaOf(brick))
-    state.globalPanorama = state.panoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
+    state.globalPanorama = config.sharedPanoramasBuilder.mergePanoramas(state.globalPanorama, panoramaOf(brick))
+    state.globalPanorama = config.sharedPanoramasBuilder.mergePanoramas(state.globalPanorama, ACC.Panorama.atomic(brick))
     val oldLastEq = state.equivocatorsRegistry.lastSeqNumber
     state.equivocatorsRegistry.atomicallyReplaceEquivocatorsCollection(state.globalPanorama.equivocators)
     val newLastEq = state.equivocatorsRegistry.lastSeqNumber
@@ -155,7 +151,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
 
   override def panoramaOfWholeJdag: ACC.Panorama = state.globalPanorama
 
-  override def panoramaOf(brick: Brick): ACC.Panorama = state.panoramasBuilder.panoramaOf(brick)
+  override def panoramaOf(brick: Brick): ACC.Panorama = config.sharedPanoramasBuilder.panoramaOf(brick)
 
   def currentForkChoiceWinner(): Block = forkChoice(state.lastFinalizedBlock)
 
@@ -182,9 +178,9 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
   private def advanceLfbChainAsManyStepsAsPossible(): Unit = {
     finalityDetector.onLocalJDagUpdated(state.globalPanorama) match {
       case Some(summit) =>
-        if (! summit.isFinalized && output.isDefined)
+        if (! summit.isAtMaxAckLevel && output.isDefined)
           output.get.preFinality(state.lastFinalizedBlock, summit)
-        if (summit.isFinalized && output.isDefined) {
+        if (summit.isAtMaxAckLevel && output.isDefined) {
           output.get.blockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit, currentFinalityDetector.get)
           state.lastFinalizedBlock = summit.consensusValue
           state.block2bgame.pruneLevelsBelow(state.lastFinalizedBlock.generation)
@@ -210,15 +206,18 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
 
   protected def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
     val bgame: BGame = state.block2bgame(bGameAnchor)
+    val quorum: Ether = {
+      val q: Double = (config.absoluteFTT.toDouble / (1 - math.pow(2, - config.ackLevel)) + config.totalWeight.toDouble) / 2
+      math.ceil(q).toLong
+    }
     return new ACC.ReferenceFinalityDetector(
-      config.relativeFTT,
-      config.absoluteFTT,
+      quorum,
       config.ackLevel,
       config.weightsOfValidators,
       config.totalWeight,
       nextInSwimlane,
       vote = brick => bgame.decodeVote(brick),
-      message2panorama = state.panoramasBuilder.panoramaOf,
+      message2panorama = panoramaOf,
       estimator = bgame,
       anchorDaglevel = bGameAnchor.daglevel
     )

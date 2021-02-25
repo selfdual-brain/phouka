@@ -84,7 +84,8 @@ object HighwayValidator {
         config.absoluteFTT,
         config.relativeFTT,
         config.ackLevel,
-        context.genesis
+        context.genesis,
+        config.sharedPanoramasBuilder
       )
       secondaryFinalizer = new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb(secondaryFinalizerCfg)
       currentRoundId = 0L

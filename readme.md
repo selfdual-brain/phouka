@@ -101,30 +101,27 @@ great detail. Stay tuned._
 
 ## Blockchain consensus model
 
-Phouka is based around "Casper the friendly ghost" line of consensus protocols research, and the especially influencing
-paper was [Highway: Efficient Consensus with Flexible Finality](https://arxiv.org/abs/2101.02159). Nevertheless,
-the implementation is a rather loose/creative interpretation of the ideas described in the paper, plus we use own naming:
+Phouka is based around "Casper the friendly ghost" line of consensus protocols research. The consensus theory we use
+is somewhat overlapping with the one described in paper [Highway: Efficient Consensus with Flexible Finality](https://arxiv.org/abs/2101.02159).
+Nevertheless, our implementation is a fork of ideas described in the paper, plus we use different naming.
 
-- we use blocks and ballots (instead of "units with a block" and "units without a block")
-- "brick" is a name we use for denoting a block or ballot; bricks form a DAG (brickdag)
-- we use more descriptive naming of structures in the brickdag (panorama, base trimmer, committee, summit, partial summit etc)
+The complete description of our consensus theory is under construction.
 
-The current version of Phouka implements only a sub-protocol of the described solution:
+The current version of Phouka implements only a sub-protocol of the desired "blockchain consensus" solution:
 
 - the set of validators is fixed (= no eras, no validator rotation)
 - spam protection aka "endorsements" is not implemented
-- all validators share the same finalization params (fault tolerance threshold and ack-level for summits)
 
-Support for the complete protocol is planned in future versions of Phouka.
+Support for the complete protocol is planned (see "Dev roadmap" section below).
 
 Actually, Phouka is thought as a platform for playing with a wide collection of protocol variants, especially
 in the area of block production strategies. Validator implementations are pluggable. Currently, 3 validator
 strategies are implemented:
 
-- Naive Casper - where blocks and ballots are produced randomly, at predefined average frequency
-- Simple leaders sequence - round based with fixed round length and pseudo-random leaders sequence;
+- NCB (Naive Casper Blockchain) - where blocks and ballots are produced randomly, at predefined average frequency
+- SLS (Simple leaders sequence) - round based with fixed round length and pseudo-random leaders sequence;
   only the leader of a round publishes a block, while others produce ballots
-- Highway - round-based, with round lengths based on powers-of-two principle; every node picks
+- LSDR (Leaders sequence with dynamic rounds) - round-based, with round lengths based on powers-of-two principle; every node picks
   own round exponent and round exponent auto-adjustment algorithm is applied
 
 ## Network model
@@ -193,9 +190,9 @@ COMPLETED:
 - DES simulation core engine
 - network model
 - blockchain simulation engine
-- naive casper model
-- leaders sequence model
-- highway validator model
+- NCB model
+- SLS validator
+- LSDR validator
 - statistics processor
 - simulation recording
 - GUI - mvp framework on top of Java Swing
@@ -229,7 +226,7 @@ Future plans:
 - Docker support
 - storage support (currently the sim runs in RAM)
 - hosting a web version
-- full Highway consensus model support (endorsements/spam protection, eras with slots, validators rotation)
+- full blockchain consensus model support (endorsements/spam protection, eras with slots, validators rotation)
 - enhanced P2P network model (explicit implementation RPC-over-DES, gossip protocol over RPC, Kademlia-based discovery)
 - parallel simulation engine (PDES)
 - javascript frontend

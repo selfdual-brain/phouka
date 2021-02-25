@@ -29,7 +29,8 @@ class NcbValidatorsFactory(
                             singleJustificationSize: Int,
                             finalizationCostFormula: Option[ACC.Summit => Long],
                             microsToGasConversionRate: Double,
-                            enableFinalizationCostScaledFromWallClock: Boolean
+                            enableFinalizationCostScaledFromWallClock: Boolean,
+                            sharedPanoramasBuilder: ACC.PanoramaBuilder
                             ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNodeRef, vid: ValidatorId, context: ValidatorContext): Validator = {
@@ -52,6 +53,7 @@ class NcbValidatorsFactory(
     conf.msgBufferSherlockMode = msgBufferSherlockMode
     conf.brickHeaderCoreSize = brickHeaderCoreSize
     conf.singleJustificationSize = singleJustificationSize
+    conf.sharedPanoramasBuilder = sharedPanoramasBuilder
     conf.blocksFraction = blocksFraction
     conf.brickProposeDelaysConfig = brickProposeDelaysGeneratorConfig
     return new NcbValidator(node, context, conf)

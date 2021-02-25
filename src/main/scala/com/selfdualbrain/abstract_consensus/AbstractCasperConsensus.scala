@@ -44,7 +44,7 @@ trait AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
     def apply(vid: ValidatorId): ConsensusMessage = entries(vid)
   }
 
-  case class Summit(consensusValue: Con, relativeFtt: Double, level: Int, committees: Array[Trimmer], isFinalized: Boolean)
+  case class Summit(consensusValue: Con, ackLevel: Int, quorumWeight: Ether, absoluteFtt: Ether, committees: Array[Trimmer], isAtMaxAckLevel: Boolean)
 
   trait Estimator {
     def winnerConsensusValue: Option[Con]
@@ -53,7 +53,6 @@ trait AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
 
   trait FinalityDetector {
     def onLocalJDagUpdated(latestPanorama: Panorama): Option[Summit]
-    def getAbsoluteFtt: Ether
     def numberOfInvocations: Long
     def averageExecutionTime(summitLevel: Int): Long //as microseconds
   }

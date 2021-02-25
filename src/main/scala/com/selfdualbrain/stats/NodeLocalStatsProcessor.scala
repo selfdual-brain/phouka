@@ -338,7 +338,7 @@ class NodeLocalStatsProcessor(
         allBricksTotalBinarySize += brick.binarySize
 
       case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
-        currentBGameStatusX = Some(partialSummit.level -> partialSummit.consensusValue)
+        currentBGameStatusX = Some(partialSummit.ackLevel -> partialSummit.consensusValue)
         lastPartialSummitForCurrentBGameX = Some(partialSummit)
 
       case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>

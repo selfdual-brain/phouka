@@ -26,8 +26,8 @@ class LeadersSeqValidatorsFactory(
                                    leadersSequencer: NaiveLeaderSequencer,
                                    finalizationCostFormula: Option[ACC.Summit => Long],
                                    microsToGasConversionRate: Double,
-                                   enableFinalizationCostScaledFromWallClock: Boolean
-
+                                   enableFinalizationCostScaledFromWallClock: Boolean,
+                                   sharedPanoramasBuilder: ACC.PanoramaBuilder
                                  ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNodeRef, vid: ValidatorId, context: ValidatorContext): Validator = {
@@ -52,6 +52,7 @@ class LeadersSeqValidatorsFactory(
     conf.singleJustificationSize = singleJustificationSize
     conf.roundLength = roundLength
     conf.leadersSequencer = leadersSequencer
+    conf.sharedPanoramasBuilder = sharedPanoramasBuilder
     return new LeadersSeqValidator(node, context, conf)
   }
 }

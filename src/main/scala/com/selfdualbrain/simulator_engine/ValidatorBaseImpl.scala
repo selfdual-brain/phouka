@@ -85,6 +85,12 @@ object ValidatorBaseImpl {
     //We need this value to correctly simulate network transfer delays and to calculate the protocol overhead.
     //Justification lists, which are part of a brick's header, consume significant portion of the overall blockchain network traffic.
     var singleJustificationSize: Int = _
+
+    //builder of panoramas which is shared across validators
+    //this is an aggressive optimization trick - we basically violate memory isolation between validators here
+    //but we do this because the semantics of shared panoramas builder is the same as if it would be built independently at each validator instance
+    //(the same way we share bricks)
+    var sharedPanoramasBuilder: ACC.PanoramaBuilder = _
   }
 
   class State extends CloningSupport[State] {
@@ -128,7 +134,8 @@ object ValidatorBaseImpl {
         config.absoluteFTT,
         config.relativeFTT,
         config.ackLevel,
-        context.genesis
+        context.genesis,
+        config.sharedPanoramasBuilder
       )
       finalizer = new BGamesDrivenFinalizerWithForkchoiceStartingAtLfb(finalizerCfg)
       brickHashGenerator = new FakeSha256Digester(context.random, 8)
@@ -169,7 +176,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
       context.addOutputEvent(EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit))
       onBlockFinalized(bGameAnchor, finalizedBlock, summit)
       summitExecutionsCounter += 1
-      averageSummitExecutionSum += finalityDetectorUsed.averageExecutionTime(summit.level)
+      averageSummitExecutionSum += finalityDetectorUsed.averageExecutionTime(summit.ackLevel)
 //diagnostics hook- to be kept here over the period of beta-testing
 //      if (config.validatorId == 0) {
 //        println(s"FIN AV: ${averageSummitExecutionSum / summitExecutionsCounter}")

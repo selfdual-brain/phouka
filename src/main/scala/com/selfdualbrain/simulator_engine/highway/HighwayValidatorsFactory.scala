@@ -25,6 +25,7 @@ class HighwayValidatorsFactory(
                                 finalizationCostFormula: Option[ACC.Summit => Long],
                                 microsToGasConversionRate: Double,
                                 enableFinalizationCostScaledFromWallClock: Boolean,
+                                sharedPanoramasBuilder: ACC.PanoramaBuilder,
                                 leadersSequencer: NaiveLeaderSequencer,
                                 bootstrapRoundExponent: Int,
                                 exponentAccelerationPeriod: Int,
@@ -53,6 +54,7 @@ class HighwayValidatorsFactory(
     conf.msgCreationCostModel = msgCreationCostModel
     conf.finalizationCostFormula = finalizationCostFormula
     conf.enableFinalizationCostScaledFromWallClock = enableFinalizationCostScaledFromWallClock
+    conf.sharedPanoramasBuilder = sharedPanoramasBuilder
     conf.microsToGasConversionRate = microsToGasConversionRate
     conf.msgBufferSherlockMode = msgBufferSherlockMode
     conf.brickHeaderCoreSize = brickHeaderCoreSize

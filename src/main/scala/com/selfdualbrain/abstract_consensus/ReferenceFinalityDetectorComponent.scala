@@ -7,9 +7,8 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
 
   //Implementation of finality criterion based on summits theory.
   class ReferenceFinalityDetector(
-                                   relativeFTT: Double,
-                                   absoluteFTT: Ether,
-                                   ackLevel: Int,
+                                   quorum: Ether,
+                                   ackLevel: Int, //we search for summits up to this level
                                    weightsOfValidators: ValidatorId => Ether,
                                    totalWeight: Ether,
                                    nextInSwimlane: ConsensusMessage => Option[ConsensusMessage],
@@ -19,16 +18,9 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                                    anchorDaglevel: Int //messages below this daglevel can be ignored
                                  ) extends FinalityDetector {
 
-    private val quorum: Ether = {
-      val q: Double = (absoluteFTT.toDouble / (1 - math.pow(2, - ackLevel)) + totalWeight.toDouble) / 2
-      math.ceil(q).toLong
-    }
-
     private val summitLevel2executionTimeInMicros: Array[Long] = Array.fill[Long](ackLevel + 1)(0)
     private val summitLevel2numberOfCases: Array[Int] = Array.fill[Int](ackLevel + 1)(0)
     private var invocationsCounter: Long = 0L
-
-    override def getAbsoluteFtt: Ether = absoluteFTT
 
     override def numberOfInvocations: Ether = invocationsCounter
 
@@ -49,21 +41,36 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
           val validatorsVotingForThisValue: Iterable[ValidatorId] = estimator.supportersOfTheWinnerValue
           val baseTrimmer: Trimmer = findBaseTrimmerOptimized(winnerConsensusValue, validatorsVotingForThisValue, latestPanorama)
 
-          if (sumOfWeights(baseTrimmer.validators) < quorum)
+          val sumOfWeightsInBaseTrimmer: Ether = sumOfWeights(baseTrimmer.validators)
+          if (sumOfWeightsInBaseTrimmer < quorum)
             None
           else {
             @tailrec
-            def detectSummit(committeesStack: List[Trimmer], levelEstablished: Int): Summit =
+            def detectSummit(committeesStack: List[Trimmer], effectiveQuorumThreshold: Ether, levelEstablished: Int): Summit =
               findCommittee(context = committeesStack.head, candidatesConsidered = committeesStack.head.validatorsSet) match {
-                case None => Summit(winnerConsensusValue, relativeFTT, levelEstablished, committeesStack.reverse.toArray, isFinalized = false)
-                case Some(trimmer) =>
+                case None =>
+                  Summit(
+                    winnerConsensusValue,
+                    levelEstablished,
+                    effectiveQuorumThreshold,
+                    calculateAbsoluteFtt(effectiveQuorumThreshold, levelEstablished),
+                    committeesStack.reverse.toArray,
+                    isAtMaxAckLevel = false)
+                case Some((trimmer, q)) =>
+                  val effectiveQ = math.min(q, effectiveQuorumThreshold)
                   if (levelEstablished + 1 == ackLevel)
-                    Summit(winnerConsensusValue, relativeFTT, levelEstablished + 1, (trimmer :: committeesStack).reverse.toArray, isFinalized = true)
+                    Summit(
+                      winnerConsensusValue,
+                      levelEstablished + 1,
+                      effectiveQ,
+                      calculateAbsoluteFtt(q, levelEstablished + 1),
+                      (trimmer :: committeesStack).reverse.toArray,
+                      isAtMaxAckLevel = true)
                   else
-                    detectSummit(trimmer :: committeesStack, levelEstablished + 1)
+                    detectSummit(trimmer :: committeesStack, effectiveQ, levelEstablished + 1)
               }
 
-            Some(detectSummit(List(baseTrimmer), levelEstablished = 0))
+            Some(detectSummit(List(baseTrimmer), effectiveQuorumThreshold = sumOfWeightsInBaseTrimmer, levelEstablished = 0))
           }
       }
 
@@ -73,7 +80,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
         case None =>
           summitLevel2numberOfCases(0) += 1
           summitLevel2executionTimeInMicros(0) += microsConsumed
-        case Some(Summit(consensusValue, relativeFtt, level, committees, isFinalized)) =>
+        case Some(Summit(consensusValue, level, quorumWeight, absoluteFtt, committees, isAtMaxAckLevel)) =>
           summitLevel2numberOfCases(level) += 1
           summitLevel2executionTimeInMicros(level) += microsConsumed
       }
@@ -153,22 +160,27 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
     }
 
     @tailrec
-    private def findCommittee(context: Trimmer, candidatesConsidered: Set[ValidatorId]): Option[Trimmer] = {
+    private def findCommittee(context: Trimmer, candidatesConsidered: Set[ValidatorId]): Option[(Trimmer, Ether)] = {
       //pruning of candidates collection
       //we filter out validators that do not have a 1-level message in provided context
-      val approximationOfResult: Map[ValidatorId, ConsensusMessage] =
+      val triples: Iterable[(ValidatorId, ConsensusMessage, Ether)] =
         candidatesConsidered
           .map(validator => (validator, findLevel1Msg(validator, context, candidatesConsidered)))
-          .collect {case (validator, Some(msg)) => (validator, msg)}
-          .toMap
+          .collect {case (validator, Some((msg, support))) => (validator, msg, support)}
 
+      if (triples.isEmpty)
+        return None
+
+      val minSupport = triples.map{case (validator, msg, support) => support}.min
+      val approximationOfResult: Map[ValidatorId, ConsensusMessage] = triples.map{case (validator, msg, support) => (validator, msg)}.toMap
       val candidatesAfterPruning: Set[ValidatorId] = approximationOfResult.keySet
+      val sumOfWeightsAfterPruning: Ether = sumOfWeights(candidatesAfterPruning)
 
-      if (sumOfWeights(candidatesAfterPruning) < quorum)
+      if (sumOfWeightsAfterPruning < quorum)
         return None
 
       if (candidatesAfterPruning forall (v => candidatesConsidered.contains(v)))
-        Some(Trimmer(approximationOfResult))
+        Some(Trimmer(approximationOfResult), math.min(minSupport, sumOfWeightsAfterPruning))
       else
         findCommittee(context, candidatesAfterPruning)
     }
@@ -176,9 +188,6 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
     /**
       * Iterator of messages in the swimlane.
       * Starts from given messages and goes down (= towards older messages).
-      *
-      * @param startingMessage
-      * @return
       */
     private def swimlaneIterator(startingMessage: ConsensusMessage): Iterator[ConsensusMessage] =
       new Iterator[ConsensusMessage] {
@@ -197,7 +206,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
       * In the swimlane of given validator we attempt finding lowest (= oldest) message that has support
       * at least q in given context.
       */
-    private def findLevel1Msg(validator: ValidatorId, context: Trimmer, candidatesConsidered: Set[ValidatorId]): Option[ConsensusMessage] =
+    private def findLevel1Msg(validator: ValidatorId, context: Trimmer, candidatesConsidered: Set[ValidatorId]): Option[(ConsensusMessage, Ether)] =
       findNextLevelMsgRecursive(
         validator,
         context,
@@ -209,13 +218,14 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                                            validator: ValidatorId,
                                            context: Trimmer,
                                            candidatesConsidered: Set[ValidatorId],
-                                           message: ConsensusMessage): Option[ConsensusMessage] = {
+                                           message: ConsensusMessage): Option[(ConsensusMessage, Ether)] = {
 
       val relevantSubPanorama: Map[ValidatorId, ConsensusMessage] =
         message2panorama(message).honestSwimlanesTips filter {case (v,msg) => candidatesConsidered.contains(v) && cmApi.daglevel(msg) >= cmApi.daglevel(context(v))}
 
-      if (sumOfWeights(relevantSubPanorama.keys) >= quorum)
-        return Some(message)
+      val support = sumOfWeights(relevantSubPanorama.keys)
+      if (support >= quorum)
+        return Some((message, support))
 
       nextInSwimlane(message) match {
         case Some(m) => findNextLevelMsgRecursive(validator, context, candidatesConsidered, m)
@@ -227,6 +237,14 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
       //performance optimization of: validators.toSeq.map(weightsOfValidators).sum
       validators.foldLeft(0L) {case (acc, vid) => acc + weightsOfValidators(vid)}
     }
+
+    private def calculateAbsoluteFtt(q: Ether, k: Int): Ether =
+      if (k == 0)
+        0
+      else {
+        val x = (2 * q - totalWeight).toDouble * math.pow(2, -k)
+        math.floor(x).toLong
+      }
 
   }
 

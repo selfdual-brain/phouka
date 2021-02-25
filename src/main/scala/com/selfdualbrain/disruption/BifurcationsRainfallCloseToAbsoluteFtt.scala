@@ -8,7 +8,7 @@ import com.selfdualbrain.time.SimTimepoint
 
 import scala.util.Random
 
-//Only generate equivocators (via bifurcation) with their total weight as close as possible but above FTT
+//Only generate equivocators (via bifurcation) with their total weight close to FTT.
 //The disruption shows up as a single disaster at specified point in time.
 class BifurcationsRainfallCloseToAbsoluteFtt(
                                 random: Random,

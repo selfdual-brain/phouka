@@ -94,8 +94,10 @@ object ChartsSandbox {
 
     //run short simulation
     log.info("starting the simulation")
+    val t1 = System.currentTimeMillis()
     simulationDisplayModel.advanceTheSimulationBy(NUMBER_OF_STEPS)
-    log.info(s"simulation completed")
+    val t2 = System.currentTimeMillis()
+    log.info(f"simulation completed after ${(t2 - t1).toDouble/1000}%.3f seconds")
 
     printStatsToConsole()
     displayLatencyChart("final")

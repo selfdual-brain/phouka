@@ -55,7 +55,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
       //summit_cost(n,k) = a*n^2*k + b*n + c
       //where n=number of validators, k=summit level
       val nSquared = config.numberOfValidators * config.numberOfValidators
-      val f = (summit: ACC.Summit) => (a * nSquared * summit.level + b * config.numberOfValidators + c).toLong
+      val f = (summit: ACC.Summit) => (a * nSquared * summit.ackLevel + b * config.numberOfValidators + c).toLong
       finalizationCostFormula = Some(f)
 
     case FinalizationCostModel.ExplicitPerSummitFormula(f) =>
@@ -65,6 +65,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
       enableFinalizationCostScaledFromWallClock = true
       microsToGasConversionRate = conversionRate
   }
+
+  val sharedPanoramasBuilder = new ACC.PanoramaBuilder
 
   val validatorsFactory: ValidatorsFactory = config.bricksProposeStrategy match {
 
@@ -86,9 +88,10 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.msgBufferSherlockMode,
         config.brickHeaderCoreSize,
         config.singleJustificationSize,
-        finalizationCostFormula: Option[ACC.Summit => Long],
-        microsToGasConversionRate: Double,
-        enableFinalizationCostScaledFromWallClock: Boolean
+        finalizationCostFormula,
+        microsToGasConversionRate,
+        enableFinalizationCostScaledFromWallClock,
+        sharedPanoramasBuilder
       )
 
     case ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds(roundLength) =>
@@ -109,9 +112,10 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.singleJustificationSize,
         roundLength,
         new NaiveLeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap),
-        finalizationCostFormula: Option[ACC.Summit => Long],
-        microsToGasConversionRate: Double,
-        enableFinalizationCostScaledFromWallClock: Boolean
+        finalizationCostFormula,
+        microsToGasConversionRate,
+        enableFinalizationCostScaledFromWallClock,
+        sharedPanoramasBuilder
       )
 
     case c: ProposeStrategyConfig.Highway =>
@@ -130,9 +134,10 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.msgBufferSherlockMode,
         config.brickHeaderCoreSize,
         config.singleJustificationSize,
-        finalizationCostFormula: Option[ACC.Summit => Long],
-        microsToGasConversionRate: Double,
-        enableFinalizationCostScaledFromWallClock: Boolean,
+        finalizationCostFormula,
+        microsToGasConversionRate,
+        enableFinalizationCostScaledFromWallClock,
+        sharedPanoramasBuilder,
         new NaiveLeaderSequencer(randomGenerator.nextLong(), weightsOfValidatorsAsMap),
         c.initialRoundExponent,
         c.exponentAccelerationPeriod,
