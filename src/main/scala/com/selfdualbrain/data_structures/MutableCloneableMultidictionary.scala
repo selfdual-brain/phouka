@@ -55,7 +55,12 @@ class MutableCloneableMultidictionary[K,V] private (elems: mutable.Map[K, mutabl
 
   def clear(): Unit = elems.clear()
 
-  override def createDetachedCopy(): MutableCloneableMultidictionary[K,V] = new MutableCloneableMultidictionary(elems.clone())
+  override def createDetachedCopy(): MutableCloneableMultidictionary[K,V] = {
+    val clonedElems = new mutable.HashMap[K, mutable.Set[V]]
+    for ((k,v) <- elems)
+      clonedElems += k -> v.clone()
+    new MutableCloneableMultidictionary(clonedElems)
+  }
 }
 
 object MutableCloneableMultidictionary extends MapFactory[MutableCloneableMultidictionary] {

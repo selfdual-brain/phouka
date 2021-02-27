@@ -202,6 +202,7 @@ class PhoukaEngine(
               agent = Some(newNodeId),
               payload = EventPayload.NewAgentSpawned(validatorId = box.validatorId, progenitor = Some(destination))
             )
+            newValidatorInstance.startup()
             //All messages expected-but-not-delivered at the progenitor node must be explicitly re-send so that the cloned node will actually get them (eventually).
             //In a "real" blockchain implementation this would play out differently - the cloned node would rather ask other nodes in the P2P network
             //to obtain missing pieces of the brickdag. However - with our much simplified model of comms layer here in the simulator - we need to handle this case manually.

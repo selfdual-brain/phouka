@@ -45,7 +45,7 @@ trait Validator {
   def prioritizeDownloads(left: DownloadsBufferItem, right: DownloadsBufferItem): Int
 
   /**
-    * Called by the engine at the beginning of the simulation.
+    * Called by the engine at the beginning of this agent existence.
     * Gives this agent the chance to self-initialize.
     */
   def startup(): Unit

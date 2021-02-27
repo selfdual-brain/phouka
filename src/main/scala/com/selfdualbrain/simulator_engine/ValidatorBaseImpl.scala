@@ -194,7 +194,7 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
     }
   })
 
-  override def toString: String = s"Validator-${config.validatorId}"
+  override def toString: String = s"validator-instance[nid=${blockchainNode.address}:vid=${config.validatorId}]"
 
   //#################### PUBLIC API ############################
 

@@ -10,10 +10,10 @@ class MsgBufferImpl[E] private (m2d: ImmutableMultiDictWithBulkAdd[E, E], d2m: M
     msg2dep = msg2dep.bulkAdd(msg, missingDependencies.toSet)
     for (dep <- missingDependencies)
       dep2msg.addOne(dep,msg)
-//    assert(msg2dep.size == dep2msg.size)
   }
 
   override def findMessagesWaitingFor(dependency: E): Iterable[E] = dep2msg.get(dependency)
+
 
   override def contains(msg: E): Boolean = msg2dep.containsKey(msg)
 
@@ -21,12 +21,13 @@ class MsgBufferImpl[E] private (m2d: ImmutableMultiDictWithBulkAdd[E, E], d2m: M
     for (msg <- findMessagesWaitingFor(dependency))
       msg2dep = msg2dep.remove(msg, dependency)
     dep2msg.removeKey(dependency)
-//    assert(msg2dep.size == dep2msg.size)
   }
 
   override def snapshot: Map[E, Set[E]] = msg2dep.sets
 
   override def isEmpty: Boolean = msg2dep.isEmpty
 
-  override def createDetachedCopy(): MsgBufferImpl[E] = new MsgBufferImpl[E](msg2dep, dep2msg.createDetachedCopy())
+  override def createDetachedCopy(): MsgBufferImpl[E] = {
+    new MsgBufferImpl[E](msg2dep, dep2msg.createDetachedCopy())
+  }
 }

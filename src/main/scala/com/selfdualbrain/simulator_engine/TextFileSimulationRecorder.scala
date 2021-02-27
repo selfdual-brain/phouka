@@ -89,15 +89,15 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
             s"accepted incoming ${brick.loggingString} (without buffering)"
           case EventPayload.AddedIncomingBrickToMsgBuffer(brick, missingDependencies, snapshotAfter) =>
             val dependencies = missingDependencies.map(d => d.id).mkString(",")
-//            val bufSnapshot = msgBufferSnapshotDescription(snapshotAfter)
-            s"added ${brick.loggingString} to msg buffer, missing dependencies = $dependencies"
+            val bufSnapshot = msgBufferSnapshotDescription(snapshotAfter)
+            s"added ${brick.loggingString} to msg buffer, missing dependencies = $dependencies buf-snapshot=[$bufSnapshot]"
           case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshotAfter) =>
-//            val bufSnapshot = msgBufferSnapshotDescription(snapshotAfter)
-            s"accepted incoming ${brick.loggingString} (after buffering)"
+            val bufSnapshot = msgBufferSnapshotDescription(snapshotAfter)
+            s"accepted incoming ${brick.loggingString} (after buffering) buf-snapshot=[$bufSnapshot]"
           case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
             s"pre-finality - level ${partialSummit.ackLevel} for b-game ${bGameAnchor.id}, finality candidate is ${partialSummit.consensusValue.loggingString}"
           case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
-            s"finalized ${finalizedBlock.loggingString} - generation=${finalizedBlock.generation}"
+            s"finalized ${finalizedBlock.loggingString} - generation=${finalizedBlock.generation} ack-level=${summit.ackLevel} absolute-ftt=${summit.absoluteFtt}"
           case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) =>
             s"detected equivocation by $evilValidator - conflicting bricks are ${brick1.loggingString} and ${brick2.loggingString}"
           case EventPayload.EquivocationCatastrophe(validators, absoluteFttExceededBy, relativeFttExceededBy) =>
