@@ -18,4 +18,6 @@ package com.selfdualbrain.blockchain_structure
   * Caution: Inside, BlockchainNode is just an integer value. The code explicitly requires that these numbers are allocated as consecutive integers, starting from 0,
   * so that all nodes will fit in a single array. Several performance optimizations explicitly utilize this assumption.
   */
-case class BlockchainNodeRef(address: Int)
+case class BlockchainNodeRef(address: Int) {
+  override def toString: String = f"node-$address%03d"
+}

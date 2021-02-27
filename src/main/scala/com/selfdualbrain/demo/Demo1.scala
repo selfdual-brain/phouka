@@ -129,7 +129,7 @@ object Demo1 {
         delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(5))
       ),
       downloadBandwidthModel = DownloadBandwidthConfig.Uniform(NetworkSpeed.megabitsPerSecond(8)),
-      nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 150000, alpha = 1.2),
+      nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 100000, alpha = 1.2),
       numberOfValidators = 25,
       validatorsWeights = IntSequence.Config.Fixed(1),
       finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),

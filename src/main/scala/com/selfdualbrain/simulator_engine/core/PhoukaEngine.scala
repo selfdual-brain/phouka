@@ -119,6 +119,10 @@ class PhoukaEngine(
 
   override def node(ref: BlockchainNodeRef): BlockchainSimulationEngine.Node = nodes(ref.address)
 
+  override def shutdown(): Unit = {
+    engineIsHalted = true
+  }
+
   //low-level access to validator instance is here for diagnostic purposes only
   def validatorInstance(agentId: BlockchainNodeRef): Validator = nodes(agentId.address).validatorInstance
 

@@ -18,6 +18,8 @@ object PingPong {
                   ) extends Brick {
 
     override def justifications: Iterable[Brick] = Iterable.empty
+
+    override def loggingString: String = s"barrel-$id"
   }
 
   case object Genesis extends AbstractGenesis {

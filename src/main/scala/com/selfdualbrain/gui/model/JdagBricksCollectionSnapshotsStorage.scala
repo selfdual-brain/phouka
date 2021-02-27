@@ -40,7 +40,7 @@ class JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks: Int, expected
     * To be called by a validator every time a brick is added to jdag.
     * From these calls, all the snapshot storage information is built.
     * Caution 1: subsequent calls to this method must use strictly increasing simulation steps
-    * Caution 2: given brick may be only registered once
+    * Caution 2: given brick may be registered only once
     *
     * @param simulationStep simulation step at which brick adding happened
     * @param brick brick added to local jdag

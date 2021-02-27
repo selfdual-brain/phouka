@@ -37,5 +37,10 @@ trait SimulationEngine[A,P] extends Iterator[(Long, Event[A,P])] {
   //Every agent maintains its own clock (so to be able to simulate processing times).
   def localClockOfAgent(agent: A): SimTimepoint
 
+  //How long (in simulation time) the virtual CPU od given agent was busy.
   def totalConsumedProcessingTimeOfAgent(agent: A): TimeDelta
+
+  //Closes the engine. releasing external resources.
+  def shutdown(): Unit
+
 }

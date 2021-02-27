@@ -120,17 +120,18 @@ class SimulationDisplayModel(
   private val agentStateSnapshots = new FastIntMap[AgentStateSnapshot](expectedNumberOfEvents)
 
   //This is a map: agent id ---> bricks history
-  //For every agent we have an instance of NodeKnownBricksHistory, which is a collection of jdag-brick-set snapshots.
-  //Caution: when a brick lands in the messages buffer, it is NOT in the jdag (yet), so it will not be included in the snapshot (yet)
+  //For every agent we have an instance of JdagBricksCollectionSnapshotsStorage, which is a collection of jdag-brick-set snapshots.
+  //Caution: when a brick lands in the messages buffer, it is NOT in the jdag (yet), so it will not be included in the snapshot (yet).
   private val agent2bricksHistory = new FastMapOnIntInterval[JdagBricksCollectionSnapshotsStorage](maxNumberOfAgents)
   for (i <- 0 until experimentConfig.numberOfValidators)
     agent2bricksHistory(i) = new JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks, expectedNumberOfEvents)
 
   //This is a map: node-id ----> map-of-summits-for-this-node
   //For given node, its map-of-summits is a map: lfb-chain-element-generation -----> summit-established-for-this-element
-  private val summits = new FastMapOnIntInterval[FastMapOnIntInterval[ACC.Summit]](experimentConfig.numberOfValidators)
+  //Caution: for a cloned node, this collection will have some initial "empty" interval (when the node was non-existing)
+  private val summits = new FastMapOnIntInterval[FastIntMap[ACC.Summit]](experimentConfig.numberOfValidators)
   for (i <- 0 until experimentConfig.numberOfValidators)
-    summits(i) = new FastMapOnIntInterval[ACC.Summit](lfbChainMaxLengthEstimation)
+    summits(i) = new FastIntMap[ACC.Summit](lfbChainMaxLengthEstimation)
 
   //Step selection (the GUI shows the state of the simulation as it was just AFTER the execution of this step).
   private var selectedStepX: Int = 0
@@ -145,7 +146,7 @@ class SimulationDisplayModel(
   private var eventsFilter: EventsFilter = EventsFilter.Standard(Set.empty, takeAllNodesFlag = true, Set.empty, takeAllEventsFlag = true)
 
   //Current simulation engine stop condition. It will be used when "advance the simulation" action is launched.
-  private var simulationEngineStopConditionX: SimulationEngineStopCondition = new SimulationEngineStopCondition.NextNumberOfSteps(20)
+  private var simulationEngineStopConditionX: SimulationEngineStopCondition = SimulationEngineStopCondition.NextNumberOfSteps(20)
 
   /**
     * The snapshot of blockchain node information we want to display in the GUI after selecting an event in the log.
@@ -183,9 +184,9 @@ class SimulationDisplayModel(
                                  lastForkChoiceWinner: Block
                                )
 
-//################################ PUBLIC ################################################
+/*                                                                     PUBLIC                                                                       */
 
-  //--------------------- SIMULATION STATS -------------------------
+  /*----- simulation stats -----*/
 
   def simulationStatistics: BlockchainSimulationStats = stats
 
@@ -193,7 +194,7 @@ class SimulationDisplayModel(
 
   def perNodeStats(node: BlockchainNodeRef): NodeLocalStats = simulationStatistics.perNodeStats(node)
 
-  //--------------------- HORIZON -------------------------
+  /*-------- horizon -----------*/
 
   //the number of last event generated from the engine
   def simulationHorizon: Int = engine.lastStepExecuted.toInt //for the GUI, we must assume that the number of steps in within Int range (this limitation is not present in the engine itself)
@@ -228,7 +229,7 @@ class SimulationDisplayModel(
               agent2bricksHistory(agent.get.address).onBrickAddedToJdag(stepAsInt, brick)
             case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
               agent2bricksHistory(agent.get.address) = new JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks, expectedNumberOfEvents)
-              summits(agent.get.address) = new FastMapOnIntInterval[ACC.Summit](lfbChainMaxLengthEstimation)
+              summits(agent.get.address) = new FastIntMap[ACC.Summit](lfbChainMaxLengthEstimation)
             case other =>
               //ignore
           }
@@ -287,7 +288,7 @@ class SimulationDisplayModel(
     simulationEngineStopConditionX = condition
   }
 
-  //--------------------- CURRENT SELECTION -------------------------
+  /*------------- current selection ---------------*/
 
   def selectedNode: BlockchainNodeRef = selectedNodeX
 
@@ -328,14 +329,11 @@ class SimulationDisplayModel(
   }
 
   def getSummit(generation: Int): Option[ACC.Summit] = {
-    val summitsOfCurrentValidator = summits(selectedNodeX.address)
-    if (summitsOfCurrentValidator.nonEmpty && generation <= summitsOfCurrentValidator.lastKey.get)
-      Some(summitsOfCurrentValidator(generation))
-    else
-      None
+    val summitsOfCurrentValidator: FastIntMap[ACC.Summit] = summits(selectedNodeX.address)
+    return summitsOfCurrentValidator.get(generation)
   }
 
-  //--------------------- EVENTS LOG -------------------------
+  /*------------ events log -----------------*/
 
   def eventsAfterFiltering: ArrayBuffer[(Int, Event[BlockchainNodeRef, EventPayload])] = filteredEvents
 
@@ -353,7 +351,7 @@ class SimulationDisplayModel(
     selectedStep = filteredEvents(positionInFilteredEventsCollection)._1
   }
 
-  //--------------------- GRAPHICAL JDAG -------------------------
+  /*------------- graphical jdag --------------*/
 
   def getSelectedBrick: Option[Brick] = selectedBrickX
 
@@ -362,12 +360,12 @@ class SimulationDisplayModel(
     trigger(Ev.BrickSelectionChanged(selectedBrickX))
   }
 
-//################################### PRIVATE ############################################
+/*                                                                  PRIVATE                                                                                */
 
   private def extractStateSnapshotOf(node: BlockchainNodeRef): AgentStateSnapshot = {
     val nodeStats: NodeLocalStats = stats.perNodeStats(node)
 
-    return new AgentStateSnapshot(
+    return AgentStateSnapshot(
       step = engine.lastStepExecuted.toInt,
       agent = node,
       jDagBricksSnapshot = agent2bricksHistory(node.address).currentJdagBricksSnapshotIndex,

@@ -16,12 +16,13 @@ import org.jfree.data.xy.{DefaultXYDataset, XYDataset, YIntervalSeries, YInterva
 import org.slf4j.LoggerFactory
 
 import java.awt.{BasicStroke, Color, Dimension}
+import java.io.File
 import javax.swing.UIManager
 import scala.util.Random
 
 object ChartsSandbox {
   private val log = LoggerFactory.getLogger(s"chart-sandbox")
-  private val NUMBER_OF_STEPS: Int = 200000
+  private val NUMBER_OF_STEPS: Int = 500000
 
   private val headerSize: Int =
     32 + //message id
@@ -61,7 +62,8 @@ object ChartsSandbox {
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,
     observers = Seq(
-      ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15)
+      ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
+      ObserverConfig.FileBasedRecorder(new File("/home/wojtek/tmp/phouka"), agentsToBeLogged = None)
     )
   )
 
@@ -98,6 +100,7 @@ object ChartsSandbox {
     simulationDisplayModel.advanceTheSimulationBy(NUMBER_OF_STEPS)
     val t2 = System.currentTimeMillis()
     log.info(f"simulation completed after ${(t2 - t1).toDouble/1000}%.3f seconds")
+    engine.shutdown()
 
     printStatsToConsole()
     displayLatencyChart("final")

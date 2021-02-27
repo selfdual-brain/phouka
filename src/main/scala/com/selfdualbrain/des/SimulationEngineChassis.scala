@@ -40,4 +40,9 @@ class SimulationEngineChassis[A,P](engine: SimulationEngine[A,P]) extends Observ
     return pair
   }
 
+  override def shutdown(): Unit = {
+    for (observer <- observers)
+      observer.shutdown()
+    engine.shutdown()
+  }
 }
