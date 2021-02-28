@@ -9,11 +9,12 @@ import scala.collection.mutable.ArrayBuffer
   * This version of map enforces that keys always form a full interval <0,n>.
   * Keys cannot be removed.
   *
-  * @param initialSize initial size
   * @tparam E type of map values
   */
-class FastIntMapWithAutoinit[E](initialSize: Int)(valuesInitializer: Int => E) extends mutable.Map[Int,E] {
-  private val storage = new ArrayBuffer[E](initialSize)
+class FastIntMapWithAutoinit[E] protected (valuesInitializer: Int => E, pStorage: ArrayBuffer[E]) extends mutable.Map[Int,E] with CloningSupport[FastIntMapWithAutoinit[E]] {
+  protected val storage: ArrayBuffer[E] = pStorage
+
+  def this(initialSize: Int)(valuesInitializer: Int => E) = this(valuesInitializer, new ArrayBuffer[E](initialSize))
 
   override def subtractOne(key: Int): this.type = {
     throw new RuntimeException("removing keys is not supported in this version of fast-int-map")
@@ -53,7 +54,19 @@ class FastIntMapWithAutoinit[E](initialSize: Int)(valuesInitializer: Int => E) e
   def lastKey: Option[Int] = if (isEmpty) None else Some(lastIndexInUse)
 
   def underlyingArrayBuffer: ArrayBuffer[E] = storage
+
+  override def createDetachedCopy(): FastIntMapWithAutoinit[E] = new FastIntMapWithAutoinit[E](valuesInitializer, storage.clone())
 }
 
-class FastMapOnIntInterval[E](initialSize: Int) extends FastIntMapWithAutoinit[E](initialSize)((i: Int) => throw new RuntimeException(s"only adding first key missing is supported; attempted key $i"))
+class FastMapOnIntInterval[E] protected (pStorage: ArrayBuffer[E])
+  extends FastIntMapWithAutoinit[E](FastMapOnIntInterval.exceptionThrowingInitializer[E], pStorage)
+  with CloningSupport[FastMapOnIntInterval[E]] {
 
+  def this(initialSize: Int) = this(new ArrayBuffer[E](initialSize))
+
+  override def createDetachedCopy(): FastMapOnIntInterval[E] = new FastMapOnIntInterval[E](storage.clone())
+}
+
+object FastMapOnIntInterval {
+  def exceptionThrowingInitializer[E]: Int => E = (n: Int) => throw new RuntimeException(s"only adding first key missing is supported; attempted key $n")
+}

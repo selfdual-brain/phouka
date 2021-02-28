@@ -228,7 +228,12 @@ class SimulationDisplayModel(
             case EventPayload.BroadcastProtocolMsg(brick, cpuTimeConsumed) =>
               agent2bricksHistory(agent.get.address).onBrickAddedToJdag(stepAsInt, brick)
             case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
-              agent2bricksHistory(agent.get.address) = new JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks, expectedNumberOfEvents)
+              progenitor match {
+                case None =>
+                  agent2bricksHistory(agent.get.address) = new JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks, expectedNumberOfEvents)
+                case Some(p) =>
+                  agent2bricksHistory(agent.get.address) = agent2bricksHistory(p.address).createDetachedCopy()
+              }
               summits(agent.get.address) = new FastIntMap[ACC.Summit](lfbChainMaxLengthEstimation)
             case other =>
               //ignore

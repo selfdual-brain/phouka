@@ -1,7 +1,7 @@
 package com.selfdualbrain.gui.model
 
 import com.selfdualbrain.blockchain_structure.Brick
-import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
+import com.selfdualbrain.data_structures.{CloningSupport, FastIntMap, FastMapOnIntInterval}
 
 /**
   * When the user picks a (node, event) pair on the simulator GUI, the GUI will display the state of the world (as seen by this blockchain node)
@@ -20,21 +20,38 @@ import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
   * as codomain ordering).
   *
   * Caution: obviously, a separate instance of JdagBricksCollectionSnapshotsStorage is needed for every blockchain node.
-  *
-  * @param expectedNumberOfBricks good guess will imply less resizing, so more smooth execution
-  * @param expectedNumberOfSimulationSteps good guess will imply less resizing, so more smooth execution
   */
-class JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks: Int, expectedNumberOfSimulationSteps: Int) {
+class JdagBricksCollectionSnapshotsStorage private (
+                                                     pSnapshots: FastMapOnIntInterval[Brick],
+                                                     pStep2Snapshot: FastMapOnIntInterval[Int],
+                                                     pBrickId2snapshot: FastIntMap[Int],
+                                                     pLastSnapshot: Int,
+                                                     pLastStepKnown: Int
+                                                   ) extends CloningSupport[JdagBricksCollectionSnapshotsStorage] {
+
   //subsequent bricks that the node gets to know; within this sorted map, keys from the interval (0,p) map to the actual collection of jdag bricks
-  private val snapshots = new FastMapOnIntInterval[Brick](expectedNumberOfBricks)
+  private val snapshots: FastMapOnIntInterval[Brick] = pSnapshots
   //serves as a map: stepId => position in the snapshots
-  private val step2snapshot = new FastMapOnIntInterval[Int](expectedNumberOfSimulationSteps)
+  private val step2snapshot: FastMapOnIntInterval[Int] = pStep2Snapshot
   //for given brickId this map tells the earliest snapshot where this brick is known
-  private val brickId2snapshot = new FastIntMap[Int](expectedNumberOfBricks)
+  private val brickId2snapshot: FastIntMap[Int] = pBrickId2snapshot
   //last snapshot, i.e. the snapshot including all bricks registered so far
-  private var lastSnapshot: Int = -1
+  private var lastSnapshot: Int = pLastSnapshot
   //last simulation step registered
-  private var lastStepKnown: Int = -1
+  private var lastStepKnown: Int = pLastStepKnown
+
+  /**
+    *
+    * @param expectedNumberOfBricks good guess will imply less resizing, so more smooth execution
+    * @param expectedNumberOfSimulationSteps good guess will imply less resizing, so more smooth execution
+    */
+  def this(expectedNumberOfBricks: Int, expectedNumberOfSimulationSteps: Int) = this(
+    pSnapshots = new FastMapOnIntInterval[Brick](expectedNumberOfBricks),
+    pStep2Snapshot = new FastMapOnIntInterval[Int](expectedNumberOfSimulationSteps),
+    pBrickId2snapshot = new FastIntMap[Int](expectedNumberOfBricks),
+    pLastSnapshot = -1,
+    pLastStepKnown = -1
+  )
 
   /**
     * To be called by a validator every time a brick is added to jdag.
@@ -96,4 +113,13 @@ class JdagBricksCollectionSnapshotsStorage(expectedNumberOfBricks: Int, expected
     val effectiveStep = math.min(simulationStep, lastStepKnown)
     return step2snapshot(effectiveStep)
   }
+
+  override def createDetachedCopy(): JdagBricksCollectionSnapshotsStorage =
+    new JdagBricksCollectionSnapshotsStorage(
+      pSnapshots = snapshots.createDetachedCopy(),
+      pStep2Snapshot = step2snapshot.createDetachedCopy(),
+      pBrickId2snapshot = brickId2snapshot.createDetachedCopy(),
+      pLastSnapshot = lastSnapshot,
+      pLastStepKnown = lastStepKnown
+    )
 }

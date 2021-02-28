@@ -10,9 +10,11 @@ import scala.collection.mutable.ArrayBuffer
   * @param initialSize initial size
   * @tparam E type of map values
   */
-class FastIntMap[E](initialSize: Int = 16) extends mutable.Map[Int,E] {
-  private val storage = new ArrayBuffer[Option[E]](initialSize)
-  private var numberOfEntries: Int = 0
+class FastIntMap[E] private (pStorage: ArrayBuffer[Option[E]], pNumberOfEntries: Int) extends mutable.Map[Int,E] with CloningSupport[FastIntMap[E]] {
+  private val storage = pStorage
+  private var numberOfEntries: Int = pNumberOfEntries
+
+  def this(initialSize: Int = 16) = this(new ArrayBuffer[Option[E]](initialSize), 0)
 
   override def subtractOne(key: Int): this.type = {
     val hadSuchKeyBefore = this.contains(key)
@@ -55,4 +57,6 @@ class FastIntMap[E](initialSize: Int = 16) extends mutable.Map[Int,E] {
   override def size: Int = numberOfEntries
 
   override def isEmpty: Boolean = size == 0
+
+  override def createDetachedCopy(): FastIntMap[E] = new FastIntMap[E](storage.clone(), numberOfEntries)
 }

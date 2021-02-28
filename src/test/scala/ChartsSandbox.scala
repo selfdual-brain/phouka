@@ -22,7 +22,7 @@ import scala.util.Random
 
 object ChartsSandbox {
   private val log = LoggerFactory.getLogger(s"chart-sandbox")
-  private val NUMBER_OF_STEPS: Int = 500000
+  private val NUMBER_OF_STEPS: Int = 200000
 
   private val headerSize: Int =
     32 + //message id

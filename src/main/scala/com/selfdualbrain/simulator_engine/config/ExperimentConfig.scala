@@ -121,7 +121,7 @@ object DisruptionEventDesc {
 
 sealed abstract class FinalizationCostModel
 object FinalizationCostModel {
-  //using the actual wall clack time measured in the simulator (by System.nanoTime) as an indication of finalizer cost
+  //using the actual wall clock time measured in the simulator (by System.nanoTime) as an indication of finalizer cost
   //then scaling this with provided conversion rate
   //caution: this was we add reality, but a simulation can no longer be restored by just providing the random seed
   //because System.nanoTime becomes another source od randomization we have no control of
