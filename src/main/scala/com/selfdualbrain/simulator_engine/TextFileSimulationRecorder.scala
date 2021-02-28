@@ -105,11 +105,11 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
           case EventPayload.BrickArrivedHandlerBegin(consumedEventId, consumptionDelay, brick) =>
             s"arrived-brick-handler begin for ${brick.loggingString} (delivery-event was $consumedEventId) consumption-delay=$consumptionDelay"
           case EventPayload.BrickArrivedHandlerEnd(msgDeliveryEventId, handlerCpuTimeUsed, brick, totalCpuTimeUsedSoFar) =>
-            s"arrived-brick-handler end for ${brick.loggingString} (delivery-event was $msgDeliveryEventId) cpuTimeUsed=$handlerCpuTimeUsed"
+            s"arrived-brick-handler end for ${brick.loggingString} (delivery-event was $msgDeliveryEventId) cpuTimeUsed=${TimeDelta.toString(handlerCpuTimeUsed)}"
           case EventPayload.WakeUpHandlerBegin(consumedEventId, consumptionDelay, strategySpecificMarker) =>
             s"wakeup-handler begin (delivery-event was $consumedEventId) consumption-delay=$consumptionDelay"
           case EventPayload.WakeUpHandlerEnd(consumedEventId, handlerCpuTimeUsed, totalCpuTimeUsedSoFar) =>
-            s"wakeup-handler end (delivery-event was $consumedEventId) cpuTimeUsed=$handlerCpuTimeUsed"
+            s"wakeup-handler end (delivery-event was $consumedEventId) cpuTimeUsed=${TimeDelta.toString(handlerCpuTimeUsed)}"
           case EventPayload.NetworkConnectionLost =>
             s"network connection lost"
           case EventPayload.NetworkConnectionRestored =>

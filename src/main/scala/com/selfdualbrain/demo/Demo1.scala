@@ -125,13 +125,20 @@ object Demo1 {
   def createSimulationConfig(randomSeed: Long): ExperimentConfig =
     ExperimentConfig(
       randomSeed = Some(randomSeed),
-      networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
-        delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(5))
+      networkModel = NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(
+        connGraphLatencyAverageGenCfg = LongSequence.Config.PseudoGaussian(TimeDelta.millis(200), TimeDelta.millis(1000)),
+        connGraphLatencyStdDeviationNormalized = 0.1,
+        connGraphBandwidthGenCfg = LongSequence.Config.ErlangViaMeanValueWithHardBoundary(
+          k = 5,
+          mean = NetworkSpeed.megabitsPerSecond(2),
+          min = NetworkSpeed.kilobitsPerSecond(500),
+          max = NetworkSpeed.megabitsPerSecond(100)
+        ),
       ),
-      downloadBandwidthModel = DownloadBandwidthConfig.Uniform(NetworkSpeed.megabitsPerSecond(8)),
+      downloadBandwidthModel = DownloadBandwidthConfig.Generic(LongSequence.Config.Uniform(min = NetworkSpeed.megabitsPerSecond(2), max = NetworkSpeed.megabitsPerSecond(10))),
       nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 100000, alpha = 1.2),
       numberOfValidators = 25,
-      validatorsWeights = IntSequence.Config.Fixed(1),
+      validatorsWeights = IntSequence.Config.Pareto(100, 1.5),
       finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
       forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
       bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(

@@ -21,6 +21,7 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
     case class PoissonProcess(lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends Config
     case class Exponential(mean: Double) extends Config
     case class Erlang(k: Int, lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends Config
+    case class ErlangViaMeanValueWithHardBoundary(k: Int, mean: Double, min: N, max: N) extends Config
     case class Pareto(minValue: Double, alpha: Double) extends Config
   }
 
@@ -39,6 +40,7 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
     val two: N = fromInt(2)
     def maximum(a: N, b: N): N = if (a > b) a else b
     def minimum(a: N, b: N): N = if (a > b) a else b
+    def enforceBoundary(min: N, max: N, value: N): N = minimum(max, maximum(min, value))
 
     implicit class NumOps(n: N) {
       def + (arg: N): N = ops.plus(n, arg)
@@ -61,6 +63,7 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
       case Config.PoissonProcess(lambda, lambdaUnit, outputUnit) => new PoissonProcessGen(random, lambda, lambdaUnit, outputUnit)
       case Config.Exponential(mean) => new ExponentialGen(random, mean)
       case Config.Erlang(k, lambda, lambdaUnit, outputUnit) => new ErlangGen(random, k, lambda, lambdaUnit, outputUnit)
+      case Config.ErlangViaMeanValueWithHardBoundary(k, mean, min, max) => new ErlangViaMeanValueWithHardBoundaryGen(random, k, mean, min, max)
       case Config.Pareto(minValue, alpha) => new ParetoGen(random, minValue, alpha)
     }
 
@@ -124,6 +127,11 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
     class ErlangGen(random: Random, k: Int, lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends Generator {
       private val poisson = new PoissonProcessGen(random, lambda, lambdaUnit, outputUnit)
       override def next(): N = (1 to k).map(i => poisson.next()).sum
+    }
+
+    class ErlangViaMeanValueWithHardBoundaryGen(random: Random, k: Int, mean: Double, min: N, max: N) extends Generator {
+      private val erlang = new ErlangGen(random, k, k / mean, TimeUnit.MICROSECONDS, TimeUnit.MICROSECONDS)
+      override def next(): N = enforceBoundary(min, max, erlang.next())
     }
 
     //When alpha < 1.2, this generator produces results not quite consistent with mathematical Pareto distribution.

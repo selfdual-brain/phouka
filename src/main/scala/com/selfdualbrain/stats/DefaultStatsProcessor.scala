@@ -86,9 +86,9 @@ class DefaultStatsProcessor(
   //... corresponding standard deviation
   private val latencyMovingWindowStandardDeviation = new ArrayBuffer[Double]
   //per-node statistics
-  private val node2stats = new FastMapOnIntInterval[NodeLocalStatsProcessor](numberOfValidators)
+  private val node2stats = new FastMapOnIntInterval[NodeStatsProcessor](numberOfValidators)
   //per-validator frozen statistics
-  private val validator2frozenStats = new FastIntMap[NodeLocalStatsProcessor](numberOfValidators)
+  private val validator2frozenStats = new FastIntMap[NodeStatsProcessor](numberOfValidators)
   //counter of visibly finalized blocks; this counter is used for blockchain throughput calculation
   private val visiblyFinalizedBlocksMovingWindowCounter = new MovingWindowBeepsCounterWithHistory(TimeDelta.seconds(throughputMovingWindow), TimeDelta.seconds(throughputCheckpointsDelta))
   //flags marking faulty validators
@@ -121,7 +121,7 @@ class DefaultStatsProcessor(
             agentId2validatorId(newNodeAddress) = vid
             node2stats(newNodeAddress) = progenitor match {
               //creating per-node stats processor for new node
-              case None => new NodeLocalStatsProcessor(vid, BlockchainNodeRef(newNodeAddress), globalStats = this, absoluteWeightsMap, genesis, engine)
+              case None => new NodeStatsProcessor(vid, BlockchainNodeRef(newNodeAddress), globalStats = this, absoluteWeightsMap, genesis, engine)
               //cloning per-node stats processor after bifurcation
               case Some(p) => node2stats(p.address).createDetachedCopy(agent.get)
             }
@@ -383,14 +383,14 @@ class DefaultStatsProcessor(
     }
   }
 
-  override def perValidatorStats(validator: ValidatorId): NodeLocalStats = {
+  override def perValidatorStats(validator: ValidatorId): BlockchainPerNodeStats = {
     if (isFaulty(validator))
       validator2frozenStats(validator)
     else
       node2stats(validator)
   }
 
-  override def perNodeStats(node: BlockchainNodeRef): NodeLocalStats = node2stats(node.address)
+  override def perNodeStats(node: BlockchainNodeRef): BlockchainPerNodeStats = node2stats(node.address)
 
   override def isFaulty(vid: ValidatorId): Boolean = faultyValidatorsMap(vid)
 

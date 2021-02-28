@@ -91,7 +91,7 @@ import com.selfdualbrain.time.TimeDelta
   * - msg-buffer getting large - signals that the overall parameters of the blockchain (bricks production strategy, round length etc) are suboptimal,
   *   or - in lame terms - nodes are producing bricks at too high rate compared to the performance of the network they are connected with
   */
-trait NodeLocalStats {
+trait BlockchainPerNodeStats {
 
   /*                                        NODE STATE                                            */
 
@@ -108,6 +108,9 @@ trait NodeLocalStats {
 
   /** Amount of time this node was online (= alive and not experiencing network outage) */
   def timeOnline: TimeDelta
+
+  /** Amount of time this node was offline (= either because of network outage of because of being crashed) as fraction of total simulation time. */
+  def timeOfflineAsFractionOfTotalSimulationTime: Double
 
   /** Current status */
   def status: NodeStatus
@@ -282,6 +285,17 @@ trait NodeLocalStats {
   def ownBlocksOrphanRate: Double
 
   /**
+    * Finalization lag (number of generations this validator is behind the "best" validator in terms of LFB chain length (longer chain is better);
+    * this means for the best validator finalityLag = 0).
+    */
+  def finalizationLag: Long
+
+  /**
+    * Finalization participation, i.e. how many blocks (as fraction of total number of finalized blocks) within LFB chain were created by this node.
+    */
+  def finalizationParticipation: Double
+
+  /**
     * Average time spent on creating a new block [sec].
     * Caution: this average is calculated only for blocks that got published.
     * If a node spends time creating a new block, but then drops the block for any reason - this effort will not be counted in the average.
@@ -384,9 +398,10 @@ trait NodeLocalStats {
   def allBallotsAccepted: Long
 
   /**
-    * Average "brick delivery -> beginning of brick processing" delay [sec].
-    * Bricks are processed sequentially because we simulate a single threaded virtual processor.
-    * This value is mainly a reflection of the performance of the local processor in relation to the overall bricks production rate.
+    * Average "event delivery -> beginning of brick processing" delay [sec], where "event" may be brick arriving or scheduled wake-up.
+    * We simulate strictly sequential processing. When the "virtual cpu" of a node is busy doing other stuff, these events are waiting
+    * in a buffer to be handled. This value is mainly a reflection of the performance of the local processor in relation to the overall
+    * traffic in the blockchain network (especially - bricks production rate).
     */
   def averageConsumptionDelay: Double
 
@@ -409,7 +424,6 @@ trait NodeLocalStats {
     * Average per-incoming-brick time that this node spends executing the received brick handler [sec].
     */
   def averageIncomingBrickProcessingTime: Double
-
 
 
   /*                           BLOCKCHAIN STATS (COMPUTED FROM DATA AVAILABLE AT THIS NODE)                        */

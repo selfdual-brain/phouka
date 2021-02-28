@@ -10,7 +10,7 @@ import com.selfdualbrain.gui_framework.EventsBroadcaster
 import com.selfdualbrain.simulator_engine.config.{ConfigBasedSimulationSetup, ExperimentConfig}
 import com.selfdualbrain.simulator_engine.core.PhoukaEngine
 import com.selfdualbrain.simulator_engine.{EventPayload, _}
-import com.selfdualbrain.stats.{BlockchainSimulationStats, NodeLocalStats}
+import com.selfdualbrain.stats.{BlockchainSimulationStats, BlockchainPerNodeStats}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.util.RepeatUntilExitCondition
 
@@ -190,9 +190,9 @@ class SimulationDisplayModel(
 
   def simulationStatistics: BlockchainSimulationStats = stats
 
-  def perValidatorStats(vid: ValidatorId): NodeLocalStats = simulationStatistics.perValidatorStats(vid)
+  def perValidatorStats(vid: ValidatorId): BlockchainPerNodeStats = simulationStatistics.perValidatorStats(vid)
 
-  def perNodeStats(node: BlockchainNodeRef): NodeLocalStats = simulationStatistics.perNodeStats(node)
+  def perNodeStats(node: BlockchainNodeRef): BlockchainPerNodeStats = simulationStatistics.perNodeStats(node)
 
   /*-------- horizon -----------*/
 
@@ -368,7 +368,7 @@ class SimulationDisplayModel(
 /*                                                                  PRIVATE                                                                                */
 
   private def extractStateSnapshotOf(node: BlockchainNodeRef): AgentStateSnapshot = {
-    val nodeStats: NodeLocalStats = stats.perNodeStats(node)
+    val nodeStats: BlockchainPerNodeStats = stats.perNodeStats(node)
 
     return AgentStateSnapshot(
       step = engine.lastStepExecuted.toInt,

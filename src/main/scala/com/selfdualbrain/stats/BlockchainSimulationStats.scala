@@ -236,9 +236,9 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   //Statistics calculated separately for every validator.
   //For a faulty validator it returns stats from the freezing point.
-  def perValidatorStats(validator: ValidatorId): NodeLocalStats
+  def perValidatorStats(validator: ValidatorId): BlockchainPerNodeStats
 
-  def perNodeStats(node: BlockchainNodeRef): NodeLocalStats
+  def perNodeStats(node: BlockchainNodeRef): BlockchainPerNodeStats
 
   //asSeconds
   def topConsumptionDelay: Double

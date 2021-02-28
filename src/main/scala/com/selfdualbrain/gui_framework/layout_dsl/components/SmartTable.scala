@@ -44,7 +44,7 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
       swingTable.getColumnModel.getColumn(columnIndex).setPreferredWidth(columnDefinition.preferredWidth)
       swingTable.getColumnModel.getColumn(columnIndex).setMaxWidth(columnDefinition.maxWidth)
       if (columnDefinition.runtimeClassOfValues != classOf[Boolean]) {
-        val renderer = new GenericCellRenderer(columnDefinition.textAlignment, columnDefinition.cellBackgroundColorFunction)
+        val renderer = new GenericCellRenderer(columnDefinition.textAlignment, columnDefinition.cellBackgroundColorFunction, columnDefinition.decimalRounding)
         swingTable.getColumnModel.getColumn(columnIndex).setCellRenderer(renderer)
       }
     }
@@ -72,25 +72,39 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
 object SmartTable {
 
   sealed abstract class ColumnsScalingMode
+
   object ColumnsScalingMode {
+
     case object OFF extends ColumnsScalingMode
+
     case object LAST_COLUMN extends ColumnsScalingMode
+
     case object ALL_COLUMNS extends ColumnsScalingMode
+
   }
 
   trait Model extends EventsBroadcaster[DataEvent] {
     val columns: Array[ColumnDefinition[_]]
+
     def onRowSelected(rowIndex: Int)
+
     val columnsScalingMode: ColumnsScalingMode
+
     def calculateNumberOfRows: Int
   }
 
   sealed abstract class DataEvent
+
   object DataEvent {
+
     case class RowsAdded(from: Int, to: Int) extends DataEvent
+
     case class RowsDeleted(from: Int, to: Int) extends DataEvent
+
     case class RowsUpdated(from: Int, to: Int) extends DataEvent
+
     case object GeneralDataChange extends DataEvent
+
   }
 
   case class ColumnDefinition[T](
@@ -100,10 +114,10 @@ object SmartTable {
                                   cellValueFunction: Int => T, //row index ---> value displayed in the cell
                                   decimalRounding: Option[Int] = None, //decimal rounding (applicable only to Double values, otherwise ignored)
                                   textAlignment: TextAlignment,
-                                  cellBackgroundColorFunction: Option[(Int,T) => Option[Color]], //row index ---> color; None = retain default background color
+                                  cellBackgroundColorFunction: Option[(Int, T) => Option[Color]], //row index ---> color; None = retain default background color
                                   preferredWidth: Int,
                                   maxWidth: Int
-  )
+                                )
 
   //a glue between our "smart table model" concept and what Swing requires
   class SmartTableModelAdapter(stm: Model) extends AbstractTableModel {
@@ -149,72 +163,103 @@ object SmartTable {
 
     override def isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
 
-    override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = {
-      val rawValue = stm.columns(columnIndex).cellValueFunction(rowIndex)
-      val result: Any = rawValue match {
-        case x: Double =>
-          stm.columns(columnIndex).decimalRounding match {
-            case None => rawValue
-            case Some(d) => decimalRounding(rawValue.asInstanceOf[Double], d)
-          }
-        case other => other
-      }
-      return result.asInstanceOf[AnyRef]
-    }
+    override def getValueAt(rowIndex: Int, columnIndex: Int): AnyRef = stm.columns(columnIndex).cellValueFunction(rowIndex).asInstanceOf[AnyRef]
 
-    def decimalRounding(value: Double, decimalDigits: Int): String =
-      decimalDigits match {
-        case 0 => f"$value%.0f"
-        case 1 => f"$value%.1f"
-        case 2 => f"$value%.2f"
-        case 3 => f"$value%.3f"
-        case 4 => f"$value%.4f"
-        case 5 => f"$value%.5f"
-        case 6 => f"$value%.6f"
-        case 7 => f"$value%.7f"
-        case 8 => f"$value%.8f"
-        case 9 => f"$value%.9f"
-        case 10 => f"$value%.10f"
-        case 11 => f"$value%.11f"
-        case 12 => f"$value%.12f"
-        case 13 => f"$value%.13f"
-        case 14 => f"$value%.14f"
-        case 15 => f"$value%.15f"
-      }
   }
+
+  def decimalRounding(value: Double, decimalDigits: Int): String =
+    decimalDigits match {
+      case 0 => f"$value%.0f"
+      case 1 => f"$value%.1f"
+      case 2 => f"$value%.2f"
+      case 3 => f"$value%.3f"
+      case 4 => f"$value%.4f"
+      case 5 => f"$value%.5f"
+      case 6 => f"$value%.6f"
+      case 7 => f"$value%.7f"
+      case 8 => f"$value%.8f"
+      case 9 => f"$value%.9f"
+      case 10 => f"$value%.10f"
+      case 11 => f"$value%.11f"
+      case 12 => f"$value%.12f"
+      case 13 => f"$value%.13f"
+      case 14 => f"$value%.14f"
+      case 15 => f"$value%.15f"
+    }
 
   //T - type of value in the cell
   //This renderer allows us to customize:
   //- text alignment
   //- cell background color
-  //Caution: we do not use it for boolean columns
-  class GenericCellRenderer[T](alignment: TextAlignment, cellBackgroundColorFunction: Option[(Int,T) => Option[Color]]) extends DefaultTableCellRenderer {
+  //- decimal rounding
+  //
+  //Caution: we do not use it for boolean columns, so to retain the default booleans rendering as checkbox that is provided by the built-in rendering
+  class GenericCellRenderer[T](
+                                alignment: TextAlignment,
+                                cellBackgroundColorFunction: Option[(Int, T) => Option[Color]],
+                                decimalPrecision: Option[Int]
+                              ) extends DefaultTableCellRenderer {
     alignment match {
       case TextAlignment.LEFT => this.setHorizontalAlignment(SwingConstants.LEFT)
       case TextAlignment.RIGHT => this.setHorizontalAlignment(SwingConstants.RIGHT)
     }
 
+//    override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): Component = {
+//      val result = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+//
+//      def applyDefaultColor(): Unit = {
+//        if (isSelected)
+//          result.setBackground(table.getSelectionBackground)
+//        else
+//          result.setBackground(table.getBackground)
+//      }
+//
+//      cellBackgroundColorFunction match {
+//        case Some(f) =>
+//          f(row, value.asInstanceOf[T]) match {
+//            case Some(color) => result.setBackground(color)
+//            case None => applyDefaultColor()
+//          }
+//        case None => applyDefaultColor()
+//      }
+//      return result
+//    }
+
     override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): Component = {
       val result = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
 
-      def applyDefaultColor(): Unit = {
-        if (isSelected)
-          result.setBackground(table.getSelectionBackground)
-        else
-          result.setBackground(table.getBackground)
+      if (isSelected)
+        result.setBackground(table.getSelectionBackground)
+      else {
+        cellBackgroundColorFunction match {
+          case Some(f) =>
+            f(row, value.asInstanceOf[T]) match {
+              case Some(color) => result.setBackground(color)
+              case None => result.setBackground(table.getBackground)
+            }
+          case None => result.setBackground(table.getBackground)
+        }
       }
 
-      cellBackgroundColorFunction match {
-        case Some(f) =>
-          f(row, value.asInstanceOf[T]) match {
-            case Some(color) => result.setBackground(color)
-            case None => applyDefaultColor()
-          }
-        case None => applyDefaultColor()
-      }
       return result
     }
 
+    override def setValue(value: Any): Unit = {
+      val s = if (value == null)
+        ""
+      else {
+        value match {
+          case x: Double =>
+            decimalPrecision match {
+              case None => value.toString
+              case Some(d) => decimalRounding(value.asInstanceOf[Double], d)
+            }
+          case other => other.toString
+        }
+      }
+
+      this.setText(s)
+    }
   }
 
 }

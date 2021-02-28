@@ -13,13 +13,13 @@ import scala.collection.mutable
 /**
   * Per-validator statistics (as accumulated by default stats processor).
   */
-class NodeLocalStatsProcessor(
+class NodeStatsProcessor(
                                vid: ValidatorId,
                                nodeId: BlockchainNodeRef,
                                globalStats: BlockchainSimulationStats,
                                weightsMap: ValidatorId => Ether,
                                genesis: Block,
-                               engine: BlockchainSimulationEngine) extends NodeLocalStats {
+                               engine: BlockchainSimulationEngine) extends BlockchainPerNodeStats {
 
   /*                                          GENERAL                                                  */
 
@@ -429,6 +429,8 @@ class NodeLocalStatsProcessor(
       case NodeStatus.CRASHED => timeAlive - endedNetworkOutagesTotalTime
     }
 
+  override def timeOfflineAsFractionOfTotalSimulationTime: Double = (globalStats.totalTime.micros - this.timeOnline).toDouble / globalStats.totalTime.micros
+
   override def status: NodeStatus = nodeStatus
 
   override def numberOfBricksInTheBuffer: Long = numberOfBricksThatEnteredMsgBuffer - numberOfBricksThatLeftMsgBuffer
@@ -502,6 +504,10 @@ class NodeLocalStatsProcessor(
       0.0
     else
       ownBlocksOrphaned.toDouble / ownBlocksByGeneration.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt)
+
+  override def finalizationLag: Long = globalStats.numberOfVisiblyFinalizedBlocks - this.lengthOfLfbChain
+
+  override def finalizationParticipation: Double = this.ownBlocksFinalized.toDouble / this.lengthOfLfbChain
 
   override def averageBufferingTimeOverBricksThatWereBuffered: Double = TimeDelta.convertToSeconds(sumOfBufferingTimes) / numberOfBricksThatLeftMsgBuffer
 
@@ -600,8 +606,8 @@ class NodeLocalStatsProcessor(
     * @param node node-id that cloned stats are to be attached to
     * @return clone of stats calculator
     */
-  def createDetachedCopy(node: BlockchainNodeRef): NodeLocalStatsProcessor = {
-    val copy = new NodeLocalStatsProcessor(vid, node, globalStats, weightsMap, genesis, engine)
+  def createDetachedCopy(node: BlockchainNodeRef): NodeStatsProcessor = {
+    val copy = new NodeStatsProcessor(vid, node, globalStats, weightsMap, genesis, engine)
 
     copy.nodeStatus = nodeStatus
     copy.totalCpuTime = totalCpuTime
