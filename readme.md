@@ -210,26 +210,33 @@ IN PROGRESS:
 - binary release
 - user's manual
 
+
+
 ## Dev roadmap
 
-Current roadmap:
-- Feb 15, 2021: pre-release (demo version)
-- Mar 1st, 2021: engine is feature complete
-- Mar 15th, 2021: GUI is feature-complete
-- Mar 20th, 2021: binary release ready, entering beta-testing period
-- Apr 1st, 2021: User's Manual + demo videos on YouTube
-- May 1st, 2021: beta testing complete, official release date of version 1.0
+Milestones achieved:
+- 2020-05-14: project kick-off
+- 2021-02-15: demo-1: hardcoded experiments, limited log analyzer, limited stats, no j-dag graph
 
-Future plans:
+Current roadmap (estimated):
+- 2021-03-08: demo-2: (demo-1) + full stats
+- 2021-04-xx: demo-3: (demo-2) + limited experiments-manager + full log analyzer
+- 2021-05-xx: beta-1: (demo-3) + full experiments-manager
+- 2021-06-xx: beta-2: (beta-1) + full j-dag graph
+- 2021-07-xx: beta-3: (beta-2) + whatever fixes / improvements will be needed at this point  
+- 2021-08-xx: official release of ver 1.0
+
+Features expected in ver 2.0:
 - enhanced support for simulation data export (so that external data-science tooling may be plugged-in)
+- full blockchain consensus model support (endorsements/spam protection, eras with slots, validators rotation)
+- enhanced P2P network model (explicit implementation RPC-over-DES, gossip protocol over RPC, Kademlia-based discovery)
+
+Rough plans for the uncertain future:
 - extracting the engine as a separate library
 - Docker support
 - storage support (currently the sim runs in RAM)
-- hosting a web version
-- full blockchain consensus model support (endorsements/spam protection, eras with slots, validators rotation)
-- enhanced P2P network model (explicit implementation RPC-over-DES, gossip protocol over RPC, Kademlia-based discovery)
+- javascript frontend + hosting a web version
 - parallel simulation engine (PDES)
-- javascript frontend
 
 # Licensing and forking
 This software is covered by GPLv3 license. The text of the license is included in `license.md` file.
