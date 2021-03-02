@@ -137,7 +137,7 @@ object Demo1 {
       ),
       downloadBandwidthModel = DownloadBandwidthConfig.Generic(LongSequence.Config.Uniform(min = NetworkSpeed.megabitsPerSecond(2), max = NetworkSpeed.megabitsPerSecond(20))),
       nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 200000, alpha = 1.2),
-      numberOfValidators = 24,
+      numberOfValidators = 25,
       validatorsWeights = IntSequence.Config.ParetoWithCap(minValue = 100, maxValue = 1000, alpha = 1.5),
       finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
       forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,

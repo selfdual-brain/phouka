@@ -46,7 +46,7 @@ Network structure, individual per-node download bandwidth and per-node computing
 use the same finalizer setup: fault tolerance set to 0.30, and acknowledgement level set to 3. Validators will use
 "naive casper" blocks production strategy.
 
-The simulation will stop after processing 1 million events. This will take some 3 minutes on an average laptop. You will see
+The simulation will stop after processing 1 million events. This should take about 90 seconds on an average laptop. You will see
 a counter of processed events showing up on system console. Upon stopping, the following things will happen:
 
 - complete simulation stats will be printed on System.out
