@@ -135,22 +135,22 @@ object Demo1 {
           max = NetworkSpeed.megabitsPerSecond(100)
         ),
       ),
-      downloadBandwidthModel = DownloadBandwidthConfig.Generic(LongSequence.Config.Uniform(min = NetworkSpeed.megabitsPerSecond(2), max = NetworkSpeed.megabitsPerSecond(10))),
-      nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 100000, alpha = 1.2),
-      numberOfValidators = 25,
-      validatorsWeights = IntSequence.Config.Pareto(100, 1.5),
+      downloadBandwidthModel = DownloadBandwidthConfig.Generic(LongSequence.Config.Uniform(min = NetworkSpeed.megabitsPerSecond(2), max = NetworkSpeed.megabitsPerSecond(20))),
+      nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 200000, alpha = 1.2),
+      numberOfValidators = 24,
+      validatorsWeights = IntSequence.Config.ParetoWithCap(minValue = 100, maxValue = 1000, alpha = 1.5),
       finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
       forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
       bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
-        brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
+        brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 4, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
         blocksFractionAsPercentage = 4
       ),
       disruptionModel = DisruptionModelConfig.VanillaBlockchain,
       transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
-        sizeDistribution = IntSequence.Config.Exponential(mean = 1500), //in bytes
+        sizeDistribution = IntSequence.Config.Exponential(mean = 1000), //in bytes
         costDistribution = LongSequence.Config.Exponential(mean = 500) //in gas
       ),
-      blocksBuildingStrategy = BlocksBuildingStrategyModel.FixedNumberOfTransactions(n = 1000),
+      blocksBuildingStrategy = BlocksBuildingStrategyModel.CostAndSizeLimit(costLimit = 1000000, sizeLimit = 3000000),
       brickCreationCostModel = LongSequence.Config.PseudoGaussian(1000, 5000),
       brickValidationCostModel = LongSequence.Config.PseudoGaussian(500, 1000),
       finalizationCostModel = FinalizationCostModel.DefaultPolynomial(a = 1, b = 0, c = 0),
@@ -231,7 +231,7 @@ object Demo1 {
     plot.setOrientation(PlotOrientation.VERTICAL)
     val chart: JFreeChart = new JFreeChart(null, JFreeChart.DEFAULT_TITLE_FONT, plot, false)
     val panel = new ChartPanel(chart)
-    panel.setPreferredSize(new Dimension(1000, 150))
+    panel.setPreferredSize(new Dimension(1300, 200))
     val result = new PlainPanel(sessionManager.guiLayoutConfig)
     result.add(panel, BorderLayout.CENTER)
     result.surroundWithTitledBorder(title)

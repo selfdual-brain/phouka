@@ -37,7 +37,7 @@ object NodeStatsPresenter {
 
 class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, NodeStatsPresenter] {
   private val events_Table = new SmartTable(guiLayoutConfig)
-  this.setPreferredSize(new Dimension(1800,600))
+  this.setPreferredSize(new Dimension(1860,600))
   this.add(events_Table, BorderLayout.CENTER)
   this.surroundWithTitledBorder("Per-validator simulation statistics")
 
@@ -102,7 +102,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         },
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: Ether) => Some(CONFIG_COLOR)},
-        preferredWidth = 50,
+        preferredWidth = 40,
         maxWidth = 100
       ),
       ColumnDefinition[Double](
@@ -185,6 +185,17 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 100
       ),
       ColumnDefinition[Double](
+        name = "Dnld",
+        headerTooltip = "Total amount of data downloaded from network [GB]",
+        runtimeClassOfValues = classOf[Double],
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).dataDownloaded.toDouble / 1000000000,
+        decimalRounding = Some(1),
+        textAlignment = TextAlignment.RIGHT,
+        cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(NETWORKING_COLOR)},
+        preferredWidth = 50,
+        maxWidth = 100
+      ),
+      ColumnDefinition[Double](
         name = "ND-blocks",
         headerTooltip = "Network transport average delay for blocks received [sec]",
         runtimeClassOfValues = classOf[Double],
@@ -192,8 +203,8 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         decimalRounding = Some(4),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(NETWORKING_COLOR)},
-        preferredWidth = 80,
-        maxWidth = 100
+        preferredWidth = 60,
+        maxWidth = 80
       ),
       ColumnDefinition[Double](
         name = "ND-ballots",
@@ -203,8 +214,19 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         decimalRounding = Some(4),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(NETWORKING_COLOR)},
-        preferredWidth = 80,
-        maxWidth = 100
+        preferredWidth = 60,
+        maxWidth = 80
+      ),
+      ColumnDefinition[Double](
+        name = "DQ max",
+        headerTooltip = "Download queue max length [MB]",
+        runtimeClassOfValues = classOf[Double],
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).downloadQueueMaxLengthAsBytes.toDouble / 1000000,
+        decimalRounding = Some(1),
+        textAlignment = TextAlignment.RIGHT,
+        cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(NETWORKING_COLOR)},
+        preferredWidth = 50,
+        maxWidth = 80
       ),
       ColumnDefinition[Double](
         name = "Buf%",
@@ -266,8 +288,19 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).lengthOfLfbChain,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: Long) => Some(JDAG_GEOMETRY_COLOR)},
-        preferredWidth = 50,
+        preferredWidth = 40,
         maxWidth = 80
+      ),
+      ColumnDefinition[Double](
+        name = "Upld",
+        headerTooltip = "Total amount of data uploaded to network [GB]",
+        runtimeClassOfValues = classOf[Double],
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).dataUploaded.toDouble / 1000000000,
+        decimalRounding = Some(1),
+        textAlignment = TextAlignment.RIGHT,
+        cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(OWN_BRICKS_COLOR)},
+        preferredWidth = 50,
+        maxWidth = 100
       ),
       ColumnDefinition[Long](
         name = "Ballots",
@@ -286,7 +319,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).ownBlocksPublished,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: Long) => Some(OWN_BRICKS_COLOR)},
-        preferredWidth = 50,
+        preferredWidth = 40,
         maxWidth = 100
       ),
       ColumnDefinition[Long](
@@ -327,7 +360,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         decimalRounding = Some(3),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(PERFORMANCE_COLOR)},
-        preferredWidth = 60,
+        preferredWidth = 50,
         maxWidth = 60
       ),
       ColumnDefinition[Long](
@@ -337,7 +370,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).finalizationLag,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction =  Some {(rowIndex: Int, value: Long) => Some(PERFORMANCE_COLOR)},
-        preferredWidth = 40,
+        preferredWidth = 30,
         maxWidth = 40
       ),
       ColumnDefinition[Double](
@@ -348,7 +381,7 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         decimalRounding = Some(3),
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(PERFORMANCE_COLOR)},
-        preferredWidth = 50,
+        preferredWidth = 45,
         maxWidth = 50
       ),
       ColumnDefinition[Double](

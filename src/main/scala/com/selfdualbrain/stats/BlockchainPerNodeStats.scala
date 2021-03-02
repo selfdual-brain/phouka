@@ -100,6 +100,11 @@ trait BlockchainPerNodeStats {
     */
   def configuredComputingPower: Long
 
+  /**
+    * Network connection download bandwidth [bits/sec]
+    */
+  def configuredDownloadBandwidth: Double
+
   /** Amount of time passed since this node was launched. */
   def timeSinceBoot: TimeDelta
 
@@ -238,6 +243,16 @@ trait BlockchainPerNodeStats {
   def ownBricksPublished: Long = ownBlocksPublished + ownBallotsPublished
 
   /**
+    * Total amount of data uploaded to the blockchain network.
+    *
+    * Caution: We ignore here the reality of broadcast implementation. We just add up binary sizes of all bricks
+    * published (as if it is enough to "upload" a published brick once).
+    *
+    * The networking model we use in this simulator is too simple to properly reflect reality of upload/download volumes.
+    */
+  def dataUploaded: Long
+
+  /**
     * Number of own blocks which this node can see as finalized.
     * Formally: simulation(t).jdagBlocks(v).filter(b => b.creator = v and b.seenFinalized(v)).size
     */
@@ -332,6 +347,13 @@ trait BlockchainPerNodeStats {
     * Number of bricks for which download was completed.
     */
   def allBricksReceived: Long = allBlocksReceived + allBallotsReceived
+
+  /**
+    * Total amount of data downloaded from the blockchain network.
+    * Caution: We however ignore the reality of broadcast implementation. We just add up binary sizes of all bricks received.
+    * The networking model we use in this simulator is too simple to properly reflect reality of upload/download volumes.
+    */
+  def dataDownloaded: Long
 
   /**
     * Average creation -> delivery delay for blocks [sec].

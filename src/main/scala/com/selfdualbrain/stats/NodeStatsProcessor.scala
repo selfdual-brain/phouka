@@ -60,7 +60,6 @@ class NodeStatsProcessor(
 
   private var wakeUpHandlerInvocationsCounter: Long = 0L
 
-
   /*                             INCOMING STUFF / NETWORKING COUNTERS                                 */
 
   //todo
@@ -84,6 +83,9 @@ class NodeStatsProcessor(
   //ballots that I received
   private var receivedBallotsCounter: Long = 0
 
+  //sum of binary sizes of messages received by this node
+  private var totalDownloadedDataAsBytes: Long = 0L
+
   //ballot delays counter
   private var sumOfReceivedBallotsNetworkDelays: TimeDelta = 0L
 
@@ -95,7 +97,6 @@ class NodeStatsProcessor(
 
   //received ballots that I added to local j-dag
   private var acceptedBallotsCounter: Long = 0
-
 
 
   /*                                MSG-BUFFER RELATED COUNTERS                                 */
@@ -124,10 +125,10 @@ class NodeStatsProcessor(
   private var allBlocksByGenerationCounters = new TreeNodesByGenerationCounter
   allBlocksByGenerationCounters.nodeAdded(0) //counting genesis
 
-  //todo
+  //sum of binary sizes of bricks in the local j-dag
   private var allBricksTotalBinarySize: Long = 0L
 
-  //todo
+  //sum of payload sizes of blocks in the local j-dag
   private var allBlocksTotalPayloadSize: Long = 0L
 
   //total gas burned in all blocks that landed in local j-dag
@@ -153,6 +154,8 @@ class NodeStatsProcessor(
   //total gas burned in own blocks
   private var ownBlocksGasCounter: Long = 0L
 
+  //sum of binary sizes of messages broadcast by this node
+  private var totalUploadedDataAsBytes: Long = 0L
 
   /*                                  FINALIZATION STATUS                                     */
 
@@ -242,6 +245,7 @@ class NodeStatsProcessor(
         localBrickdagSize += 1
         localBrickdagDepth = math.max(localBrickdagDepth, brick.daglevel)
         allBricksTotalBinarySize += brick.binarySize
+        totalUploadedDataAsBytes += brick.binarySize
 
       case EventPayload.ProtocolMsgAvailableForDownload(sender, brick) =>
         downloadQueueLengthAsItemsX += 1
@@ -262,6 +266,7 @@ class NodeStatsProcessor(
       case EventPayload.BrickDelivered(brick) =>
         downloadQueueLengthAsItemsX -= 1
         downloadQueueLengthAsBytesX -= brick.binarySize
+        totalDownloadedDataAsBytes += brick.binarySize
 
         if (brick.isInstanceOf[AbstractNormalBlock]) {
           receivedBlocksCounter += 1
@@ -477,6 +482,10 @@ class NodeStatsProcessor(
 
   override def allBricksReceived: Long = allBlocksReceived + allBallotsReceived
 
+  override def dataUploaded: TimeDelta = totalUploadedDataAsBytes
+
+  override def dataDownloaded: TimeDelta = totalDownloadedDataAsBytes
+
   override def allBlocksAccepted: Long = acceptedBlocksCounter
 
   override def allBallotsAccepted: Long = acceptedBallotsCounter
@@ -524,6 +533,8 @@ class NodeStatsProcessor(
   override def averageComputingPowerUtilization: Double = totalCpuTime.toDouble / timeAlive
 
   override def configuredComputingPower: Long = engine.node(nodeId).computingPower
+
+  override def configuredDownloadBandwidth: Double = engine.node(nodeId).downloadBandwidth
 
   override def totalComputingTimeUsed: TimeDelta = totalCpuTime
 

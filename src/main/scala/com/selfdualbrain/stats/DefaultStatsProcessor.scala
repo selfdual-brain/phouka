@@ -144,7 +144,6 @@ class DefaultStatsProcessor(
           case other =>
             //ignore
         }
-        node2stats(agent.get.address).handleEvent(event)
 
       case Event.External(id, timepoint, destination, payload) =>
         payload match {
@@ -165,10 +164,9 @@ class DefaultStatsProcessor(
         if (! faultyValidatorsMap(vid)) {
           handleSemanticEvent(vid, eventTimepoint, eventPayload)
         }
-        node2stats(source.address).handleEvent(event)
 
       case Event.Transport(id, timepoint, source, destination, payload) =>
-        node2stats(destination.address).handleEvent(event)
+        //ignore
 
       case other =>
         //ignore

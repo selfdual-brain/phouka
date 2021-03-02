@@ -22,7 +22,8 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
     case class Exponential(mean: Double) extends Config
     case class Erlang(k: Int, lambda: Double, lambdaUnit: TimeUnit, outputUnit: TimeUnit) extends Config
     case class ErlangViaMeanValueWithHardBoundary(k: Int, mean: Double, min: N, max: N) extends Config
-    case class Pareto(minValue: Double, alpha: Double) extends Config
+    case class Pareto(minValue: N, alpha: Double) extends Config
+    case class ParetoWithCap(minValue: N, maxValue: N, alpha: Double) extends Config
   }
 
   abstract class Generator extends Iterator[N] with Cloneable with CloningSupport[Generator] {
@@ -65,6 +66,7 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
       case Config.Erlang(k, lambda, lambdaUnit, outputUnit) => new ErlangGen(random, k, lambda, lambdaUnit, outputUnit)
       case Config.ErlangViaMeanValueWithHardBoundary(k, mean, min, max) => new ErlangViaMeanValueWithHardBoundaryGen(random, k, mean, min, max)
       case Config.Pareto(minValue, alpha) => new ParetoGen(random, minValue, alpha)
+      case Config.ParetoWithCap(minValue, maxValue, alpha) => new ParetoWithCapGen(random, minValue, maxValue, alpha)
     }
 
     class FixedGen(value: N) extends Generator {
@@ -90,7 +92,7 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
     }
 
     class UniformGen(random: Random, min: N, max: N) extends Generator {
-      private val spread: N = max + min - one
+      private val spread: N = max - min + one
       override def next(): N = nextRandomValue(random, spread) + min
     }
 
@@ -130,6 +132,7 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
     }
 
     class ErlangViaMeanValueWithHardBoundaryGen(random: Random, k: Int, mean: Double, min: N, max: N) extends Generator {
+      assert (max > min)
       private val erlang = new ErlangGen(random, k, k / mean, TimeUnit.MICROSECONDS, TimeUnit.MICROSECONDS)
       override def next(): N = enforceBoundary(min, max, erlang.next())
     }
@@ -143,12 +146,25 @@ class NumericSequencesModule[N: Numeric](coerce: Double => N, nextRandomValue: (
     //
     //Implementation remark: reimplementing the whole generator with BigDecimal and precision up to 100 digits did not help.
     //Using alternative random number generators also did not help. Therefore the original simple implementation is left.
-    class ParetoGen(random: Random, minValue: Double, alpha: Double) extends Generator {
+    class ParetoGen(random: Random, minValue: N, alpha: Double) extends Generator {
       assert(alpha > 1)
       private val reciprocalOfAlpha: Double = 1 / alpha
+      private val minValueAsDouble: Double = minValue.toDouble
       override def next(): N = {
-        val x: Double = minValue / math.pow(random.nextDouble(), reciprocalOfAlpha)
+        val x: Double = minValueAsDouble / math.pow(random.nextDouble(), reciprocalOfAlpha)
         return coerce(math.round(x))
+      }
+    }
+
+    class ParetoWithCapGen(random: Random, minValue: N, maxValue: N, alpha: Double) extends Generator {
+      assert (maxValue > minValue)
+      private val internalGenerator = new ParetoGen(random, minValue, alpha)
+      override def next(): N = {
+        var x: N = ops.zero
+        do {
+          x = internalGenerator.next()
+        } while (x > maxValue)
+        return x
       }
     }
 

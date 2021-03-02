@@ -65,6 +65,7 @@ class StatsPrinter(out: AbstractTextOutput) {
 
   private def printNodeStats(stats: BlockchainPerNodeStats): Unit = {
     out.section("*** state ***") {
+      out.print(s"..........................status: ${stats.status}")
       out.print(s"...........................j-dag: size ${stats.jdagSize} depth ${stats.jdagDepth}")
       out.print(s"........bricks in message buffer: ${stats.numberOfBricksInTheBuffer}")
       out.print(s"................LFB chain length: ${stats.lengthOfLfbChain}")
@@ -82,6 +83,9 @@ class StatsPrinter(out: AbstractTextOutput) {
     }
 
     out.section("*** local performance stats ***") {
+      out.print(f"...download bandwidth [MBit/sec]: ${stats.configuredDownloadBandwidth / 1000000}%.2f")
+      out.print(f"....max length of download queue: [items] ${stats.downloadQueueMaxLengthAsItems} [MB] ${stats.downloadQueueMaxLengthAsBytes.toDouble / 1000000}")
+      out.print(f"...........data transmitted [GB]: download ${stats.dataDownloaded.toDouble / 1000000000}%.2f upload ${stats.dataUploaded.toDouble / 1000000000}%.2f")
       out.print(s"................published bricks: ${stats.ownBricksPublished} (${stats.ownBlocksPublished} blocks, ${stats.ownBallotsPublished} ballots)")
       out.print(s".................received bricks: ${stats.allBricksReceived} (${stats.allBlocksReceived} blocks, ${stats.allBallotsReceived} ballots)")
       val accepted = stats.allBlocksAccepted + stats.allBallotsAccepted
@@ -90,7 +94,7 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(s".................accepted bricks: $accepted ($acceptedBlocks blocks, $acceptedBallots ballots)")
       out.print(s".............own blocks finality: uncertain ${stats.ownBlocksUncertain} finalized ${stats.ownBlocksFinalized} orphaned ${stats.ownBlocksOrphaned}")
       out.print(s"............... finalization lag: ${stats.finalizationLag}")
-      out.print(f"..... finalization participation: ${stats.finalizationParticipation * 100}%.3f")
+      out.print(f"..finalization participation [%%]: ${stats.finalizationParticipation * 100}%.3f")
       out.print(f"own blocks average latency [sec]: ${stats.ownBlocksAverageLatency}%.2f")
       out.print(f"...........own blocks throughput: [blocks/h] ${stats.ownBlocksThroughputBlocksPerSecond * 3600}%.4f [trans/sec] ${stats.ownBlocksThroughputTransactionsPerSecond}%.4f [gas/sec] ${stats.ownBlocksThroughputGasPerSecond}%.4f")
       out.print(f"......own blocks orphan rate [%%]: ${stats.ownBlocksOrphanRate * 100}%.3f")
