@@ -85,6 +85,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.brickValidationCostModel,
         config.brickCreationCostModel,
         computingPowersGenerator,
+        config.nodesComputingPowerBaseline,
         config.msgBufferSherlockMode,
         config.brickHeaderCoreSize,
         config.singleJustificationSize,
@@ -107,6 +108,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.brickValidationCostModel,
         config.brickCreationCostModel,
         computingPowersGenerator,
+        config.nodesComputingPowerBaseline,
         config.msgBufferSherlockMode,
         config.brickHeaderCoreSize,
         config.singleJustificationSize,
@@ -131,6 +133,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         config.brickValidationCostModel,
         config.brickCreationCostModel,
         computingPowersGenerator,
+        config.nodesComputingPowerBaseline,
         config.msgBufferSherlockMode,
         config.brickHeaderCoreSize,
         config.singleJustificationSize,
@@ -230,6 +233,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         relativeFTT,
         ackLevel,
         totalWeight,
+        config.nodesComputingPowerBaseline,
         genesis,
         engine
       )

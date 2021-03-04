@@ -179,7 +179,8 @@ object EventTag {
     WAKEUP_HANDLER_END -> "wake-up handler (end)",
     NETWORK_CONNECTION_LOST -> "network connection lost",
     NETWORK_CONNECTION_RESTORED -> "network connection restored",
-    STRATEGY_SPECIFIC_OUTPUT -> "strategy-specific"
+    STRATEGY_SPECIFIC_OUTPUT -> "strategy-specific",
+    HALT -> "halt"
   )
 
   def of(event: Event[BlockchainNodeRef, EventPayload]): Int = event.payload.filteringTag

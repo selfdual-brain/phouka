@@ -42,6 +42,7 @@ class StatsPrinter(out: AbstractTextOutput) {
       val orphanRateAsPercent: Double = stats.orphanRate * 100
       out.print(f"................orphan rate [%%]: $orphanRateAsPercent%.2f")
       out.print(f"..........protocol overhead [%%]: ${stats.protocolOverhead * 100}%.2f")
+      out.print(f".......consensus efficiency [%%]: ${stats.consensusEfficiency * 100}%.2f")
     }
 
     out.newLine()

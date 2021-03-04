@@ -41,6 +41,7 @@ object ChartsSandbox {
     ),
     downloadBandwidthModel = DownloadBandwidthConfig.Uniform(NetworkSpeed.megabitsPerSecond(8)),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 150000, alpha = 1.2),
+    nodesComputingPowerBaseline = 150000,
     numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 1, relativeFTT = 0.30),

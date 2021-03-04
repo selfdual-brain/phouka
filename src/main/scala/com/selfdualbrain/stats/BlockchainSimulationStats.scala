@@ -198,6 +198,21 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   def totalThroughputGasPerSecond: Double
 
+  //Throughput of the blockchain expressed as a fraction of single-node-processing-throughput.
+  //This may be seen as a single value summarizing how performance-efficient given blockchain setup is.
+  //
+  //Explanation:
+  //Just imagine that all transactions in so-far-finalized blocks were just executed on such reference node operating as a "standalone server"
+  //i.e. with no consensus protocol involved. This execution would take X time.
+  //On the other hand, we were really running a blockchain, so a "decentralized computer" which anyway just executed the same sequence
+  //of transactions, just in much more convoluted way, and it took Y time.
+  //To eliminate blockchain warming-up influence, we do not count transactions in LFB(1) and we take Y to be
+  //time distance between finalization of LFB(1) and finalization of last finalized block.
+  //The result is X/Y (as fraction).
+  //Say that the result is 0.1 - this means that the blockchain is processing transactions 10 times slower than
+  //the reference computer would do (i.e. without consensus protocol being involved).
+  def consensusEfficiency: Double
+
   //Latency is time from publishing a block B to B becoming finalized.
   //Of course this time is different for each validator.
   //This average is calculated over completely finalized blocks only (so orphan rate is not influencing the value).

@@ -5,6 +5,7 @@ import com.selfdualbrain.config_files_support.ConfigParsingSupport
 import com.selfdualbrain.disruption.FttApproxMode
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
+import com.selfdualbrain.transactions.Gas
 
 import java.io.File
 import scala.util.Random
@@ -17,6 +18,7 @@ case class ExperimentConfig(
                              networkModel: NetworkConfig,
                              downloadBandwidthModel: DownloadBandwidthConfig,
                              nodesComputingPowerModel: LongSequence.Config, //values are interpreted as node nominal performance in [gas/second] units; for convenience we define a unit of performance 1 sprocket = 1 million gas/second
+                             nodesComputingPowerBaseline: Gas,//minimal required nominal performance of a node [gas/second]
                              numberOfValidators: Int,
                              validatorsWeights: IntSequence.Config,
                              finalizer: FinalizerConfig,
@@ -164,6 +166,7 @@ object ExperimentConfig {
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequence.Config.PseudoGaussian(100000, 20000000)),
     downloadBandwidthModel = DownloadBandwidthConfig.Uniform(1000000),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, alpha = 1.3),
+    nodesComputingPowerBaseline = 10000,
     numberOfValidators = 10,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),

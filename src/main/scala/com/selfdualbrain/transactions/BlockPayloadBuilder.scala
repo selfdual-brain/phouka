@@ -47,7 +47,7 @@ object BlockPayloadBuilder {
       val acc = new PayloadAccumulator
       RepeatUntilExitCondition {
         val t = transactionsStream.next()
-        val exitCondition = acc.payloadSize + t.sizeInBytes > sizeLimit || acc.totalGas + t.costAsGas > sizeLimit
+        val exitCondition = acc.payloadSize + t.sizeInBytes > sizeLimit || acc.totalGas + t.costAsGas > costLimit
         if (! exitCondition)
           acc.append(t)
         exitCondition

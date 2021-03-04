@@ -34,6 +34,8 @@ class LfbElementInfo(val block: AbstractNormalBlock, numberOfValidators: Int) {
   //snapshot of faulty validators map at the moment of achieving "completely finalized" status
   private var faultyValidatorsSnapshot: Array[Boolean] = _
 
+  def timepointOfFirstFinality: SimTimepoint = visiblyFinalizedTimeX
+
   def isVisiblyFinalized: Boolean = isVisiblyFinalizedX
 
   def isCompletelyFinalized: Boolean = isCompletelyFinalizedX

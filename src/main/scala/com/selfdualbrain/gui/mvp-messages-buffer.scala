@@ -27,7 +27,7 @@ class MessageBufferPresenter extends Presenter[SimulationDisplayModel, Simulatio
 
 class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, MessageBufferPresenter] {
   private val events_Table = new SmartTable(guiLayoutConfig)
-  this.setPreferredSize(new Dimension(500,400))
+  this.setPreferredSize(new Dimension(330,400))
   this.add(events_Table, BorderLayout.CENTER)
   this.surroundWithTitledBorder("Messages buffer")
 
@@ -93,7 +93,7 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         },
         textAlignment = TextAlignment.LEFT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 120,
+        preferredWidth = 300,
         maxWidth = 500
       )
     )

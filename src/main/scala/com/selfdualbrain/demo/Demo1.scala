@@ -53,12 +53,27 @@ object Demo1 {
 
     assert (numberOfSteps <= Int.MaxValue) //limitation of the GUI (but the engine can accept Long value)
 
+    val proposeStrategy: ProposeStrategyConfig =
+      if (args.length <= 1)
+        exampleNcbConfig
+      else {
+        args(1) match {
+          case "ncb" => exampleNcbConfig
+          case "sls" => exampleLeadersSequenceConfig
+          case "lsdr" => exampleHighwayConfig
+          case other =>
+            println(s"command-line parameter 1 (validator-propose-strategy) was [$other], expected one of: ncb, sls, lsdr")
+            System.exit(1)
+            throw new LineUnreachable
+        }
+      }
+
     val randomSeed: Long =
-      if (args.length <= 1) {
+      if (args.length <= 2) {
         val random = new Random
         random.nextLong
       } else
-        parseLongAndInformUserIfFailed(args(1), 2, "random seed", expectPositiveValue = false)
+        parseLongAndInformUserIfFailed(args(2), 3, "random seed", expectPositiveValue = false)
 
     //set look-and-feel to mimic local OS
     val lookAndFeel = UIManager.getSystemLookAndFeelClassName
@@ -72,7 +87,7 @@ object Demo1 {
     println(s"random seed used: $randomSeed")
 
     //create experiment configuration
-    val config = createSimulationConfig(randomSeed)
+    val config = createSimulationConfig(randomSeed, proposeStrategy)
 
     //build simulation engine instance
     simulationSetup  = new ConfigBasedSimulationSetup(config)
@@ -122,7 +137,25 @@ object Demo1 {
     sessionManager.mountTopPresenter(nodeStatsPresenter, Some("Per-node stats"))
   }
 
-  def createSimulationConfig(randomSeed: Long): ExperimentConfig =
+  private val exampleNcbConfig: ProposeStrategyConfig = ProposeStrategyConfig.NaiveCasper(
+    brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 4, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
+    blocksFractionAsPercentage = 4
+  )
+
+  private val exampleLeadersSequenceConfig: ProposeStrategyConfig = ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds(TimeDelta.seconds(15))
+
+  private val exampleHighwayConfig: ProposeStrategyConfig = ProposeStrategyConfig.Highway(
+    initialRoundExponent = 14,
+    omegaWaitingMargin = 10000,
+    exponentAccelerationPeriod = 20,
+    exponentInertia = 8,
+    runaheadTolerance = 5,
+    droppedBricksMovingAverageWindow = TimeDelta.minutes(5),
+    droppedBricksAlarmLevel = 0.05,
+    droppedBricksAlarmSuppressionPeriod = 3
+  )
+
+  def createSimulationConfig(randomSeed: Long, bricksProposeStrategy: ProposeStrategyConfig): ExperimentConfig =
     ExperimentConfig(
       randomSeed = Some(randomSeed),
       networkModel = NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(
@@ -137,14 +170,12 @@ object Demo1 {
       ),
       downloadBandwidthModel = DownloadBandwidthConfig.Generic(LongSequence.Config.Uniform(min = NetworkSpeed.megabitsPerSecond(2), max = NetworkSpeed.megabitsPerSecond(20))),
       nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 200000, alpha = 1.2),
+      nodesComputingPowerBaseline = 200000,
       numberOfValidators = 25,
       validatorsWeights = IntSequence.Config.ParetoWithCap(minValue = 100, maxValue = 1000, alpha = 1.5),
       finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),
       forkChoiceStrategy = ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized,
-      bricksProposeStrategy = ProposeStrategyConfig.NaiveCasper(
-        brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 4, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
-        blocksFractionAsPercentage = 4
-      ),
+      bricksProposeStrategy,
       disruptionModel = DisruptionModelConfig.VanillaBlockchain,
       transactionsStreamModel = TransactionsStreamConfig.IndependentSizeAndExecutionCost(
         sizeDistribution = IntSequence.Config.Exponential(mean = 1000), //in bytes

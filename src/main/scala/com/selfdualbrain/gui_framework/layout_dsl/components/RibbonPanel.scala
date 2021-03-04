@@ -152,15 +152,15 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
         gbc.anchor = GridBagConstraints.CENTER
         gbc.weightx = 0.0
         gbc.weighty = 0.0
-        gbc.fill = GridBagConstraints.NONE
+        gbc.fill = GridBagConstraints.HORIZONTAL
         gbc.insets = new Insets(0, preGap, 0, postGap)
       case Orientation.VERTICAL =>
         gbc.gridx = 0
         gbc.gridy = position
         gbc.anchor = GridBagConstraints.WEST
-        gbc.weightx = 0.0
+        gbc.weightx = 1.0
         gbc.weighty = 0.0
-        gbc.fill = GridBagConstraints.NONE
+        gbc.fill = GridBagConstraints.HORIZONTAL
         gbc.insets = new Insets(preGap, 0, postGap, 0)
     }
     this.add(checkboxComponent, gbc)

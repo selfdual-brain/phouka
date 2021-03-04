@@ -6,6 +6,7 @@ import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval, Movi
 import com.selfdualbrain.des.{Event, SimulationObserver}
 import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, EventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.transactions.Gas
 import com.selfdualbrain.util.RepeatUntilExitCondition
 
 import scala.collection.mutable
@@ -32,6 +33,7 @@ class DefaultStatsProcessor(
                              val relativeFTT: Double,
                              val ackLevel: Int,
                              val totalWeight: Ether,
+                             nodesComputingPowerBaseline: Gas,
                              genesis: Block,
                              engine: BlockchainSimulationEngine
                          ) extends SimulationObserver[BlockchainNodeRef, EventPayload] with BlockchainSimulationStats {
@@ -59,9 +61,9 @@ class DefaultStatsProcessor(
   private var gasInAllBlocks: Long = 0L
 
   //--------------- COUNTERS OF STUFF IN (VISIBLY) FINALIZED BLOCKS -----------------------
-  private var transactionsInFinalizedBlocks: Long = 0L
-  private var payloadInFinalizedBlocks: Long = 0L
-
+  private var transactionsInVisiblyFinalizedBlocks: Long = 0L
+  private var payloadInVisiblyFinalizedBlocks: Long = 0L
+  private var gasInVisiblyFinalizedBlocks: Long = 0L
 
   //counter of visibly finalized blocks (= at least one validator established finality)
   private var visiblyFinalizedBlocksCounter: Long = 0
@@ -77,7 +79,8 @@ class DefaultStatsProcessor(
   private val blocksByGenerationCounters = new TreeNodesByGenerationCounter
   blocksByGenerationCounters.nodeAdded(0) //counting genesis
   //metainfo+stats we attach to LFB chain elements
-  private val finalityMap = new FastIntMap[LfbElementInfo](numberOfValidators)
+  //the map is: generation -----> corresponding block metainfo
+  private val finalityMap = new FastIntMap[LfbElementInfo](2000)
   //exact sum of finality delays (as microseconds) for all completely finalized blocks
   private var exactSumOfFinalityDelays: Long = 0L
   //"moving window average" of latency (the moving window is expressed in terms of certain number of generations)
@@ -210,8 +213,9 @@ class DefaultStatsProcessor(
         if (! wasVisiblyFinalizedBefore && lfbElementInfo.isVisiblyFinalized) {
           visiblyFinalizedBlocksCounter += 1
           assert (visiblyFinalizedBlocksCounter == finalizedBlock.generation)
-          transactionsInFinalizedBlocks += finalizedBlock.numberOfTransactions
-          payloadInFinalizedBlocks += finalizedBlock.payloadSize
+          transactionsInVisiblyFinalizedBlocks += finalizedBlock.numberOfTransactions
+          payloadInVisiblyFinalizedBlocks += finalizedBlock.payloadSize
+          gasInVisiblyFinalizedBlocks += finalizedBlock.totalGas
           visiblyFinalizedBlocksMovingWindowCounter.beep(finalizedBlock.generation, eventTimepoint.micros)
         }
 
@@ -394,11 +398,24 @@ class DefaultStatsProcessor(
 
   override def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint] = faultyValidatorsFreezingPoints(vid)
 
-  override def totalThroughputTransactionsPerSecond: Double = transactionsInFinalizedBlocks.toDouble / totalTime.asSeconds
+  override def totalThroughputTransactionsPerSecond: Double = transactionsInVisiblyFinalizedBlocks.toDouble / totalTime.asSeconds
 
   override def totalThroughputGasPerSecond: Double = gasInAllBlocks.toDouble / totalTime.asSeconds
 
-  override def protocolOverhead: Double = (cumulativeBinarySizeOfAllBricks - payloadInFinalizedBlocks).toDouble / cumulativeBinarySizeOfAllBricks
+  override def consensusEfficiency: Double =
+    if (visiblyFinalizedBlocksCounter < 2)
+      0.0
+    else {
+      val gasInFirstFinalizedBlock: Gas = finalityMap(1).block.totalGas
+      val whenFirstFinalizedBlockWasFinalized: SimTimepoint = finalityMap(1).timepointOfFirstFinality
+      val gasInAllTransactionsWeConsider: Gas = gasInVisiblyFinalizedBlocks - gasInFirstFinalizedBlock
+      val x: Double = gasInAllTransactionsWeConsider.toDouble / nodesComputingPowerBaseline
+      val whenLastFinalizedBlockWasFinalized = finalityMap(visiblyFinalizedBlocksCounter.toInt).timepointOfFirstFinality
+      val y: Double = TimeDelta.convertToSeconds(whenLastFinalizedBlockWasFinalized timePassedSince whenFirstFinalizedBlockWasFinalized)
+      x / y
+    }
+
+  override def protocolOverhead: Double = (cumulativeBinarySizeOfAllBricks - payloadInVisiblyFinalizedBlocks).toDouble / cumulativeBinarySizeOfAllBricks
 
   override def topConsumptionDelay: Double = engine.agents.map(node => perNodeStats(node).averageConsumptionDelay).max
 

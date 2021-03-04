@@ -19,6 +19,7 @@ class LeadersSeqValidatorsFactory(
                                    msgValidationCostModel: LongSequence.Config,
                                    msgCreationCostModel: LongSequence.Config,
                                    computingPowersGenerator: LongSequence.Generator,
+                                   computingPowerBaseline: Long,
                                    msgBufferSherlockMode: Boolean,
                                    brickHeaderCoreSize: Int,
                                    singleJustificationSize: Int,
@@ -42,6 +43,7 @@ class LeadersSeqValidatorsFactory(
     conf.ackLevel = ackLevel
     conf.blockPayloadBuilder = blockPayloadBuilder
     conf.computingPower = computingPowersGenerator.next()
+    assert(conf.computingPower >= computingPowerBaseline)
     conf.msgValidationCostModel = msgValidationCostModel
     conf.msgCreationCostModel = msgCreationCostModel
     conf.finalizationCostFormula = finalizationCostFormula

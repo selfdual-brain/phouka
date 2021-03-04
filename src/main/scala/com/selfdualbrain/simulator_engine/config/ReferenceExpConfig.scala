@@ -34,6 +34,7 @@ object ReferenceExpConfig {
     ),
     downloadBandwidthModel = DownloadBandwidthConfig.Uniform(1000000), //download = 1 megabit per second
     nodesComputingPowerModel = LongSequence.Config.Fixed(5000000), //computing power = 5 sprockets
+    nodesComputingPowerBaseline = 5000000,
     numberOfValidators = 5,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 1, relativeFTT = 0.25),
@@ -136,6 +137,7 @@ object ReferenceExpConfig {
         generatorCfg = LongSequence.Config.PseudoGaussian(min = 10000, max = 10000000) //from 10 kbit/s to 10 Mbit/sec
       ),
       nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 300000, alpha = 1.2),
+      nodesComputingPowerBaseline = 300000,
       numberOfValidators = 25,
       validatorsWeights,
       finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),

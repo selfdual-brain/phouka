@@ -9,7 +9,8 @@ import com.selfdualbrain.gui_framework.{MvpViewWithSealedModel, Orientation, Pan
 import com.selfdualbrain.simulator_engine.EventTag
 
 import java.awt._
-import javax.swing.JCheckBox
+import javax.swing.border.EtchedBorder
+import javax.swing.{JCheckBox, JScrollPane, ScrollPaneConstants}
 import scala.collection.mutable
 
 /**
@@ -80,25 +81,34 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
 
   private val node2checkbox = new mutable.HashMap[BlockchainNodeRef, JCheckBox]
   private val eventTag2checkbox = new mutable.HashMap[Int, JCheckBox]
-  private val allNodesCheckbox = new JCheckBox("show all")
-  private val allEventsCheckbox = new JCheckBox("show all")
+  private val allNodesCheckbox = new JCheckBox("disable")
+  private val allEventsCheckbox = new JCheckBox("disable")
   private var checkboxHandlersEnabled: Boolean = true
 
   private val allNodesSwitchPanel = new PlainPanel(guiLayoutConfig)
+  allNodesSwitchPanel.surroundWithTitledBorder("")
   private val nodesSelectionPanel = this.buildValidatorsSelectionPanel()
+
   private val allEventsSwitchPanel = new PlainPanel(guiLayoutConfig)
+  allEventsSwitchPanel.surroundWithTitledBorder("")
   private val eventTypesSelectionPanel = this.buildEventTypesSelectionPanel()
+
   private val nodesContainerPanel = new StaticSplitPanel(guiLayoutConfig, PanelEdge.NORTH)
   private val eventsContainerPanel = new StaticSplitPanel(guiLayoutConfig, PanelEdge.NORTH)
 
   nodesContainerPanel.mountChildPanels(nodesSelectionPanel, allNodesSwitchPanel)
-  nodesContainerPanel.surroundWithTitledBorder("Filter validators")
+  nodesContainerPanel.surroundWithTitledBorder("by node")
   eventsContainerPanel.mountChildPanels(eventTypesSelectionPanel, allEventsSwitchPanel)
-  eventsContainerPanel.surroundWithTitledBorder("Filter event types")
-  eventsContainerPanel.setPreferredSize(new Dimension(170, -1))
+  eventsContainerPanel.surroundWithTitledBorder("by event type")
+  eventsContainerPanel.setPreferredSize(new Dimension(240, -1))
   allNodesSwitchPanel.add(allNodesCheckbox, BorderLayout.WEST)
   allEventsSwitchPanel.add(allEventsCheckbox, BorderLayout.WEST)
   this.mountChildPanels(nodesContainerPanel, eventsContainerPanel)
+
+//  allNodesSwitchPanel.setBackground(Color.GREEN)
+//  allEventsSwitchPanel.setBackground(Color.MAGENTA)
+//  eventsContainerPanel.setBackground(Color.CYAN)
+//  nodesContainerPanel.setBackground(Color.ORANGE)
 
   allNodesCheckbox ~~> {
     if (checkboxHandlersEnabled)
@@ -110,39 +120,30 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
       presenter.toggleAllEventsSwitch(allEventsCheckbox.isSelected)
   }
 
-  setPreferredSize(new Dimension(350, 350))
+  setPreferredSize(new Dimension(330, 680))
 
   this.afterModelConnected()
 
   private def buildValidatorsSelectionPanel(): PlainPanel = {
-    val panel = new PlainPanel(guiLayoutConfig)
-    panel.setLayout(new GridBagLayout)
-    val n = model.experimentConfig.numberOfValidators
-    val numberOfRows: Int = math.ceil(n / 2).toInt
+    val result = new PlainPanel(guiLayoutConfig)
+    val checkboxesContainer = new RibbonPanel(guiLayoutConfig, Orientation.VERTICAL)
 
-    for {
-      col <- 0 to 1
-      row <- 0 until numberOfRows
-    } {
-      val gbc = new GridBagConstraints
-      gbc.gridx = col
-      gbc.gridy = row
-      gbc.anchor = GridBagConstraints.WEST
-      gbc.weightx = 0.0
-      gbc.weighty = 0.0
-      gbc.fill = GridBagConstraints.NONE
-      gbc.insets = new Insets(0, 0, 0, 0)
-      val nodeId = col * numberOfRows + row
-      val checkbox = new JCheckBox(nodeId.toString)
+    for (nodeId <- 0 until model.engine.numberOfAgents) {
+      val checkbox = checkboxesContainer.addCheckbox(text = nodeId.toString, isEditable = true, preGap = 0, postGap = 0)
       node2checkbox += BlockchainNodeRef(nodeId) -> checkbox
-      panel.add(checkbox, gbc)
       checkbox ~~> {
         if (checkboxHandlersEnabled)
           presenter.toggleSingleNode(BlockchainNodeRef(nodeId), checkbox.isSelected)
       }
     }
+    checkboxesContainer.addSpacer()
 
-    return panel
+    val scrollPane = new JScrollPane(checkboxesContainer)
+    scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
+    scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS)
+
+    result.add(scrollPane, BorderLayout.CENTER)
+    return result
   }
 
   private def buildEventTypesSelectionPanel(): PlainPanel = {
@@ -150,7 +151,7 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
     val numberOfEventTypes: Int = EventTag.collection.size
     //we want to preserve the sorting implied by event tag values (=integers)
     //the assumption is that these numbers are consecutive (no holes in numbering)
-    for (tag <- 1 to numberOfEventTypes) {
+    for (tag <- 0 until numberOfEventTypes) {
       val eventTypeName: String = EventTag.collection(tag)
       val checkbox = panel.addCheckbox(text = eventTypeName, isEditable = true, preGap = 0, postGap = 0)
       eventTag2checkbox += tag -> checkbox
@@ -200,7 +201,7 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
     } else {
       allEventsCheckbox.setSelected(false)
       eventTypesSelectionPanel.setVisible(true)
-      for (tag <- 1 to EventTag.collection.size)
+      for (tag <- 0 until EventTag.collection.size)
         eventTag2checkbox(tag).setSelected(filter.eventTags.contains(tag))
     }
 

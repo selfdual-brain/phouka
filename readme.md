@@ -60,7 +60,7 @@ This is what you will see:
 
 `Demo1` class accepts two (optional) command-line arguments:
 
-1. Number of steps of the simulation (int value, default is 1000000).
+1. Number of steps of the simulation (int value, default is 1 million steps).
 2. Seed of the random numbers generator; if not provided here, a random seed will be created automatically.
 
 You may find the contents of the GUI a little cryptic at first. When a mouse pointer stops at the header of a table, a tooltip
