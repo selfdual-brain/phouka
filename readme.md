@@ -58,14 +58,22 @@ This is what you will see:
 
 ![Screenshot after running Demo1 under IntelliJ Idea](./doc/demo1-screenshot.png)
 
-`Demo1` class accepts 3 (optional) command-line arguments:
+`Demo1` class accepts up to 3 command-line arguments:
 
 1. Number of steps of the simulation (int value, default is 1 million steps).
-2. Variant of the protocol:
+2. Variant of the protocol (string value without quotes, default is ncb):
    - ncb - picks "naive casper" variant
    - sls - picks "simple leaders sequence" variant
    - lsdr - picks "leaders sequence with dynamic rounds" variant
 3. Seed of the random numbers generator; if not provided here, a random seed will be created automatically.
+
+For example your command-line arguments may look like:
+
+```bigquery
+5000000 sls 42
+```
+
+This will make the Demo1 to run for 5 million cycles, using simple leaders sequence variant of consensus and random seed 42.
 
 You may find the contents of the GUI a little cryptic at first. When a mouse pointer stops at the header of a table, a tooltip
 with short explanation will be displayed.
