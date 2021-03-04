@@ -58,16 +58,20 @@ This is what you will see:
 
 ![Screenshot after running Demo1 under IntelliJ Idea](./doc/demo1-screenshot.png)
 
-`Demo1` class accepts two (optional) command-line arguments:
+`Demo1` class accepts 3 (optional) command-line arguments:
 
 1. Number of steps of the simulation (int value, default is 1 million steps).
-2. Seed of the random numbers generator; if not provided here, a random seed will be created automatically.
+2. Variant of the protocol:
+   - ncb - picks "naive casper" variant
+   - sls - picks "simple leaders sequence" variant
+   - lsdr - picks "leaders sequence with dynamic rounds" variant
+3. Seed of the random numbers generator; if not provided here, a random seed will be created automatically.
 
 You may find the contents of the GUI a little cryptic at first. When a mouse pointer stops at the header of a table, a tooltip
 with short explanation will be displayed.
 
-Feel free to adjust parameters in the Demo1 yourself. You can also use `ReferenceExpConfig` class, which contains a handful
-of ready-to-use blockchain configurations.
+Feel free to adjust parameters in the Demo1 yourself (this requires editing the hardcoded config in Demo1 class). You can also
+use `ReferenceExpConfig` class, which contains a handful of ready-to-use blockchain configurations.
 
 **Remarks**
 
