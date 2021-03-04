@@ -101,10 +101,10 @@ object Demo1 {
       engine,
       stats = simulationSetup.guiCompatibleStats.get,
       genesis,
-      expectedNumberOfBricks = 10000,
-      expectedNumberOfEvents = 1000000,
+      expectedNumberOfBricks = 1000000,
+      expectedNumberOfEvents = 5000000,
       maxNumberOfAgents = 100,
-      lfbChainMaxLengthEstimation = 1000
+      lfbChainMaxLengthEstimation = 10000
     )
 
     //run simulation

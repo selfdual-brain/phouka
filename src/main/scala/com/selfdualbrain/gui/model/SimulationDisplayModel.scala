@@ -416,9 +416,9 @@ object SimulationDisplayModel {
       expSetup.guiCompatibleStats.get,
       genesis,
       expectedNumberOfBricks = 10000,
-      expectedNumberOfEvents = 100000,
+      expectedNumberOfEvents = 1000000,
       maxNumberOfAgents = 100,
-      lfbChainMaxLengthEstimation = 200
+      lfbChainMaxLengthEstimation = 10000
     )
   }
 

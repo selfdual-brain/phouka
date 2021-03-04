@@ -413,6 +413,9 @@ class NodeStatsProcessor(
           lastNetworkOutageStartX = None
         }
 
+      case EventPayload.StrategySpecificOutput(cargo) =>
+        //ignore
+
       case EventPayload.Diagnostic(info) =>
         //ignore
     }

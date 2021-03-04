@@ -71,7 +71,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
   def this(config: Config) =
     this(config, {
         val s = new State
-        s.knownBricks = new mutable.HashSet[Brick](1000, 0.75)
+        s.knownBricks = new mutable.HashSet[Brick](50000, 0.75)
         s.block2bgame = new LayeredMap[Block, BGame](block => block.generation)
         s.lastFinalizedBlock = config.genesis
         s.globalPanorama = ACC.Panorama.empty
