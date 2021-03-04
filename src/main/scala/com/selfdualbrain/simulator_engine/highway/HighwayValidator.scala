@@ -224,19 +224,18 @@ object HighwayValidator {
   *
   * This entanglement is reflected by the Finalizer component. An instance of Finalizer is plugged-in at ValidatorBaseImpl level
   * and is generally used for the creation of new blocks and ballots.
-  * Here in Highway there is however a small twist: lambda-response ballot is it be created NOT with the complete knowledge of a validator
-  * (i.e. latest j-dag), but with a subset obtained as justifications-closure of 2-elements set: {my-last-brick, lambda-message-at-hand}.
+  *
+  * Here in Highway there is however a small twist: lambda-response ballot is to be created NOT with the complete knowledge of a validator
+  * (i.e. latest j-dag), but with a subset of this knowledge obtained as justifications-closure of 2-elements set: {my-last-brick, lambda-message-at-hand}.
   *
   * In production code, the right way to go would be using fork-choice implementation that is not based on last-finalized-block and takes
-  * as input any panorama. Such a fork-choice implementation is needed anyway because of required fork-choice validation of incoming bricks.
-  * However, such an implementation is very complex and performance-expensive. Here in the simulator we utilize a completely different approach,
-  * where fork-choice algorithm is way faster, but the price to pay is it not being applicable to any panorama at hand. Instead, we need
-  * a complete instance of Finalized to be able to calculate fork-choice (fork choice depends on stateful caching of b-games, and the cache
-  * is maintained by the finalizer).
+  * as input any panorama instead. Such a fork-choice implementation is needed anyway because of required fork-choice validation of incoming bricks.
+  * However, this "ideal" implementation is very complex and performance-expensive. Here in the simulator we use a different approach,
+  * where fork-choice algorithm is way faster. This optimization is possible because we do not need to "really" validate incoming bricks.
   *
-  * Given the "twist" with lambda-responses and the limitations of our fork-choice implementation, we need to equip every blockchain node with two
-  * independent finalizers: the "primary finalizer" is used for the creation of lambda messages and omega messages, while the "secondary finalizer"
-  * is used for lambda-responses only.
+  * So, our solution is: inside of every node instance we keep another instance of Finalizer just to be able to calculate fork-choice for lambda-responses.
+  * Hence, we have two independent finalizers in every node: the "primary finalizer" is used for the creation of lambda messages and omega messages,
+  * while the "secondary finalizer" is used for lambda-responses fork-choice only.
   */
 class HighwayValidator private (
                                  blockchainNode: BlockchainNodeRef,
@@ -321,7 +320,8 @@ class HighwayValidator private (
     //schedule omega-message publishing (unless we are already past the round wrap-up point)
     val timeNow = context.time()
     if (timeNow < state.currentRoundWrapUpTimepoint) {
-      val omegaTimepoint = SimTimepoint(context.random.nextLong(state.currentRoundWrapUpTimepoint.micros - timeNow.micros))
+      val offset: TimeDelta = context.random.nextLong(state.currentRoundWrapUpTimepoint timePassedSince timeNow)
+      val omegaTimepoint = timeNow + offset
       context.scheduleWakeUp(omegaTimepoint, WakeupMarker.Omega(state.currentRoundId))
     }
   }
