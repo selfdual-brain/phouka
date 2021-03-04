@@ -122,7 +122,9 @@ object ReferenceExpConfig {
     runaheadTolerance = 5,
     droppedBricksMovingAverageWindow = TimeDelta.minutes(5),
     droppedBricksAlarmLevel = 0.05,
-    droppedBricksAlarmSuppressionPeriod = 3
+    droppedBricksAlarmSuppressionPeriod = 3,
+    perLaneOrphanRateCalculationWindow = 15,
+    perLaneOrphanRateThreshold = 0.2
   )
 
   private def genericCfg(seed: Long, bricksProposeStrategy: ProposeStrategyConfig, validatorsWeights: IntSequence.Config, disruptionModel: DisruptionModelConfig): ExperimentConfig =

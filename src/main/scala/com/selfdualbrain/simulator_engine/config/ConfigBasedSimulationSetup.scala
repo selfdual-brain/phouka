@@ -149,7 +149,9 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
         c.omegaWaitingMargin,
         c.droppedBricksMovingAverageWindow,
         c.droppedBricksAlarmLevel,
-        c.droppedBricksAlarmSuppressionPeriod
+        c.droppedBricksAlarmSuppressionPeriod,
+        c.perLaneOrphanRateCalculationWindow,
+        c.perLaneOrphanRateThreshold
       )
 
   }

@@ -9,10 +9,10 @@ import com.selfdualbrain.simulator_engine.highway.PerLaneOrphanRateGauge.LaneBuf
   * We calculate orphan rate separately per every "highway lane", where a lane is identified by a round exponent.
   *
   * Within each lane:
-  * 1. We only consider last N rounds (N is a parameter).
+  * 1. We only consider last M rounds (M is a parameter - see `calculationWindow`).
   * 2. We remove from the calculation all rounds where the corresponding leader is a known equivocator.
   * 2. We only consider rounds equal or older than the highest round within blocks in LFB chain.
-  * 3. Within the remaining set of rounds R we calculate the fraction of rounds which have their lambda message finalized.
+  * 3. Within the remaining set of rounds R we calculate the fraction of rounds which have their lambda message NOT finalized.
   *
   * The design of this class is based on the following goals:
   * - encapsulate above (quite complex) computation
@@ -20,6 +20,7 @@ import com.selfdualbrain.simulator_engine.highway.PerLaneOrphanRateGauge.LaneBuf
   * - offer clean API so that plugging the gauge into a validator class is straightforward
   */
 class PerLaneOrphanRateGauge(isEquivocator: ValidatorId => Boolean, calculationWindow: Int, leaderSeq: Tick => ValidatorId)  {
+  assert (calculationWindow > 0)
   private val lane2buffer= new FastIntMap[LaneBuffer](20)
 
 //##################################### PUBLIC ###################################
@@ -39,10 +40,12 @@ class PerLaneOrphanRateGauge(isEquivocator: ValidatorId => Boolean, calculationW
   }
 
   /**
-    * Returns the orphan rate result (as calculated for the selected lane).
+    * Returns the orphan rate result (as calculated for the selected lane and within the calculation window - see the rules specification
+    * at in the description for PerLaneOrphanRateGauge class.).
     *
     * @param n lane number (= round exponent value)
-    * @return calculated orphan rate
+    * @return calculated orphan rate (as fraction - the result is a value in [0,1] interval, 0 meaning all lambda messages were finalized,
+    *         1 meaning all lambda messages were orphaned
     */
   def orphanRateForLane(n: Int): Double = getLane(n).currentOrphanRate
 
@@ -108,7 +111,7 @@ object PerLaneOrphanRateGauge {
       return if (blocksCounter == 0)
         0.0
       else
-        finalizedCounter.toDouble / blocksCounter
+        (blocksCounter - finalizedCounter.toDouble) / blocksCounter
     }
 
     private def put(roundNumber: Long, leader: ValidatorId, blockId: BlockdagVertexId): Unit = {

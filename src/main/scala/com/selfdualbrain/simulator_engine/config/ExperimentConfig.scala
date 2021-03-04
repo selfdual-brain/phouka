@@ -99,7 +99,9 @@ object ProposeStrategyConfig {
                       runaheadTolerance: Int,
                       droppedBricksMovingAverageWindow: TimeDelta,
                       droppedBricksAlarmLevel: Double,
-                      droppedBricksAlarmSuppressionPeriod: Int
+                      droppedBricksAlarmSuppressionPeriod: Int,
+                      perLaneOrphanRateCalculationWindow: Int,
+                      perLaneOrphanRateThreshold: Double
                     ) extends ProposeStrategyConfig
 }
 

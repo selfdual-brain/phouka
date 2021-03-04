@@ -152,7 +152,9 @@ object Demo1 {
     runaheadTolerance = 5,
     droppedBricksMovingAverageWindow = TimeDelta.minutes(5),
     droppedBricksAlarmLevel = 0.05,
-    droppedBricksAlarmSuppressionPeriod = 3
+    droppedBricksAlarmSuppressionPeriod = 3,
+    perLaneOrphanRateCalculationWindow = 15,
+    perLaneOrphanRateThreshold = 0.2
   )
 
   def createSimulationConfig(randomSeed: Long, bricksProposeStrategy: ProposeStrategyConfig): ExperimentConfig =

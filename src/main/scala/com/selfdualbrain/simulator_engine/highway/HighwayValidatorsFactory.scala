@@ -35,9 +35,10 @@ class HighwayValidatorsFactory(
                                 omegaWaitingMargin: TimeDelta,
                                 droppedBricksMovingAverageWindow: TimeDelta,
                                 droppedBricksAlarmLevel: Double,
-                                droppedBricksAlarmSuppressionPeriod: Int
-
-) extends ValidatorsFactory {
+                                droppedBricksAlarmSuppressionPeriod: Int,
+                                perLaneOrphanRateCalculationWindow: Int,
+                                perLaneOrphanRateThreshold: Double
+    ) extends ValidatorsFactory {
 
   override def create(node: BlockchainNodeRef, vid: ValidatorId, context: ValidatorContext): Validator = {
     val conf = new HighwayValidator.Config
@@ -70,6 +71,8 @@ class HighwayValidatorsFactory(
     conf.droppedBricksMovingAverageWindow = droppedBricksMovingAverageWindow
     conf.droppedBricksAlarmLevel = droppedBricksAlarmLevel
     conf.droppedBricksAlarmSuppressionPeriod = droppedBricksAlarmSuppressionPeriod
+    conf.perLaneOrphanRateCalculationWindow = perLaneOrphanRateCalculationWindow
+    conf.perLaneOrphanRateThreshold = perLaneOrphanRateThreshold
     return new HighwayValidator(node, context, conf)
   }
 
