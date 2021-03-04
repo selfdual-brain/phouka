@@ -66,7 +66,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
       microsToGasConversionRate = conversionRate
   }
 
-  val sharedPanoramasBuilder = new ACC.PanoramaBuilder
+  val sharedPanoramasBuilder = new ACC.PanoramaBuilder(config.numberOfValidators, config.expectedJdagDepth)
 
   val validatorsFactory: ValidatorsFactory = config.bricksProposeStrategy match {
 

@@ -33,7 +33,9 @@ case class ExperimentConfig(
                              brickHeaderCoreSize: Int, //unit = bytes
                              singleJustificationSize: Int, //unit = bytes
                              msgBufferSherlockMode: Boolean,
-                             observers: Seq[ObserverConfig]
+                             observers: Seq[ObserverConfig],
+                             expectedNumberOfBlockGenerations: Int,
+                             expectedJdagDepth: Int
 )
 
 sealed abstract class NetworkConfig
@@ -189,6 +191,8 @@ object ExperimentConfig {
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,
+    expectedNumberOfBlockGenerations = 1000,
+    expectedJdagDepth = 5000,
     observers = Seq(
       ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
       ObserverConfig.FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Some(Seq(BlockchainNodeRef(0))))

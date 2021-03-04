@@ -15,7 +15,7 @@ import scala.collection.mutable.ArrayBuffer
   */
 class TreeNodesByGenerationCounter private (countersStack: ArrayBuffer[Int]) extends CloningSupport[TreeNodesByGenerationCounter] {
 
-  def this() = this(new ArrayBuffer[Int])
+  def this() = this(new ArrayBuffer[Int](5000))
 
   def nodeAdded(generation: Int): Unit = {
     assert (generation >= 0)

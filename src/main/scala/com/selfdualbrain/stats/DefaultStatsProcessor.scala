@@ -85,9 +85,9 @@ class DefaultStatsProcessor(
   private var exactSumOfFinalityDelays: Long = 0L
   //"moving window average" of latency (the moving window is expressed in terms of certain number of generations)
   //this array buffer is seen as a function Int ---> Double, where the argument references generation, value is average finality delay (as seconds)
-  private val latencyMovingWindowAverage = new ArrayBuffer[Double]
+  private val latencyMovingWindowAverage = new ArrayBuffer[Double](5000)
   //... corresponding standard deviation
-  private val latencyMovingWindowStandardDeviation = new ArrayBuffer[Double]
+  private val latencyMovingWindowStandardDeviation = new ArrayBuffer[Double](5000)
   //per-node statistics
   private val node2stats = new FastMapOnIntInterval[NodeStatsProcessor](numberOfValidators)
   //per-validator frozen statistics

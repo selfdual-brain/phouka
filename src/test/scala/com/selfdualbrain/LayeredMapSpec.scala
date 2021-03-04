@@ -15,7 +15,7 @@ class LayeredMapSpec extends BaseSpec {
   val random: Random = new Random(42) //using fixed seed so to have repeatable behaviour of unit tests
 
   class MapOperationsSandbox {
-    val mapInstanceUnderTest = new LayeredMap[Car, User](car => car.id % 7)
+    val mapInstanceUnderTest = new LayeredMap[Car, User](car => car.id % 7, 10, 100)
     val referenceMap = new mutable.HashMap[Car, User]
     val keys = new mutable.HashSet[Car]
 
@@ -50,7 +50,7 @@ class LayeredMapSpec extends BaseSpec {
   }
 
   "layered map" should "return empty iterator when just initialized" in {
-    val map = new LayeredMap[Car, User](car => car.id)
+    val map = new LayeredMap[Car, User](car => car.id, 10, 100)
     var counter: Int = 0
     for ((k,v) <- map)
       counter += 1
@@ -58,7 +58,7 @@ class LayeredMapSpec extends BaseSpec {
   }
 
   it should "be empty when just initialized" in {
-    val map = new LayeredMap[Car, User](car => car.id)
+    val map = new LayeredMap[Car, User](car => car.id, 10, 100)
     map.size shouldBe 0
   }
 

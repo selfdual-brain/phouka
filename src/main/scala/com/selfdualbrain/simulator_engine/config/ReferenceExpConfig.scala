@@ -55,6 +55,8 @@ object ReferenceExpConfig {
     brickHeaderCoreSize = headerSize,
     singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
     msgBufferSherlockMode = true,
+    expectedNumberOfBlockGenerations = 2000,
+    expectedJdagDepth = 10000,
     observers = Seq(
       ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15)
     )
@@ -157,6 +159,8 @@ object ReferenceExpConfig {
       brickHeaderCoreSize = headerSize,
       singleJustificationSize = 32, //corresponds to using 256-bit hashes as brick identifiers and assuming justification is just a list of brick ids
       msgBufferSherlockMode = true,
+      expectedNumberOfBlockGenerations = 2000,
+      expectedJdagDepth = 10000,
       observers = Seq(
         ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15)
       )

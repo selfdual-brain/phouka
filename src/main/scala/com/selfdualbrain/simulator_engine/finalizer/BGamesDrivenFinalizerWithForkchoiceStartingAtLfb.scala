@@ -28,6 +28,7 @@ object BGamesDrivenFinalizerWithForkchoiceStartingAtLfb {
     var globalPanorama: ACC.Panorama = _
     var equivocatorsRegistry: EquivocatorsRegistry = _
     var brick2nextBrickInTheSwimlane: LayeredMap[Brick,Brick] = _
+    var brick2conBiggestValueSoFar: Int = _
   }
 }
 
@@ -64,21 +65,24 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
   //------- outside cloning -----------------------------------------
   private var currentFinalityDetector: Option[ACC.FinalityDetector] = None
   private var output: Option[Finalizer.Listener] = None
+
   //-----------------------------------------------------------------
 
   /*                                                                                    PUBLIC                                                                                     */
 
   def this(config: Config) =
     this(config, {
+        val bGamesBrick2conBootstrapSize = config.numberOfValidators * (config.ackLevel + 3)
         val s = new State
-        s.knownBricks = new mutable.HashSet[Brick](50000, 0.75)
-        s.block2bgame = new LayeredMap[Block, BGame](block => block.generation)
+        s.knownBricks = new mutable.HashSet[Brick](100000, 0.75)
+        s.block2bgame = new LayeredMap[Block, BGame](block => block.generation, expectedNumberOfLevels = 50, expectedLevelSize = config.numberOfValidators)
         s.lastFinalizedBlock = config.genesis
         s.globalPanorama = ACC.Panorama.empty
         s.equivocatorsRegistry = new EquivocatorsRegistry(config.numberOfValidators, config.weightsOfValidators, config.absoluteFTT)
-        val newBGame = new BGame(config.genesis, config.weightsOfValidators, s.equivocatorsRegistry)
+        val newBGame = new BGame(config.genesis, config.weightsOfValidators, s.equivocatorsRegistry, config.numberOfValidators, bGamesBrick2conBootstrapSize)
         s.block2bgame += config.genesis -> newBGame
-        s.brick2nextBrickInTheSwimlane = new LayeredMap[Brick,Brick](brick => brick.daglevel)
+        s.brick2nextBrickInTheSwimlane = new LayeredMap[Brick,Brick](brick => brick.daglevel, 100, config.numberOfValidators)
+        s.brick2conBiggestValueSoFar = bGamesBrick2conBootstrapSize
         s
       }
     )
@@ -87,7 +91,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
     val clonedEquivocatorsRegistry = state.equivocatorsRegistry.createDetachedCopy()
     val clonedState = new State
     clonedState.knownBricks = state.knownBricks.clone()
-    clonedState.block2bgame = new LayeredMap[Block, BGame](block => block.generation)
+    clonedState.block2bgame = new LayeredMap[Block, BGame](block => block.generation, expectedNumberOfLevels = 50, expectedLevelSize = config.numberOfValidators)
     for ((block, bGame) <- state.block2bgame)
       clonedState.block2bgame += block -> bGame.createDetachedCopy(clonedEquivocatorsRegistry)
     clonedState.lastFinalizedBlock = state.lastFinalizedBlock
@@ -126,7 +130,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
     brick match {
       case x: AbstractNormalBlock =>
         if (x.generation >= state.lastFinalizedBlock.generation) {
-          val newBGame = new BGame(x, config.weightsOfValidators, state.equivocatorsRegistry)
+          val newBGame = new BGame(x, config.weightsOfValidators, state.equivocatorsRegistry, config.numberOfValidators, state.brick2conBiggestValueSoFar)
           state.block2bgame += x -> newBGame
           applyNewVoteToBGamesChain(brick, x)
         }
@@ -168,7 +172,9 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
         val p = b.parent
         if (p.generation >= state.lastFinalizedBlock.generation) {
           val bgameAnchoredAtParent: BGame = state.block2bgame(p)
-          bgameAnchoredAtParent.addVote(vote, b)
+          val brick2conSize: Int = bgameAnchoredAtParent.addVote(vote, b)
+          if (brick2conSize > state.brick2conBiggestValueSoFar)
+          state.brick2conBiggestValueSoFar = brick2conSize
           applyNewVoteToBGamesChain(vote, p)
         }
     }
@@ -180,8 +186,9 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
       case Some(summit) =>
         if (! summit.isAtMaxAckLevel && output.isDefined)
           output.get.preFinality(state.lastFinalizedBlock, summit)
-        if (summit.isAtMaxAckLevel && output.isDefined) {
-          output.get.blockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit, currentFinalityDetector.get)
+        if (summit.isAtMaxAckLevel) {
+          if (output.isDefined)
+            output.get.blockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit, currentFinalityDetector.get)
           state.lastFinalizedBlock = summit.consensusValue
           state.block2bgame.pruneLevelsBelow(state.lastFinalizedBlock.generation)
           state.brick2nextBrickInTheSwimlane.pruneLevelsBelow(state.lastFinalizedBlock.daglevel)

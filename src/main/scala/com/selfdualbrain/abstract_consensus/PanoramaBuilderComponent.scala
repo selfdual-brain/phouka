@@ -7,9 +7,9 @@ import scala.collection.mutable
 
 trait PanoramaBuilderComponent[MessageId, ValidatorId, Con, ConsensusMessage] extends AbstractCasperConsensus[MessageId, ValidatorId, Con, ConsensusMessage] {
 
-  class PanoramaBuilder {
+  class PanoramaBuilder(numberOfValidators: Int, expectedJdagDepth: Int) {
 
-    private val message2panorama = new LayeredMap[ConsensusMessage,Panorama](levelIdExtractor = cmApi.daglevel)
+    private val message2panorama = new LayeredMap[ConsensusMessage,Panorama](levelIdExtractor = cmApi.daglevel, expectedJdagDepth, numberOfValidators)
 
     /**
       * Calculates panorama of given msg.

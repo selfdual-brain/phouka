@@ -35,12 +35,12 @@ class BGame private (
                       pLastKnownEquivocator: Int
                     ) extends ACC.Estimator {
 
-  def this(anchor: Block, weight: ValidatorId => Ether, equivocatorsRegistry: EquivocatorsRegistry) = this(
+  def this(anchor: Block, weight: ValidatorId => Ether, equivocatorsRegistry: EquivocatorsRegistry, numberOfValidators: Int, brick2conEstimatedSize: Int) = this(
     anchor,
     weight,
     equivocatorsRegistry,
-    pBrick2con = new mutable.HashMap[Brick, AbstractNormalBlock],
-    pCon2sum = new IndexedArrayOfAccumulators[AbstractNormalBlock],
+    pBrick2con = new mutable.HashMap[Brick, AbstractNormalBlock](brick2conEstimatedSize ,0.75),
+    pCon2sum = new IndexedArrayOfAccumulators[AbstractNormalBlock](numberOfValidators),
     pValidator2con = new mutable.HashMap[ValidatorId, AbstractNormalBlock],
     pLastKnownEquivocator = -1
   )
@@ -69,30 +69,28 @@ class BGame private (
 
   override def toString: String = s"BGame-${anchor.id}"
 
-  def addVote(votingBrick: Brick, consensusValue: AbstractNormalBlock): Unit = {
+  def addVote(votingBrick: Brick, consensusValue: AbstractNormalBlock): Int = {
     brick2con += votingBrick -> consensusValue
     val validator = votingBrick.creator
 
-    if (equivocatorsRegistry.isKnownEquivocator(validator))
-      return
-
-    validator2con.get(validator) match {
-      case Some(old) =>
-        if (old == consensusValue)
-          return
-        else {
-          //this validator is just changing its vote in this b-game
-          con2sum.transferValue(old, consensusValue, weight(validator))
+    if (! equivocatorsRegistry.isKnownEquivocator(validator)) {
+      validator2con.get(validator) match {
+        case Some(old) =>
+          if (old != consensusValue) {
+            //this validator is just changing its vote in this b-game
+            con2sum.transferValue(old, consensusValue, weight(validator))
+            validator2con += validator -> consensusValue
+            isFcMemoValid = false
+          }
+        case None =>
+          //this validator places his first vote in this b-game
+          con2sum.increase(consensusValue, weight(validator))
           validator2con += validator -> consensusValue
           isFcMemoValid = false
-        }
-      case None =>
-        //this validator places his first vote in this b-game
-        con2sum.increase(consensusValue, weight(validator))
-        validator2con += validator -> consensusValue
-        isFcMemoValid = false
+      }
     }
 
+    return brick2con.size
   }
 
   override def winnerConsensusValue: Option[AbstractNormalBlock] =
@@ -164,7 +162,7 @@ object BGame {
 
   class IndexedArrayOfAccumulators[K] private(m: mutable.Map[K,Accumulator]) extends CloningSupport[IndexedArrayOfAccumulators[K]] {
 
-    def this() = this(new mutable.HashMap[K,Accumulator])
+    def this(initialSize: Int) = this(new mutable.HashMap[K,Accumulator](initialSize, 0.75))
 
     private val internalMap: mutable.Map[K,Accumulator] = m
 

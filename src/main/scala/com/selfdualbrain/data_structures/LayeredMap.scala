@@ -17,7 +17,8 @@ class LayeredMap[K,V] private (
                        pLevels: mutable.HashMap[Int, mutable.Map[K,V]],
                        pCounterOfElements: Int,
                        pLowestLevelAllowed: Int,
-                       pHighestLevelInUse: Int
+                       pHighestLevelInUse: Int,
+                       expectedLevelSize: Int
                      ) extends mutable.Map[K,V] with CloningSupport[LayeredMap[K,V]] {
 
   private var levels = pLevels
@@ -30,20 +31,21 @@ class LayeredMap[K,V] private (
     *
     * @param levelIdExtractor a function that given a key, assigns it to some level
     */
-  def this(levelIdExtractor: K => Int) =
+  def this(levelIdExtractor: K => Int, expectedNumberOfLevels: Int, expectedLevelSize: Int) =
     this(
       levelIdExtractor,
-      pLevels = new mutable.HashMap[Int, mutable.Map[K,V]],
+      pLevels = new mutable.HashMap[Int, mutable.Map[K,V]](expectedNumberOfLevels, 0.75),
       pCounterOfElements = 0,
       pLowestLevelAllowed = 0,
-      pHighestLevelInUse = 0
+      pHighestLevelInUse = 0,
+      expectedLevelSize
     )
 
   override def createDetachedCopy(): LayeredMap[K, V] = {
     val clonedLevels = new mutable.HashMap[Int, mutable.Map[K,V]](levels.size, mutable.HashMap.defaultLoadFactor)
     for ((k,v) <- levels)
       clonedLevels += k -> v.clone()
-    return new LayeredMap[K,V](levelIdExtractor, clonedLevels, counterOfElements, lowestLevelAllowed, highestLevelInUse)
+    return new LayeredMap[K,V](levelIdExtractor, clonedLevels, counterOfElements, lowestLevelAllowed, highestLevelInUse, expectedLevelSize)
   }
 
   override def get(key: K): Option[V] =
@@ -58,7 +60,7 @@ class LayeredMap[K,V] private (
     assert(level >= lowestLevelAllowed, s"attempted to insert key with level=$level which is below lowest level allowed at the moment: $lowestLevelAllowed")
     levels.get(level) match {
       case None =>
-        val newLevelMap = new mutable.HashMap[K,V]
+        val newLevelMap = new mutable.HashMap[K,V](expectedLevelSize, 0.75)
         levels += level -> newLevelMap
         newLevelMap += elem
         counterOfElements += 1

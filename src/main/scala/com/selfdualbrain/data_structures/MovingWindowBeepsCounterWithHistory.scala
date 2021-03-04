@@ -18,7 +18,7 @@ package com.selfdualbrain.data_structures
 class MovingWindowBeepsCounterWithHistory(windowSize: Long, resolution: Long) {
   assert(windowSize % resolution == 0, "window size must be a multiple of resolution")
   private val beepsBuffer = new CircularSummingBuffer((windowSize / resolution).toInt)
-  private val checkpoints = new FastMapOnIntInterval[Int]((windowSize / resolution * 100).toInt)
+  private val checkpoints = new FastMapOnIntInterval[Int]((windowSize / resolution * 5000).toInt)
   private var lastTimepoint: Long = 0
   private var lastEventId: Int = 0
   private var currentCell: Int = 0
