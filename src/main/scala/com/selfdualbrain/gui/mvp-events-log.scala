@@ -243,6 +243,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           case EventPayload.NetworkConnectionLost => EMPTY
           case EventPayload.NetworkConnectionRestored => EMPTY
           case EventPayload.StrategySpecificOutput(cargo) => cargo.toString
+          case EventPayload.Diagnostic(info) => info
           case other => throw new RuntimeException(s"unexpected payload: $payload")
         }
     }

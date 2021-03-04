@@ -5,8 +5,6 @@ import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.transactions.BlockPayload
 
-import scala.collection.immutable.ArraySeq
-
 object LeadersSeqValidator {
 
   class Config extends ValidatorBaseImpl.Config {
@@ -71,10 +69,10 @@ class LeadersSeqValidator private (
     val (roundStart, roundStop) = roundBoundary(round)
     if (context.time() <= roundStop) {
       val leaderForThisRound = config.leadersSequencer.findLeaderForRound(round)
+      context.addOutputEvent(EventPayload.Diagnostic(s"wake-up for round $round, found out that this time the leader must be $leaderForThisRound"))
       publishNewBrick(leaderForThisRound == config.validatorId, round, roundStop)
     }
     scheduleNextWakeup(beAggressive = false)
-
   }
 
   private def roundBoundary(round: Long): (SimTimepoint, SimTimepoint) = {
@@ -95,6 +93,8 @@ class LeadersSeqValidator private (
       context.broadcast(t2, brick, t2 timePassedSince t1)
       state.mySwimlane.append(brick)
       state.myLastMessagePublished = Some(brick)
+    } else {
+      context.addOutputEvent(EventPayload.Diagnostic(s"dropped new ${brick.loggingString} because of missing the deadline $deadline"))
     }
   }
 

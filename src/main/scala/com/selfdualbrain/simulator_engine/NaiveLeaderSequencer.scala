@@ -4,25 +4,30 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.ValidatorId
 import com.selfdualbrain.randomness.Picker
 
-import scala.util.Random
+import java.security.SecureRandom
 
 /**
-  * Extremely simple implementation of a leader sequencer, where the standard Random class is used.
+  * Simple implementation of a leader sequencer, where the SecureRandom class is used.
   * Selection of a leader is randomized but with frequency proportional to its weight.
   *
-  * Caution: this implementation is way too naive (and also unfortunately programming-language-dependent) to be used
-  * in production environment (i.e. in a real blockchain). Nevertheless it is good enough for the purpose of simulation.
+  * Caution: Class scala.util.Random turns out to be not good enough to work correctly here.
   *
   * @param seed random seed to be used by the sequencer
   * @param weightsMap weights of validators
   */
 class NaiveLeaderSequencer(seed: Long, weightsMap: Map[ValidatorId, Ether]) extends LeaderSequencer {
-  private val random = new Random()
   private val freqMap: Map[ValidatorId, Double] = weightsMap map {case (vid,weight) => (vid, weight.toDouble)}
-  private val picker = new Picker[ValidatorId](random, freqMap)
+  private val picker = new Picker[ValidatorId](() => selectRandomDoubleValueFrom01Interval(), freqMap)
+  private var seedToBeUsedByTheRandomizer: Long = 0
 
   def findLeaderForRound(roundId: Long): ValidatorId = {
-    random.setSeed(seed ^ roundId)
+    seedToBeUsedByTheRandomizer = seed ^ roundId
     return picker.select()
+  }
+
+  private def selectRandomDoubleValueFrom01Interval(): Double = {
+    val random = SecureRandom.getInstance("SHA1PRNG", "SUN")
+    random.setSeed(seedToBeUsedByTheRandomizer)
+    return random.nextDouble()
   }
 }

@@ -412,6 +412,9 @@ class NodeStatsProcessor(
           nodeStatus = NodeStatus.NORMAL
           lastNetworkOutageStartX = None
         }
+
+      case EventPayload.Diagnostic(info) =>
+        //ignore
     }
 
   }

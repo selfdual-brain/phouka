@@ -1,21 +1,20 @@
 package com.selfdualbrain.randomness
 
 import scala.reflect.ClassTag
-import scala.util.Random
 
 /**
   * Selects randomly one object from a collection, where the expected probability of each element is predefined.
   *
   * @param freqMap frequency table (it gets automatically normalized, we only require that the sum of relative frequencies
   *                * is a reasonably large number (> 0.00001)
-  * @param random source of randomness
+  * @param sourceOfRandomness source of random values from [0..1] interval (typically it could be just Random.nextDouble function)
   * @tparam T type of elements in the collection we pick from
   */
-class Picker[T](random: Random, freqMap: Map[T, Double])(implicit tag: ClassTag[T]) {
+class Picker[T](sourceOfRandomness: () => Double, freqMap: Map[T, Double])(implicit tag: ClassTag[T]) {
   private val (items, partialSums): (Array[T], Array[Double]) = this.init(freqMap)
 
   def select(): T = {
-    val randomPointFrom01Interval = random.nextDouble()
+    val randomPointFrom01Interval = sourceOfRandomness.apply()
     for (i <- partialSums.indices)
       if (randomPointFrom01Interval < partialSums(i))
         return items(i)

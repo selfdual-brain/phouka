@@ -28,7 +28,7 @@ object NcbValidator {
     override def initialize(nodeId: BlockchainNodeRef, context: ValidatorContext, config: ValidatorBaseImpl.Config): Unit = {
       super.initialize(nodeId, context, config)
       val cf = config.asInstanceOf[NcbValidator.Config]
-      blockVsBallot = new Picker[String](context.random, Map("block" -> cf.blocksFraction, "ballot" -> (100.0 - cf.blocksFraction)))
+      blockVsBallot = new Picker[String](context.random.nextDouble _, Map("block" -> cf.blocksFraction, "ballot" -> (100.0 - cf.blocksFraction)))
       brickProposeDelaysGenerator = LongSequence.Generator.fromConfig(cf.brickProposeDelaysConfig, context.random)
     }
 

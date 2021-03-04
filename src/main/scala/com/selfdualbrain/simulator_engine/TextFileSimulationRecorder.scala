@@ -116,6 +116,8 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
             s"network connection restored"
           case EventPayload.StrategySpecificOutput(cargo) =>
             s"strategy specific: $cargo"
+          case EventPayload.Diagnostic(info) =>
+            s"diagnostic: $info"
           case other => throw new LineUnreachable
         }
 

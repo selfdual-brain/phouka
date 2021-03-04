@@ -111,6 +111,10 @@ object EventPayload {
     override val filteringTag: Int = EventTag.STRATEGY_SPECIFIC_OUTPUT
   }
 
+  case class Diagnostic(info: String) extends EventPayload {
+    override val filteringTag: Int = EventTag.DIAGNOSTIC
+  }
+
   //#################### EXTERNAL ####################
 
   case class Bifurcation(numberOfClones: Int) extends EventPayload {
@@ -153,6 +157,7 @@ object EventTag {
   val NETWORK_CONNECTION_LOST = 23
   val STRATEGY_SPECIFIC_OUTPUT = 24
   val HALT = 25
+  val DIAGNOSTIC = 26
 
   val collection = Map(
     NEW_AGENT_SPAWNED -> "agent created",
@@ -180,7 +185,8 @@ object EventTag {
     NETWORK_CONNECTION_LOST -> "network connection lost",
     NETWORK_CONNECTION_RESTORED -> "network connection restored",
     STRATEGY_SPECIFIC_OUTPUT -> "strategy-specific",
-    HALT -> "halt"
+    HALT -> "halt",
+    DIAGNOSTIC -> "diagnostic"
   )
 
   def of(event: Event[BlockchainNodeRef, EventPayload]): Int = event.payload.filteringTag
