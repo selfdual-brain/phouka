@@ -492,6 +492,12 @@ class NodeStatsProcessor(
 
   override def dataDownloaded: TimeDelta = totalDownloadedDataAsBytes
 
+  override def downloadBandwidthUtilization: Double = {
+    //bandwidth uses [bits/sec], while timeOnline is in micros, hence the conversion of units
+    val dataAmountThatTheoreticallyCouldBeDownloaded: Double = TimeDelta.convertToSeconds(timeOnline) * configuredDownloadBandwidth / 8
+    return dataDownloaded / dataAmountThatTheoreticallyCouldBeDownloaded
+  }
+
   override def allBlocksAccepted: Long = acceptedBlocksCounter
 
   override def allBallotsAccepted: Long = acceptedBallotsCounter

@@ -19,6 +19,7 @@ case class ExperimentConfig(
                              downloadBandwidthModel: DownloadBandwidthConfig,
                              nodesComputingPowerModel: LongSequence.Config, //values are interpreted as node nominal performance in [gas/second] units; for convenience we define a unit of performance 1 sprocket = 1 million gas/second
                              nodesComputingPowerBaseline: Gas,//minimal required nominal performance of a node [gas/second]
+                             consumptionDelayHardLimit: TimeDelta,//exceeding this value halts the simulation
                              numberOfValidators: Int,
                              validatorsWeights: IntSequence.Config,
                              finalizer: FinalizerConfig,
@@ -171,6 +172,7 @@ object ExperimentConfig {
     downloadBandwidthModel = DownloadBandwidthConfig.Uniform(1000000),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 10000, alpha = 1.3),
     nodesComputingPowerBaseline = 10000,
+    consumptionDelayHardLimit = TimeDelta.seconds(10),
     numberOfValidators = 10,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),

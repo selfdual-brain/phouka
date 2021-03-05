@@ -37,6 +37,7 @@ object PresentersSandbox {
     downloadBandwidthModel = DownloadBandwidthConfig.Uniform(1000000),
     nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 100000, alpha = 1.3),
     nodesComputingPowerBaseline = 100000,
+    consumptionDelayHardLimit = TimeDelta.seconds(60),
     numberOfValidators = 25,
     validatorsWeights = IntSequence.Config.Fixed(1),
     finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),

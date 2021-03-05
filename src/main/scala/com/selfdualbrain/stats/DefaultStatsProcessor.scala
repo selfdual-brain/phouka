@@ -424,4 +424,8 @@ class DefaultStatsProcessor(
   override def topNetworkDelayForBlocks: Double = engine.agents.map(node => perNodeStats(node).averageNetworkDelayForBlocks).max
 
   override def topNetworkDelayForBallots: Double = engine.agents.map(node => perNodeStats(node).averageNetworkDelayForBallots).max
+
+  override def topDownloadQueueLength: Long = engine.agents.map(node => perNodeStats(node).downloadQueueMaxLengthAsBytes).max
+
+  override def topDownloadBandwidthUtilization: Double = engine.agents.map(node => perNodeStats(node).downloadBandwidthUtilization).max
 }

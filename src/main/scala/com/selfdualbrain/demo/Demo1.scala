@@ -101,8 +101,8 @@ object Demo1 {
       engine,
       stats = simulationSetup.guiCompatibleStats.get,
       genesis,
-      expectedNumberOfBricks = 1000000,
-      expectedNumberOfEvents = 5000000,
+      expectedNumberOfBricks = (numberOfSteps / 1000000 * 7000).toInt,
+      expectedNumberOfEvents = numberOfSteps.toInt,
       maxNumberOfAgents = 100,
       lfbChainMaxLengthEstimation = 10000
     )
@@ -173,6 +173,7 @@ object Demo1 {
       downloadBandwidthModel = DownloadBandwidthConfig.Generic(LongSequence.Config.Uniform(min = NetworkSpeed.megabitsPerSecond(2), max = NetworkSpeed.megabitsPerSecond(20))),
       nodesComputingPowerModel = LongSequence.Config.Pareto(minValue = 200000, alpha = 1.2),
       nodesComputingPowerBaseline = 200000,
+      consumptionDelayHardLimit = TimeDelta.seconds(60),
       numberOfValidators = 25,
       validatorsWeights = IntSequence.Config.ParetoWithCap(minValue = 100, maxValue = 1000, alpha = 1.5),
       finalizer = FinalizerConfig.SummitsTheoryV2(ackLevel = 3, relativeFTT = 0.30),

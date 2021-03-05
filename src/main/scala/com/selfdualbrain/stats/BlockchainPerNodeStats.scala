@@ -356,6 +356,13 @@ trait BlockchainPerNodeStats {
   def dataDownloaded: Long
 
   /**
+    * Fraction telling how much data this node downloaded (as compared to maximal possible amount od data, given the configured download bandwidth).
+    * It is calculated as:
+    * amount-of-data-downloaded / (download-bandwidth * time-this-node-was-online)
+    */
+  def downloadBandwidthUtilization: Double
+
+  /**
     * Average creation -> delivery delay for blocks [sec].
     * This measures combined networking performance (global internet delays / gossip protocol efficiency / local internet connection speed / network outages
     * - all this will influence the value here).

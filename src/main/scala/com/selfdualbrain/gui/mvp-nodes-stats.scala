@@ -196,6 +196,17 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         maxWidth = 100
       ),
       ColumnDefinition[Double](
+        name = "Dnld%",
+        headerTooltip = "Download bandwidth utilization [%]",
+        runtimeClassOfValues = classOf[Double],
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).downloadBandwidthUtilization * 100,
+        decimalRounding = Some(2),
+        textAlignment = TextAlignment.RIGHT,
+        cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(NETWORKING_COLOR)},
+        preferredWidth = 40,
+        maxWidth = 100
+      ),
+      ColumnDefinition[Double](
         name = "ND-blocks",
         headerTooltip = "Network transport average delay for blocks received [sec]",
         runtimeClassOfValues = classOf[Double],
@@ -215,17 +226,6 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(NETWORKING_COLOR)},
         preferredWidth = 60,
-        maxWidth = 80
-      ),
-      ColumnDefinition[Double](
-        name = "DQ max",
-        headerTooltip = "Download queue max length [MB]",
-        runtimeClassOfValues = classOf[Double],
-        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).downloadQueueMaxLengthAsBytes.toDouble / 1000000,
-        decimalRounding = Some(1),
-        textAlignment = TextAlignment.RIGHT,
-        cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(NETWORKING_COLOR)},
-        preferredWidth = 50,
         maxWidth = 80
       ),
       ColumnDefinition[Double](

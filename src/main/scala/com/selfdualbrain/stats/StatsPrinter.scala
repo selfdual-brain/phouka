@@ -49,6 +49,8 @@ class StatsPrinter(out: AbstractTextOutput) {
     out.section("****** Per-node possible bottlenecks (worst averages among nodes) ******") {
       out.print(f"........consumption delay [sec]: ${stats.topConsumptionDelay}%.2f")
       out.print(f"computing power utilization [%%]: ${stats.topComputingPowerUtilization * 100}%.2f")
+      out.print(f"   download bandwidth util. [%%]: ${stats.topDownloadBandwidthUtilization * 100}%.2f")
+      out.print(f"....... max download queue [MB]: ${stats.topDownloadQueueLength.toDouble / 1000000}%.1f")
       out.print(f".network delay for blocks [sec]: ${stats.topNetworkDelayForBlocks}%.3f")
       out.print(f"network delay for ballots [sec]: ${stats.topNetworkDelayForBallots}%.3f")
     }
@@ -87,6 +89,7 @@ class StatsPrinter(out: AbstractTextOutput) {
       out.print(f"...download bandwidth [MBit/sec]: ${stats.configuredDownloadBandwidth / 1000000}%.2f")
       out.print(f"....max length of download queue: [items] ${stats.downloadQueueMaxLengthAsItems} [MB] ${stats.downloadQueueMaxLengthAsBytes.toDouble / 1000000}")
       out.print(f"...........data transmitted [GB]: download ${stats.dataDownloaded.toDouble / 1000000000}%.2f upload ${stats.dataUploaded.toDouble / 1000000000}%.2f")
+      out.print(f"....download bandwidth util. [%%]: ${stats.downloadBandwidthUtilization * 100}%.2f")
       out.print(s"................published bricks: ${stats.ownBricksPublished} (${stats.ownBlocksPublished} blocks, ${stats.ownBallotsPublished} ballots)")
       out.print(s".................received bricks: ${stats.allBricksReceived} (${stats.allBlocksReceived} blocks, ${stats.allBallotsReceived} ballots)")
       val accepted = stats.allBlocksAccepted + stats.allBallotsAccepted

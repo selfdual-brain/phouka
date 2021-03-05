@@ -4,7 +4,7 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.des.{ObservableSimulationEngine, SimulationObserver}
 import com.selfdualbrain.disruption.DisruptionModel
-import com.selfdualbrain.network.{DownloadBandwidthModel, GenericBandwidthModel, HomogenousNetworkWithRandomDelaysAndUniformDownloadBandwidth, NetworkModel, SymmetricLatencyBandwidthGraphNetwork, UniformBandwidthModel}
+import com.selfdualbrain.network._
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.simulator_engine.core.PhoukaEngine
@@ -170,7 +170,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
     networkModel,
     downloadBandwidthModel,
     genesis,
-    verboseMode = false
+    verboseMode = false,
+    config.consumptionDelayHardLimit
   )
 
   private val chassis = new BlockchainSimulationEngineChassis(coreEngine)

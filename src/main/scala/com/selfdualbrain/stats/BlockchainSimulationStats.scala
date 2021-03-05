@@ -266,4 +266,10 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   //as seconds
   def topNetworkDelayForBallots: Double
+
+  //as bytes
+  def topDownloadQueueLength: Long
+
+  //as fraction
+  def topDownloadBandwidthUtilization: Double
 }

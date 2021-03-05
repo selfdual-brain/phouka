@@ -36,7 +36,8 @@ class PhoukaEngine(
                     networkModel: NetworkModel[BlockchainNodeRef, Brick],
                     downloadBandwidthModel: DownloadBandwidthModel[BlockchainNodeRef],
                     val genesis: AbstractGenesis,
-                    verboseMode: Boolean //verbose mode ON causes publishing ALL events (i.e. including internal engine events that are normally hidden)
+                    verboseMode: Boolean, //verbose mode ON causes publishing ALL events (i.e. including internal engine events that are normally hidden)
+                    consumptionDelayHardLimit: TimeDelta
                 ) extends BlockchainSimulationEngine {
 
   private val log = LoggerFactory.getLogger("** sim-engine")
@@ -239,7 +240,10 @@ class PhoukaEngine(
     box.context.moveForwardLocalClockToAtLeast(timepoint)
     payload match {
       case EventPayload.WakeUp(strategySpecificMarker) =>
-        desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.WakeUpHandlerBegin(eventId, box.context.time() timePassedSince timepoint, strategySpecificMarker))
+        val consumptionDelay: TimeDelta = box.context.time() timePassedSince timepoint
+        desQueue.addOutputEvent(box.context.time(), box.nodeId, EventPayload.WakeUpHandlerBegin(eventId, consumptionDelay, strategySpecificMarker))
+        if (consumptionDelay > consumptionDelayHardLimit)
+          desQueue.addEngineEvent(box.context.time(), Some(agent), EventPayload.Halt("Consumption delay hard limit exceeded"))
         val timeAtBegin = box.context.time()
         box executeAndRecordProcessingTimeConsumption {
           box.validatorInstance.onWakeUp(strategySpecificMarker)
@@ -329,12 +333,16 @@ class PhoukaEngine(
 
   private def performBrickConsumption(destinationAgentBox: NodeBox, eventId: Long, brick: Brick, brickDeliveryTimepoint: SimTimepoint): Unit = {
     destinationAgentBox.context.moveForwardLocalClockToAtLeast(brickDeliveryTimepoint)
+    val consumptionDelay: TimeDelta = destinationAgentBox.context.time() timePassedSince brickDeliveryTimepoint
     desQueue.addOutputEvent(
       timepoint = destinationAgentBox.context.time(),
       source = destinationAgentBox.nodeId,
-      payload = EventPayload.BrickArrivedHandlerBegin(eventId, destinationAgentBox.context.time() timePassedSince brickDeliveryTimepoint, brick)
+      payload = EventPayload.BrickArrivedHandlerBegin(eventId, consumptionDelay, brick)
     )
     val timeAtBegin = destinationAgentBox.context.time()
+    if (consumptionDelay > consumptionDelayHardLimit)
+      desQueue.addEngineEvent(destinationAgentBox.context.time(), Some(destinationAgentBox.nodeId), EventPayload.Halt("Consumption delay hard limit exceeded"))
+
     destinationAgentBox executeAndRecordProcessingTimeConsumption {
       destinationAgentBox.validatorInstance.onNewBrickArrived(brick)
     }
