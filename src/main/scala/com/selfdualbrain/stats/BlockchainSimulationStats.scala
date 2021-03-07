@@ -3,7 +3,8 @@ package com.selfdualbrain.stats
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.{BlockchainNodeRef, ValidatorId}
 import com.selfdualbrain.des.SimulationStats
-import com.selfdualbrain.time.SimTimepoint
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import com.selfdualbrain.transactions.Gas
 
 /**
   * Definition of what statistics (calculated in realtime) we want to have for a blockchain simulation.
@@ -84,6 +85,10 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   def numberOfBlockchainNodes: Int
 
+  def numberOfCrashedNodes: Int
+
+  def numberOfAliveNodes: Int
+
   def totalWeight: Ether
 
   //Average weight of a validator (in ether).
@@ -99,8 +104,28 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   def ackLevel: Int
 
+  def nodesComputingPowerBaseline: Gas
+
   //Average computing power [gas/sec] of a node calculated at blockchain startup, i.e. when nodes are 1-1 to validators.
   def averageComputingPower: Double
+
+  //Minimal computing power [gas/sec] among nodes at blockchain startup, i.e. when nodes are 1-1 to validators.
+  def minimalComputingPower: Double
+
+  //Average download bandwidth [bits/sec] of a node calculated at blockchain startup, i.e. when nodes are 1-1 to validators.
+  def averageDownloadBandwidth: Double
+
+  //Minimal download bandwidth [bits/sec] among nodes - calculated at blockchain startup, i.e. when nodes are 1-1 to validators.
+  def minDownloadBandwidth: Double
+
+  //in bytes
+  //we take into account all nodes (also malicious nodes)
+  def perNodeDownloadedData: Double
+
+  //in bytes
+  //we take into account all nodes (also malicious nodes)
+  def perNodeUploadedData: Double
+
 
   def isFaulty(vid: ValidatorId): Boolean
 
@@ -111,6 +136,21 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   //simulation(t).ballots.size
   def numberOfBallotsPublished: Long
+
+  //as seconds
+  def averageNetworkDelayForBlocks: Double
+
+  //as seconds
+  def averageNetworkDelayForBallots: Double
+
+  //binary size of all blocks+ballots [bytes]
+  def brickdagDataVolume: Long
+
+  //binary size of all blocks [bytes]
+  def totalBinarySizeOfBlocksPublished: Long
+
+  //binary size of all ballots [bytes]
+  def totalBinarySizeOfBallotsPublished: Long
 
   //in bytes
   def averageBlockBinarySize: Double
@@ -255,21 +295,53 @@ trait BlockchainSimulationStats extends SimulationStats {
 
   def perNodeStats(node: BlockchainNodeRef): BlockchainPerNodeStats
 
-  //asSeconds
-  def topConsumptionDelay: Double
+  //Average among nodes of: average consumption delay [sec]
+  def averagePerNodeConsumptionDelay: Double
+
+  //Maximum among nodes of: average consumption delay [sec]
+  def topPerNodeConsumptionDelay: Double
+
+  //Average computing power utilization (among nodes).
+  //as fraction
+  def averagePerNodeComputingPowerUtilization: Double
 
   //as fraction
-  def topComputingPowerUtilization: Double
+  def topPerNodeComputingPowerUtilization: Double
+
+  def averagePerNodeNetworkDelayForBlocks: Double
 
   //as seconds
-  def topNetworkDelayForBlocks: Double
+  def topPerNodeNetworkDelayForBlocks: Double
+
+  def averagePerNodeNetworkDelayForBallots: Double
 
   //as seconds
-  def topNetworkDelayForBallots: Double
+  def topPerNodeNetworkDelayForBallots: Double
 
-  //as bytes
-  def topDownloadQueueLength: Long
+  //For every node we track the current download queue length (in bytes).
+  //Then, over the lifetime of given node, we find the "peak queue length", i.e. the maximum queue length reached by this node.
+  //Then, we find the maximum over the nodes collection.
+  //Result given as bytes.
+  def topPerNodePeakDownloadQueueLength: Double
+
+  //For every node we track the current download queue length (in bytes).
+  //Then, over the lifetime of given node, we find the "peak queue length", i.e. the maximum queue length reached by this node.
+  //Then, we find the average over the nodes collection.
+  //Result given as bytes.
+  def averagePerNodePeakDownloadQueueLength: Double
+
+  def topPerNodeDownloadedData: Double
+
+  def averagePerNodeDownloadedData: Double
+
+  def topPerNodeUploadedData: Double
+
+  def averagePerNodeUploadedData: Double
 
   //as fraction
-  def topDownloadBandwidthUtilization: Double
+  def topPerNodeDownloadBandwidthUtilization: Double
+
+  //as fraction
+  def averagePerNodeDownloadBandwidthUtilization: Double
+
 }

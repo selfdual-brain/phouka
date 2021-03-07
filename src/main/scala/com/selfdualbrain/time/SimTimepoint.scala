@@ -18,6 +18,8 @@ case class SimTimepoint(micros: Long) extends AnyVal with Ordered[SimTimepoint] 
 
   def asHumanReadable: HumanReadableTimeAmount = SimTimepoint.asHumanReadable(micros)
 
+  def asMillis: Double = micros.toDouble / 1000
+
   def asSeconds: Double = micros.toDouble / 1000000
 }
 

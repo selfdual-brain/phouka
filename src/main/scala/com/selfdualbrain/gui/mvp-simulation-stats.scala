@@ -102,8 +102,8 @@ class SimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLa
   }
 
   def refresh(): Unit = {
-    totalTime_TextField <-- model.totalTime
-    totalTimeHHMMSS_TextField <-- model.totalTime.asHumanReadable.toStringCutToSeconds
+    totalTime_TextField <-- model.totalSimulatedTime
+    totalTimeHHMMSS_TextField <-- model.totalSimulatedTime.asHumanReadable.toStringCutToSeconds
     numberOfEvents_TextField <-- model.numberOfEvents
     publishedBricks_TextField <-- model.numberOfBlocksPublished + model.numberOfBallotsPublished
     publishedBlocks_TextField <-- model.numberOfBlocksPublished
@@ -118,9 +118,9 @@ class SimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLa
     throughputOverallPerSecond_TextField <-- f"${model.totalThroughputBlocksPerSecond}%.4f"
     throughputOverallPerMinute_TextField <-- f"${model.totalThroughputBlocksPerSecond * 60}%.3f"
     throughputOverallHour_TextField <-- f"${model.totalThroughputBlocksPerSecond * 3600}%.2f"
-    throughputMovingWindowPerSecond_TextField <-- f"${model.movingWindowThroughput(model.totalTime)}%.4f"
-    throughputMovingWindowPerMinute_TextField <-- f"${model.movingWindowThroughput(model.totalTime) * 60}%.3f"
-    throughputMovingWindowPerHour_TextField <-- f"${model.movingWindowThroughput(model.totalTime) * 3600}%.2f"
+    throughputMovingWindowPerSecond_TextField <-- f"${model.movingWindowThroughput(model.totalSimulatedTime)}%.4f"
+    throughputMovingWindowPerMinute_TextField <-- f"${model.movingWindowThroughput(model.totalSimulatedTime) * 60}%.3f"
+    throughputMovingWindowPerHour_TextField <-- f"${model.movingWindowThroughput(model.totalSimulatedTime) * 3600}%.2f"
     totalWeightOfValidators_TextField <-- model.totalWeight
     absoluteFtt_TextField <-- model.absoluteFTT
     numberOfObservedEquivocators_TextField <-- model.numberOfObservedEquivocators

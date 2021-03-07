@@ -440,7 +440,7 @@ class NodeStatsProcessor(
       case NodeStatus.CRASHED => timeAlive - endedNetworkOutagesTotalTime
     }
 
-  override def timeOfflineAsFractionOfTotalSimulationTime: Double = (globalStats.totalTime.micros - this.timeOnline).toDouble / globalStats.totalTime.micros
+  override def timeOfflineAsFractionOfTotalSimulationTime: Double = (globalStats.totalSimulatedTime.micros - this.timeOnline).toDouble / globalStats.totalSimulatedTime.micros
 
   override def status: NodeStatus = nodeStatus
 
@@ -488,9 +488,9 @@ class NodeStatsProcessor(
 
   override def allBricksReceived: Long = allBlocksReceived + allBallotsReceived
 
-  override def dataUploaded: TimeDelta = totalUploadedDataAsBytes
+  override def dataUploaded: Long = totalUploadedDataAsBytes
 
-  override def dataDownloaded: TimeDelta = totalDownloadedDataAsBytes
+  override def dataDownloaded: Long = totalDownloadedDataAsBytes
 
   override def downloadBandwidthUtilization: Double = {
     //bandwidth uses [bits/sec], while timeOnline is in micros, hence the conversion of units
@@ -514,11 +514,11 @@ class NodeStatsProcessor(
     else
       TimeDelta.convertToSeconds(ownFinalizedBlocksCumulativeLatency) / ownFinalizedBlocksCounter
 
-  override def ownBlocksThroughputBlocksPerSecond: Double = ownFinalizedBlocksCounter / globalStats.totalTime.asSeconds
+  override def ownBlocksThroughputBlocksPerSecond: Double = ownFinalizedBlocksCounter / globalStats.totalSimulatedTime.asSeconds
 
-  override def ownBlocksThroughputTransactionsPerSecond: Double = ownFinalizedBlocksTransactionsCounter.toDouble / globalStats.totalTime.asSeconds
+  override def ownBlocksThroughputTransactionsPerSecond: Double = ownFinalizedBlocksTransactionsCounter.toDouble / globalStats.totalSimulatedTime.asSeconds
 
-  override def ownBlocksThroughputGasPerSecond: Double = ownFinalizedBlocksGasCounter.toDouble / globalStats.totalTime.asSeconds
+  override def ownBlocksThroughputGasPerSecond: Double = ownFinalizedBlocksGasCounter.toDouble / globalStats.totalSimulatedTime.asSeconds
 
   override def ownBlocksOrphanRate: Double =
     if (ownBlocksPublished == 0)
@@ -593,11 +593,11 @@ class NodeStatsProcessor(
 
 /*                                                API - BLOCKCHAIN STATISTICS                                                  */
 
-  override def blockchainThroughputBlocksPerSecond: Double = lastFinalizedBlock.generation.toDouble / globalStats.totalTime.asSeconds
+  override def blockchainThroughputBlocksPerSecond: Double = lastFinalizedBlock.generation.toDouble / globalStats.totalSimulatedTime.asSeconds
 
-  override def blockchainThroughputTransactionsPerSecond: Double = allFinalizedBlocksTransactionsCounter.toDouble / globalStats.totalTime.asSeconds
+  override def blockchainThroughputTransactionsPerSecond: Double = allFinalizedBlocksTransactionsCounter.toDouble / globalStats.totalSimulatedTime.asSeconds
 
-  override def blockchainThroughputGasPerSecond: Double = allFinalizedBlocksGasCounter.toDouble / globalStats.totalTime.asSeconds
+  override def blockchainThroughputGasPerSecond: Double = allFinalizedBlocksGasCounter.toDouble / globalStats.totalSimulatedTime.asSeconds
 
   override def blockchainLatency: Double =
     if (lastFinalizedBlock == genesis)
@@ -605,7 +605,7 @@ class NodeStatsProcessor(
     else
       TimeDelta.convertToSeconds(allFinalizedBlocksCumulativeLatency) / lastFinalizedBlock.generation
 
-  override def blockchainRunahead: TimeDelta = globalStats.totalTime timePassedSince lastFinalizedBlock.timepoint
+  override def blockchainRunahead: TimeDelta = globalStats.totalSimulatedTime timePassedSince lastFinalizedBlock.timepoint
 
   override def blockchainOrphanRate: Double = {
     val allBlocksUpToLfbGeneration: Int = allBlocksByGenerationCounters.numberOfNodesWithGenerationUpTo(lastFinalizedBlockGeneration.toInt)

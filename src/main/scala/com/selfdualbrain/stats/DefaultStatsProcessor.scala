@@ -4,6 +4,7 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval, MovingWindowBeepsCounterWithHistory}
 import com.selfdualbrain.des.{Event, SimulationObserver}
+import com.selfdualbrain.simulator_engine.core.NodeStatus
 import com.selfdualbrain.simulator_engine.{BlockchainSimulationEngine, EventPayload}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.transactions.Gas
@@ -33,7 +34,7 @@ class DefaultStatsProcessor(
                              val relativeFTT: Double,
                              val ackLevel: Int,
                              val totalWeight: Ether,
-                             nodesComputingPowerBaseline: Gas,
+                             val nodesComputingPowerBaseline: Gas,
                              genesis: Block,
                              engine: BlockchainSimulationEngine
                          ) extends SimulationObserver[BlockchainNodeRef, EventPayload] with BlockchainSimulationStats {
@@ -44,18 +45,27 @@ class DefaultStatsProcessor(
   private var lastStepId: Long = -1
   //counter of processed steps
   private var eventsCounter: Long = 0
+  //wall clock time starting point
+  private val wallClockStart: Long = System.currentTimeMillis()
   //agent id ---> validator id (which is non-trivial only because of our approach to simulating equivocators)
   private val agentId2validatorId = new FastMapOnIntInterval[Int](numberOfValidators)
   //counter of published blocks
   private var publishedBlocksCounter: Long = 0L
   //counter of published ballots
   private var publishedBallotsCounter: Long = 0L
+  //blocks that I received
+  private var receivedBlocksCounter: Long = 0
+  //ballots that I received
+  private var receivedBallotsCounter: Long = 0
+  //block delays counter
+  private var sumOfReceivedBlocksNetworkDelays: TimeDelta = 0L
+  //ballot delays counter
+  private var sumOfReceivedBallotsNetworkDelays: TimeDelta = 0L
 
   //--------------- COUNTERS OF STUFF IN ALL PUBLISHED BRICKS -----------------------
   private var cumulativeBinarySizeOfAllBricks: Long = 0
-
-  //--------------- COUNTERS OF STUFF IN ALL PUBLISHED BLOCKS -----------------------
   private var binarySizeOfAllBlocks: Long = 0L
+  private var binarySizeOfAllBallots: Long = 0L
   private var payloadOfAllBlocks: Long = 0L
   private var transactionsInAllBlocks: Long = 0L
   private var gasInAllBlocks: Long = 0L
@@ -104,7 +114,7 @@ class DefaultStatsProcessor(
   latencyMovingWindowAverage.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
   latencyMovingWindowStandardDeviation.addOne(0.0) //corresponds to generation 0 (i.e. Genesis)
 
-  /*                                                        EVENTS PROCESSING                                                                    */
+  /*                                                              EVENTS PROCESSING                                                                    */
 
   /**
     * Updates statistics by taking into account given event.
@@ -141,6 +151,7 @@ class DefaultStatsProcessor(
                 gasInAllBlocks += block.totalGas
               case ballot: Ballot =>
                 publishedBallotsCounter += 1
+                binarySizeOfAllBallots += ballot.binarySize
                 cumulativeBinarySizeOfAllBricks += ballot.binarySize
             }
 
@@ -169,7 +180,16 @@ class DefaultStatsProcessor(
         }
 
       case Event.Transport(id, timepoint, source, destination, payload) =>
-        //ignore
+        payload match {
+          case EventPayload.BrickDelivered(brick) =>
+            if (brick.isInstanceOf[AbstractNormalBlock]) {
+              receivedBlocksCounter += 1
+              sumOfReceivedBlocksNetworkDelays += timepoint timePassedSince brick.timepoint
+            } else {
+              receivedBallotsCounter += 1
+              sumOfReceivedBallotsNetworkDelays += timepoint timePassedSince brick.timepoint
+            }
+        }
 
       case other =>
         //ignore
@@ -295,23 +315,47 @@ class DefaultStatsProcessor(
     }
   }
 
-//#################################################################################################################################################
-//                                                          STATISTICS ACCESSING
-//#################################################################################################################################################
+/*                                                          STATISTICS ACCESSING                                                                  */
 
   override def numberOfBlockchainNodes: ValidatorId = node2stats.size
 
+  override def numberOfCrashedNodes: BlockdagVertexId = node2stats count {case (i, s) => s.status == NodeStatus.CRASHED}
+
+  override def numberOfAliveNodes: BlockdagVertexId = node2stats count {case (i, s) => s.status != NodeStatus.CRASHED}
+
   override def averageWeight: Double = totalWeight.toDouble / numberOfValidators
 
-  override def averageComputingPower: Double = (0 until numberOfValidators).map(i => engine.node(BlockchainNodeRef(i)).computingPower).sum.toDouble / numberOfValidators
+  override val averageComputingPower: Double = (0 until numberOfValidators).map(i => engine.node(BlockchainNodeRef(i)).computingPower).sum.toDouble / numberOfValidators
 
-  override def totalTime: SimTimepoint = engine.currentTime
+  override val minimalComputingPower: Double = (0 until numberOfValidators).map(i => engine.node(BlockchainNodeRef(i)).computingPower).min.toDouble
+
+  override val averageDownloadBandwidth: Double = (0 until numberOfValidators).map(i => engine.node(BlockchainNodeRef(i)).downloadBandwidth).sum / numberOfValidators
+
+  override val minDownloadBandwidth: Double = (0 until numberOfValidators).map(i => engine.node(BlockchainNodeRef(i)).downloadBandwidth).min
+
+  override def perNodeDownloadedData: Double = node2stats.map{case (i, s) => s.dataDownloaded}.sum.toDouble / numberOfBlockchainNodes
+
+  override def perNodeUploadedData: Double = node2stats.map{case (i, s) => s.dataUploaded}.sum.toDouble / numberOfBlockchainNodes
+
+  override def totalSimulatedTime: SimTimepoint = engine.currentTime
+
+  override def totalWallClockTimeAsMillis: Long = System.currentTimeMillis() - wallClockStart
 
   override def numberOfEvents: Long = eventsCounter
 
   override def numberOfBlocksPublished: Long = publishedBlocksCounter
 
   override def numberOfBallotsPublished: Long = publishedBallotsCounter
+
+  override def averageNetworkDelayForBlocks: Double = TimeDelta.convertToSeconds(sumOfReceivedBlocksNetworkDelays) / receivedBlocksCounter
+
+  override def averageNetworkDelayForBallots: Double = TimeDelta.convertToSeconds(sumOfReceivedBallotsNetworkDelays) / receivedBallotsCounter
+
+  override def brickdagDataVolume: Gas = cumulativeBinarySizeOfAllBricks
+
+  override def totalBinarySizeOfBlocksPublished: Long = binarySizeOfAllBlocks
+
+  override def totalBinarySizeOfBallotsPublished: Long = binarySizeOfAllBallots
 
   override def fractionOfBallots: Double = numberOfBallotsPublished.toDouble / (numberOfBlocksPublished + numberOfBallotsPublished)
 
@@ -368,7 +412,7 @@ class DefaultStatsProcessor(
 
   override def cumulativeLatency: Double = exactSumOfFinalityDelays.toDouble / 1000000 / (completelyFinalizedBlocksCounter * numberOfValidators)
 
-  override def totalThroughputBlocksPerSecond: Double = numberOfVisiblyFinalizedBlocks.toDouble / totalTime.asSeconds
+  override def totalThroughputBlocksPerSecond: Double = numberOfVisiblyFinalizedBlocks.toDouble / totalSimulatedTime.asSeconds
 
   private val throughputMovingWindowAsSeconds: Double = throughputMovingWindow.toDouble
 
@@ -398,9 +442,9 @@ class DefaultStatsProcessor(
 
   override def timepointOfFreezingStats(vid: ValidatorId): Option[SimTimepoint] = faultyValidatorsFreezingPoints(vid)
 
-  override def totalThroughputTransactionsPerSecond: Double = transactionsInVisiblyFinalizedBlocks.toDouble / totalTime.asSeconds
+  override def totalThroughputTransactionsPerSecond: Double = transactionsInVisiblyFinalizedBlocks.toDouble / totalSimulatedTime.asSeconds
 
-  override def totalThroughputGasPerSecond: Double = gasInAllBlocks.toDouble / totalTime.asSeconds
+  override def totalThroughputGasPerSecond: Double = gasInAllBlocks.toDouble / totalSimulatedTime.asSeconds
 
   override def consensusEfficiency: Double =
     if (visiblyFinalizedBlocksCounter < 2)
@@ -417,15 +461,36 @@ class DefaultStatsProcessor(
 
   override def protocolOverhead: Double = (cumulativeBinarySizeOfAllBricks - payloadInVisiblyFinalizedBlocks).toDouble / cumulativeBinarySizeOfAllBricks
 
-  override def topConsumptionDelay: Double = engine.agents.map(node => perNodeStats(node).averageConsumptionDelay).max
+  override def topPerNodeConsumptionDelay: Double = maxPerNodeValue(_.averageConsumptionDelay)
+  override def averagePerNodeConsumptionDelay: Double = averagePerNodeValue(stats => stats.averageConsumptionDelay)
 
-  override def topComputingPowerUtilization: Double = engine.agents.map(node => perNodeStats(node).averageComputingPowerUtilization).max
+  override def topPerNodeComputingPowerUtilization: Double = maxPerNodeValue(_.averageComputingPowerUtilization)
+  override def averagePerNodeComputingPowerUtilization: Double = averagePerNodeValue(_.averageComputingPowerUtilization)
 
-  override def topNetworkDelayForBlocks: Double = engine.agents.map(node => perNodeStats(node).averageNetworkDelayForBlocks).max
+  override def topPerNodeNetworkDelayForBlocks: Double = maxPerNodeValue(_.averageNetworkDelayForBlocks)
+  override def averagePerNodeNetworkDelayForBlocks: Double = averagePerNodeValue(_.averageNetworkDelayForBlocks)
 
-  override def topNetworkDelayForBallots: Double = engine.agents.map(node => perNodeStats(node).averageNetworkDelayForBallots).max
+  override def topPerNodeNetworkDelayForBallots: Double = maxPerNodeValue(_.averageNetworkDelayForBallots)
+  override def averagePerNodeNetworkDelayForBallots: Double = averagePerNodeValue(_.averageNetworkDelayForBallots)
 
-  override def topDownloadQueueLength: Long = engine.agents.map(node => perNodeStats(node).downloadQueueMaxLengthAsBytes).max
+  override def topPerNodePeakDownloadQueueLength: Double = maxPerNodeValue(_.downloadQueueMaxLengthAsBytes.toDouble)
+  override def averagePerNodePeakDownloadQueueLength: Double = averagePerNodeValue(_.downloadQueueMaxLengthAsBytes.toDouble)
 
-  override def topDownloadBandwidthUtilization: Double = engine.agents.map(node => perNodeStats(node).downloadBandwidthUtilization).max
+  override def topPerNodeDownloadedData: Double = maxPerNodeValue(_.dataDownloaded.toDouble)
+  override def averagePerNodeDownloadedData: Double = averagePerNodeValue(_.dataDownloaded.toDouble)
+
+  override def topPerNodeUploadedData: Double = maxPerNodeValue(_.dataUploaded.toDouble)
+  override def averagePerNodeUploadedData: Double = averagePerNodeValue(_.dataUploaded.toDouble)
+
+  override def topPerNodeDownloadBandwidthUtilization: Double = maxPerNodeValue(_.downloadBandwidthUtilization)
+  override def averagePerNodeDownloadBandwidthUtilization: Double = averagePerNodeValue(_.downloadBandwidthUtilization)
+
+  /*                                                              PRIVATE                                                       */
+
+  private def averagePerNodeValue(f: BlockchainPerNodeStats => Double): Double = engine.agents.map(node => f(perNodeStats(node))).sum / numberOfBlockchainNodes
+
+  private def maxPerNodeValue(f: BlockchainPerNodeStats => Double): Double = engine.agents.map(node => f(perNodeStats(node))).max
+
+  private def minPerNodeValue(f: BlockchainPerNodeStats => Double): Double = engine.agents.map(node => f(perNodeStats(node))).min
+
 }

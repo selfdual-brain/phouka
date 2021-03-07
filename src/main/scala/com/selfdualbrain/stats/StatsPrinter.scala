@@ -2,61 +2,75 @@ package com.selfdualbrain.stats
 
 import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
 import com.selfdualbrain.textout.AbstractTextOutput
-import com.selfdualbrain.time.TimeDelta
+import com.selfdualbrain.time.{HumanReadableTimeAmount, SimTimepoint, TimeDelta}
 
 class StatsPrinter(out: AbstractTextOutput) {
 
   def print(stats: BlockchainSimulationStats): Unit = {
-    out.section("****** Simulation summary ******") {
-      out.print(s"...............total time [sec]: ${stats.totalTime} (${stats.totalTime.asHumanReadable.toStringCutToSeconds})")
-      out.print(s"...........number of validators: ${stats.numberOfValidators}")
-      out.print(s".........................weight: average ${stats.averageWeight} total ${stats.totalWeight}")
-      out.print(f"average computing power [sprck]: ${stats.averageComputingPower / 1000000}%.5f")
-      out.print(s"...............ack level in use: ${stats.ackLevel}")
-      out.print(s"......fault tolerance threshold: absolute ${stats.absoluteFTT} relative ${stats.relativeFTT}")
-      out.print(s"...............blockchain nodes: total ${stats.numberOfBlockchainNodes} still alive [todo]")
-      out.print(s"...............number of events: ${stats.numberOfEvents}")
-      out.print(s"...............published bricks: ${stats.numberOfBlocksPublished + stats.numberOfBallotsPublished} (${stats.numberOfBlocksPublished} blocks, ${stats.numberOfBallotsPublished} ballots)")
-      out.print(f"........fraction of ballots [%%]: ${stats.fractionOfBallots * 100}%.2f")
-      out.print(s".....number of finalized blocks: ${stats.numberOfVisiblyFinalizedBlocks} visibly, ${stats.numberOfCompletelyFinalizedBlocks} completely")
-      out.print(s"number of observed equivocators: ${stats.numberOfObservedEquivocators}")
+    out.section("************ DES engine ************") {
+      out.print(s"............number of emitted events: ${stats.numberOfEvents}")
+      out.print(s"...............simulation time [sec]: ${stats.totalSimulatedTime} (${stats.totalSimulatedTime.asHumanReadable.toStringCutToSeconds})")
+      val wallClockMillis: Long = stats.totalWallClockTimeAsMillis
+      val wallClockSeconds: Double = wallClockMillis.toDouble / 1000
+      val wallClockHumanReadable: HumanReadableTimeAmount = SimTimepoint(wallClockMillis * 1000).asHumanReadable
+      out.print(f"...............wall-clock time [sec]: $wallClockSeconds%.3f (${wallClockHumanReadable.toStringCutToSeconds})")
+      out.print(f"............. time dilatation factor: ${stats.totalSimulatedTime.asMillis / wallClockMillis.toDouble}%.3f")
     }
 
     out.newLine()
-    out.section("****** Published blocks geometry ******") {
-      out.print(f"........average block size [MB]: ${stats.averageBlockBinarySize / 1000000}%.5f")
-      out.print(f".....average block payload [MB]: ${stats.averageBlockPayloadSize / 1000000}%.5f")
-      out.print(f"......transactions in one block: ${stats.averageNumberOfTransactionsInOneBlock}%.1f")
-      out.print(s".......average block cost [gas]: ${stats.averageBlockExecutionCost.toLong}")
-      out.print(s".....average trans size [bytes]: ${stats.averageTransactionSize.toInt}")
-      out.print(s".......average trans cost [gas]: ${stats.averageTransactionCost.toLong}")
+    out.section("************ Validators ************") {
+      out.print(s"................number of validators: ${stats.numberOfValidators}")
+      out.print(s"..............................weight: average ${stats.averageWeight} total ${stats.totalWeight} absolute-ftt ${stats.absoluteFTT}")
+      out.print(s"........................equivocators: number ${stats.numberOfObservedEquivocators} absolute weight ${stats.weightOfObservedEquivocators} relative weight [%] ${stats.weightOfObservedEquivocatorsAsPercentage}")
     }
 
     out.newLine()
-    out.section("****** Blockchain performance ******") {
-      out.print(f"..................latency [sec]: ${stats.cumulativeLatency}%.2f")
+    out.section("************ Per-node performance ************") {
+      out.print(s".....................number of nodes: total ${stats.numberOfBlockchainNodes} crashed ${stats.numberOfCrashedNodes} still alive ${stats.numberOfAliveNodes}")
+      out.print(f".............consumption delay [sec]: average ${stats.averagePerNodeConsumptionDelay}%.4f max ${stats.topPerNodeConsumptionDelay}%.4f")
+      out.print(f".........computing power [sprockets]: average ${stats.averageComputingPower / 1000000}%.5f minimal ${stats.minimalComputingPower / 1000000}")
+      out.print(f".....computing power utilization [%%]: average ${stats.averagePerNodeComputingPowerUtilization * 100}%.2f max ${stats.topPerNodeComputingPowerUtilization * 100}%.2f")
+      out.print(f".......download bandwidth [Mbit/sec]: average ${stats.averageDownloadBandwidth / 1000000}%.4f min ${stats.minDownloadBandwidth / 1000000}%.4f")
+      out.print(f"..download bandwidth utilization [%%]: average ${stats.averagePerNodeDownloadBandwidthUtilization * 100}%.2f max ${stats.topPerNodeDownloadBandwidthUtilization * 100}%.2f")
+      out.print(f".......per-node downloaded data [GB]: average ${stats.averagePerNodeDownloadedData / 1000000000}%.3f max ${stats.topPerNodeDownloadedData / 1000000000}%.3f")
+      out.print(f".........per-node uploaded data [GB]: average ${stats.averagePerNodeUploadedData / 1000000000 }%.3f max ${stats.averagePerNodeUploadedData / 1000000000}%.3f")
+      out.print(f".....download queue peak length [MB]: average ${stats.averagePerNodePeakDownloadQueueLength / 1000000}%.2f max ${stats.topPerNodePeakDownloadQueueLength / 1000000}%.2f")
+      out.print(f"......network delay for blocks [sec]: average ${stats.averageNetworkDelayForBlocks}%.4f max ${stats.topPerNodeNetworkDelayForBlocks}%.4f")
+      out.print(f".....network delay for ballots [sec]: average ${stats.averageNetworkDelayForBallots}%.4f max ${stats.topPerNodeNetworkDelayForBallots}%.4f")
+    }
+
+    out.newLine()
+    out.section("************ Brickdag geometry ************") {
+      out.print(s"....................published bricks: ${stats.numberOfBlocksPublished + stats.numberOfBallotsPublished} (${stats.numberOfBlocksPublished} blocks, ${stats.numberOfBallotsPublished} ballots)")
+      val volTot = stats.brickdagDataVolume.toDouble / 1000000000
+      val volBallots = stats.totalBinarySizeOfBallotsPublished.toDouble / 1000000000
+      val volBlocks = stats.totalBinarySizeOfBlocksPublished.toDouble / 1000000000
+      out.print(f"...........brickdag data volume [GB]: total $volTot%.3f blocks $volBlocks%.3f ballots $volBallots%.3f")
+      out.print(f".............fraction of ballots [%%]: ${stats.fractionOfBallots * 100}%.2f")
+      out.print(s"....................finalized blocks: ${stats.numberOfVisiblyFinalizedBlocks} visibly, ${stats.numberOfCompletelyFinalizedBlocks} completely")
+      out.print(f".............average block size [MB]: ${stats.averageBlockBinarySize / 1000000}%.5f")
+      out.print(f"..........average block payload [MB]: ${stats.averageBlockPayloadSize / 1000000}%.5f")
+      out.print(f"...........transactions in one block: ${stats.averageNumberOfTransactionsInOneBlock}%.1f")
+      out.print(s"............average block cost [gas]: ${stats.averageBlockExecutionCost.toLong}")
+      out.print(s"..........average trans size [bytes]: ${stats.averageTransactionSize.toInt}")
+      out.print(s"............average trans cost [gas]: ${stats.averageTransactionCost.toLong}")
+    }
+
+    out.newLine()
+    out.section("************ Blockchain transactions processing performance ************") {
+      out.print(f".......................latency [sec]: ${stats.cumulativeLatency}%.2f")
       val bph = stats.totalThroughputBlocksPerSecond * 3600
       val tps = stats.totalThroughputTransactionsPerSecond
       val gps = stats.totalThroughputGasPerSecond.toLong
-      out.print(f".....................throughput: [blocks/h] $bph%.2f [trans/sec] $tps%.2f [gas/sec] $gps ")
+      out.print(f"..........................throughput: [blocks/h] $bph%.2f [trans/sec] $tps%.2f [gas/sec] $gps ")
       val orphanRateAsPercent: Double = stats.orphanRate * 100
-      out.print(f"................orphan rate [%%]: $orphanRateAsPercent%.2f")
-      out.print(f"..........protocol overhead [%%]: ${stats.protocolOverhead * 100}%.2f")
-      out.print(f".......consensus efficiency [%%]: ${stats.consensusEfficiency * 100}%.2f")
+      out.print(f".....................orphan rate [%%]: $orphanRateAsPercent%.2f")
+      out.print(f"...............protocol overhead [%%]: ${stats.protocolOverhead * 100}%.2f")
+      out.print(f"............consensus efficiency [%%]: ${stats.consensusEfficiency * 100}%.2f (with computing power baseline ${stats.nodesComputingPowerBaseline.toDouble / 1000000}%.3f sprockets)")
     }
 
     out.newLine()
-    out.section("****** Per-node possible bottlenecks (worst averages among nodes) ******") {
-      out.print(f"........consumption delay [sec]: ${stats.topConsumptionDelay}%.2f")
-      out.print(f"computing power utilization [%%]: ${stats.topComputingPowerUtilization * 100}%.2f")
-      out.print(f"   download bandwidth util. [%%]: ${stats.topDownloadBandwidthUtilization * 100}%.2f")
-      out.print(f"....... max download queue [MB]: ${stats.topDownloadQueueLength.toDouble / 1000000}%.1f")
-      out.print(f".network delay for blocks [sec]: ${stats.topNetworkDelayForBlocks}%.3f")
-      out.print(f"network delay for ballots [sec]: ${stats.topNetworkDelayForBallots}%.3f")
-    }
-
-      out.newLine()
-    out.section("****** Per-node stats ******") {
+    out.section("************ Per-node stats ************") {
       for (node <- 0 until stats.numberOfBlockchainNodes) {
         out.section(s"=============== node $node ===============") {
           printNodeStats(stats.perNodeStats(BlockchainNodeRef(node)))
