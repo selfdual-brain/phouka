@@ -36,7 +36,8 @@ case class ExperimentConfig(
                              msgBufferSherlockMode: Boolean,
                              observers: Seq[ObserverConfig],
                              expectedNumberOfBlockGenerations: Int,
-                             expectedJdagDepth: Int
+                             expectedJdagDepth: Int,
+                             statsSamplingPeriod: TimeDelta
 )
 
 sealed abstract class NetworkConfig
@@ -195,6 +196,7 @@ object ExperimentConfig {
     msgBufferSherlockMode = true,
     expectedNumberOfBlockGenerations = 1000,
     expectedJdagDepth = 5000,
+    statsSamplingPeriod = TimeDelta.seconds(10),
     observers = Seq(
       ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 15),
       ObserverConfig.FileBasedRecorder(targetDir = new File("."), agentsToBeLogged = Some(Seq(BlockchainNodeRef(0))))

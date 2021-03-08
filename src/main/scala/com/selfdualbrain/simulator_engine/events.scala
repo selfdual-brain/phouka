@@ -53,6 +53,10 @@ object EventPayload {
     override val filteringTag: Int = EventTag.HALT
   }
 
+  case class Heartbeat(impulseNumber: Long) extends EventPayload {
+    override val filteringTag: Int = EventTag.HEARTBEAT
+  }
+
   //#################### SEMANTIC ####################
 
   case class AcceptedIncomingBrickWithoutBuffering(brick: Brick) extends EventPayload {
@@ -112,7 +116,7 @@ object EventPayload {
   }
 
   case class Diagnostic(info: String) extends EventPayload {
-    override val filteringTag: Int = EventTag.DIAGNOSTIC
+    override val filteringTag: Int = EventTag.DIAGNOSTIC_INFO
   }
 
   //#################### EXTERNAL ####################
@@ -157,7 +161,8 @@ object EventTag {
   val NETWORK_CONNECTION_LOST = 23
   val STRATEGY_SPECIFIC_OUTPUT = 24
   val HALT = 25
-  val DIAGNOSTIC = 26
+  val DIAGNOSTIC_INFO = 26
+  val HEARTBEAT = 27
 
   val collection = Map(
     NEW_AGENT_SPAWNED -> "agent created",
@@ -186,7 +191,8 @@ object EventTag {
     NETWORK_CONNECTION_RESTORED -> "network connection restored",
     STRATEGY_SPECIFIC_OUTPUT -> "strategy-specific",
     HALT -> "halt",
-    DIAGNOSTIC -> "diagnostic"
+    DIAGNOSTIC_INFO -> "diagnostic",
+    HEARTBEAT -> "heartbeat"
   )
 
   def of(event: Event[BlockchainNodeRef, EventPayload]): Int = event.payload.filteringTag

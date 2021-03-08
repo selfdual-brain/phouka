@@ -37,11 +37,17 @@ class PhoukaEngine(
                     downloadBandwidthModel: DownloadBandwidthModel[BlockchainNodeRef],
                     val genesis: AbstractGenesis,
                     verboseMode: Boolean, //verbose mode ON causes publishing ALL events (i.e. including internal engine events that are normally hidden)
-                    consumptionDelayHardLimit: TimeDelta
+                    consumptionDelayHardLimit: TimeDelta,
+                    heartbeatPeriod: TimeDelta
                 ) extends BlockchainSimulationEngine {
 
   private val log = LoggerFactory.getLogger("** sim-engine")
-  private[core] val desQueue: SimEventsQueue[BlockchainNodeRef, EventPayload] = new ClassicDesQueue[BlockchainNodeRef, EventPayload](externalEventsStream = disruptionModel)
+  private[core] val desQueue: SimEventsQueue[BlockchainNodeRef, EventPayload] =
+    new ClassicDesQueue[BlockchainNodeRef, EventPayload](
+      externalEventsStream = disruptionModel,
+      heartbeatPeriod,
+      heartbeatEventsPayloadFactory = (seqNumber: Long) => EventPayload.Heartbeat(seqNumber)
+    )
   private var lastBrickId: BlockdagVertexId = 0
   private var stepId: Long = -1L
   private var lastNodeIdAllocated: Int = -1
@@ -146,7 +152,14 @@ class PhoukaEngine(
   private def processNextEventFromQueue(): Option[Event[BlockchainNodeRef,EventPayload]] = {
     val event: Event[BlockchainNodeRef,EventPayload] = desQueue.next()
     event.loggingAgent match {
-      case None => throw new RuntimeException("this is an extension point - currently not used")
+      case None =>
+        event match {
+          case Event.Engine(id, timepoint, agent, EventPayload.Heartbeat(impulse)) =>
+            Some(event) //we always emit heartbeat events
+          case other =>
+            throw new RuntimeException(s"event not supported: $event")
+        }
+
       case Some(agent) =>
         val box = nodes(agent.address)
         return if (box.status == NodeStatus.CRASHED)

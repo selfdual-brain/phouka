@@ -79,7 +79,9 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
           case EventPayload.DownloadCheckpoint =>
             s"download checkpoint at $agent"
           case EventPayload.Halt(reason) =>
-            s"Simulation halted by $agent, reason was: $reason"
+            s"simulation halted by $agent, reason was: $reason"
+          case EventPayload.Heartbeat(impulseNumber) =>
+            s"heartbeat $impulseNumber"
           case other => throw new LineUnreachable
         }
 

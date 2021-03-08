@@ -193,6 +193,7 @@ object Demo1 {
       msgBufferSherlockMode = true,
       expectedNumberOfBlockGenerations = 2000,
       expectedJdagDepth = 10000,
+      statsSamplingPeriod = TimeDelta.seconds(10),
       observers = Seq(
         ObserverConfig.DefaultStatsProcessor(latencyMovingWindow = 10, throughputMovingWindow = 300, throughputCheckpointsDelta = 10)
       )

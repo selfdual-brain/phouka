@@ -1,6 +1,6 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.blockchain_structure.{Ballot, Block, BlockchainNodeRef, Brick, ValidatorId}
+import com.selfdualbrain.blockchain_structure.{Ballot, Block, BlockchainNodeRef, Brick}
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui.model.SimulationDisplayModel.Ev
@@ -109,13 +109,16 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         preferredWidth = 80,
         maxWidth = 80
       ),
-      ColumnDefinition[Int](
+      ColumnDefinition[String](
         name = "Nid",
         headerTooltip = "Id of involved blockchain node",
-        runtimeClassOfValues = classOf[Int],
+        runtimeClassOfValues = classOf[String],
         cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
-          event.loggingAgent.get.address
+          event.loggingAgent match {
+            case Some(agentId) => agentId.address.toString
+            case None => ""
+          }
         },
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
@@ -125,7 +128,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ColumnDefinition[String](
         name = "Vid",
         headerTooltip = "Validator id this node is acting in behalf of",
-        runtimeClassOfValues = classOf[ValidatorId],
+        runtimeClassOfValues = classOf[String],
         cellValueFunction = (rowIndex: Int) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           event.loggingAgent match {
@@ -207,6 +210,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           case EventPayload.NetworkDisruptionEnd(disruptionEventId) => s"disruption-begin = event $disruptionEventId"
           case EventPayload.NewAgentSpawned(validatorId, progenitor) => if (progenitor.isEmpty) s"validator-id=$validatorId" else s"cloned from node $progenitor (validator-id=$validatorId)"
           case EventPayload.Halt(reason) => reason
+          case EventPayload.Heartbeat(impulseNumber) => s"impulse $impulseNumber"
           case other => throw new RuntimeException(s"unexpected payload: $payload")
         }
 

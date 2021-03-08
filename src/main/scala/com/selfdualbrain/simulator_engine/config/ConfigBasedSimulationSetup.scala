@@ -12,6 +12,7 @@ import com.selfdualbrain.simulator_engine.highway.{Highway, HighwayValidatorsFac
 import com.selfdualbrain.simulator_engine.leaders_seq.{LeadersSeq, LeadersSeqValidatorsFactory}
 import com.selfdualbrain.simulator_engine.ncb.{Ncb, NcbValidatorsFactory}
 import com.selfdualbrain.stats.{BlockchainSimulationStats, DefaultStatsProcessor}
+import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.transactions.{BlockPayloadBuilder, TransactionsStream}
 
 import scala.util.Random
@@ -171,7 +172,8 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
     downloadBandwidthModel,
     genesis,
     verboseMode = false,
-    config.consumptionDelayHardLimit
+    config.consumptionDelayHardLimit,
+    heartbeatPeriod = config.statsSamplingPeriod
   )
 
   private val chassis = new BlockchainSimulationEngineChassis(coreEngine)
