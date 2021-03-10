@@ -217,7 +217,7 @@ class GeneralSimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends R
   this.addPanel(transactionsProcessingPerformancePanel, wantGrowX = true, wantGrowY = false)
   this.addSpacer()
 
-  this.surroundWithTitledBorder("Overall statistics")
+//  this.surroundWithTitledBorder("Overall statistics")
   setPreferredSize(new Dimension(800, 850))
 
   override def afterModelConnected(): Unit = {
