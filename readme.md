@@ -230,10 +230,10 @@ IN PROGRESS:
 Milestones achieved:
 - 2020-05-14: project kick-off
 - 2021-02-15: demo-1: hardcoded experiments, limited log analyzer, limited stats, no j-dag graph
+- 2021-03-10: demo-2: hardcoded experiments, limited log analyzer, full stats, no j-dag graph
 
 Current roadmap (estimated):
-- 2021-03-08: demo-2: (demo-1) + full stats
-- 2021-04-xx: demo-3: (demo-2) + limited experiments-manager + full log analyzer
+- 2021-04-15: demo-3: (demo-2) + limited experiments-manager + full log analyzer + improved memory optimizations
 - 2021-05-xx: beta-1: (demo-3) + full experiments-manager
 - 2021-06-xx: beta-2: (beta-1) + full j-dag graph
 - 2021-07-xx: beta-3: (beta-2) + whatever fixes / improvements will be needed at this point  
