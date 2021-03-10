@@ -51,12 +51,13 @@ a counter of processed events showing up on system console. Upon stopping, the f
 
 - complete simulation stats will be printed on System.out
 - a window "Simulation events log" will open
-- a window "Blockchain performance history" will open (throughput and latency charts)
-- a window "Per-node stats" will open  the GUI window containing log of events will open.
+- a window "Simulation stats" will open
 
 This is what you will see:
 
-![Screenshot after running Demo1 under IntelliJ Idea](./doc/demo1-screenshot.png)
+![Simulation stats](./doc/phouka-simulation-stats.png)
+
+![Events log](./docs/phouka-events-log.png)
 
 `Demo1` class accepts up to 3 command-line arguments:
 

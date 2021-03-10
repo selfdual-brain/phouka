@@ -1,27 +1,20 @@
 package com.selfdualbrain.demo
 
 import com.selfdualbrain.blockchain_structure.AbstractGenesis
-import com.selfdualbrain.gui.{EventsLogPresenter, NodeStatsPresenter}
 import com.selfdualbrain.gui.model.SimulationDisplayModel
-import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, RibbonPanel}
-import com.selfdualbrain.gui_framework.{Orientation, SwingSessionManager}
+import com.selfdualbrain.gui.{CombinedSimulationStatsPresenter, EventsLogPresenter}
+import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.network.NetworkSpeed
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.simulator_engine.config._
 import com.selfdualbrain.stats.{BlockchainSimulationStats, StatsPrinter}
 import com.selfdualbrain.textout.TextOutput
-import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
+import com.selfdualbrain.time.{TimeDelta, TimeUnit}
 import com.selfdualbrain.util.LineUnreachable
-import org.jfree.chart.axis.NumberAxis
-import org.jfree.chart.plot.{PlotOrientation, XYPlot}
-import org.jfree.chart.renderer.xy.{DeviationRenderer, XYItemRenderer, XYLineAndShapeRenderer}
-import org.jfree.chart.{ChartPanel, JFreeChart}
-import org.jfree.data.xy.{DefaultXYDataset, XYDataset, YIntervalSeries, YIntervalSeriesCollection}
 import org.slf4j.LoggerFactory
 
-import java.awt.{BasicStroke, BorderLayout, Color, Dimension}
-import javax.swing.{JPanel, UIManager}
+import javax.swing.UIManager
 import scala.util.Random
 
 object Demo1 {
@@ -118,23 +111,22 @@ object Demo1 {
     //print final statistics to System.out
     printStatsToConsole()
 
-    //display charts
-    val latencyChart = createLatencyChart("finalization delay as seconds")
-    val throughputChart = createThroughputChart("finalized blocks per hour")
-    val chartsPanel = new RibbonPanel(sessionManager.guiLayoutConfig, Orientation.VERTICAL)
-    chartsPanel.addPanel(latencyChart, preGap = 0, postGap = 0)
-    chartsPanel.addPanel(throughputChart, preGap = 0, postGap = 0)
-    sessionManager.encapsulateViewInFrame(chartsPanel, "Blockchain performance history")
+//    val latencyChart = createLatencyChart("finalization delay as seconds")
+//    val throughputChart = createThroughputChart("finalized blocks per hour")
+//    val chartsPanel = new RibbonPanel(sessionManager.guiLayoutConfig, Orientation.VERTICAL)
+//    chartsPanel.addPanel(latencyChart, preGap = 0, postGap = 0)
+//    chartsPanel.addPanel(throughputChart, preGap = 0, postGap = 0)
+//    sessionManager.encapsulateViewInFrame(chartsPanel, "Blockchain performance history")
 
     //display events log
     val eventsLogPresenter = new EventsLogPresenter
     eventsLogPresenter.model = simulationDisplayModel
     sessionManager.mountTopPresenter(eventsLogPresenter, Some("Simulation events log"))
 
-    //display node stats
-    val nodeStatsPresenter = new NodeStatsPresenter
-    nodeStatsPresenter.model = simulationDisplayModel
-    sessionManager.mountTopPresenter(nodeStatsPresenter, Some("Per-node stats"))
+    //display stats
+    val statsPresenter = new CombinedSimulationStatsPresenter
+    statsPresenter.model = simulationDisplayModel
+    sessionManager.mountTopPresenter(statsPresenter, Some("Simulation statistics"))
   }
 
   private val exampleNcbConfig: ProposeStrategyConfig = ProposeStrategyConfig.NaiveCasper(
@@ -212,68 +204,68 @@ object Demo1 {
     return stop - start
   }
 
-  def createThroughputChart(label: String): JPanel = {
-    //generating data for the chart
-    val startTime: Long = 0
-    val endTime: Long = engine.currentTime.micros
-    val numberOfSamples: Int = 800
-    val step: Double = (endTime - startTime).toDouble / numberOfSamples
-    val displayedFunction: SimTimepoint => Double = stats.movingWindowThroughput
-    val points = Array.ofDim[Double](2, numberOfSamples)
-    for (i <- 0 until numberOfSamples) {
-      val x: Double = startTime + i * step
-      val xAsLong = x.toLong
-      val timepoint = SimTimepoint(xAsLong)
-      val y: Double = displayedFunction(timepoint) * 3600
-      points(0)(i) = x / 1000000 / 60 //time as minutes
-      points(1)(i) = y // throughput as blocks-per-hour
-    }
+//  def createThroughputChart(label: String): JPanel = {
+//    //generating data for the chart
+//    val startTime: Long = 0
+//    val endTime: Long = engine.currentTime.micros
+//    val numberOfSamples: Int = 800
+//    val step: Double = (endTime - startTime).toDouble / numberOfSamples
+//    val displayedFunction: SimTimepoint => Double = stats.movingWindowThroughput
+//    val points = Array.ofDim[Double](2, numberOfSamples)
+//    for (i <- 0 until numberOfSamples) {
+//      val x: Double = startTime + i * step
+//      val xAsLong = x.toLong
+//      val timepoint = SimTimepoint(xAsLong)
+//      val y: Double = displayedFunction(timepoint) * 3600
+//      points(0)(i) = x / 1000000 / 60 //time as minutes
+//      points(1)(i) = y // throughput as blocks-per-hour
+//    }
+//
+//    //wrapping data into jfreechart-friendly structure
+//    val dataset = new DefaultXYDataset()
+//    dataset.addSeries(1, points)
+//
+//    //displaying as XY chart
+//    val renderer = new XYLineAndShapeRenderer(true, false)
+//    return createChartPanel(dataset, renderer, s"Blockchain throughput ($label)")
+//  }
 
-    //wrapping data into jfreechart-friendly structure
-    val dataset = new DefaultXYDataset()
-    dataset.addSeries(1, points)
-
-    //displaying as XY chart
-    val renderer = new XYLineAndShapeRenderer(true, false)
-    return createChartPanel(dataset, renderer, s"Blockchain throughput ($label)")
-  }
-
-  def createLatencyChart(label: String): JPanel = {
-    //generating data for the chart
-    val n = stats.numberOfCompletelyFinalizedBlocks.toInt
-    val points = new YIntervalSeries(0, false, false)
-    for (generation <- 0 to n) {
-      val average = stats.movingWindowLatencyAverage(generation)
-      val sd = stats.movingWindowLatencyStandardDeviation(generation)
-      points.add(generation, average, average - sd, average + sd)
-    }
-
-    //wrapping data into jfreechart-friendly structure
-    val dataset = new YIntervalSeriesCollection
-    dataset.addSeries(points)
-
-    //displaying as XY chart
-    val renderer = new DeviationRenderer(true, false)
-    renderer.setSeriesStroke(0, new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND))
-    renderer.setSeriesStroke(0, new BasicStroke(3.0f))
-    renderer.setSeriesFillPaint(0, new Color(200, 200, 255))
-    return createChartPanel(dataset, renderer,s"Blockchain latency ($label)")
-  }
-
-  private def createChartPanel(dataset: XYDataset, renderer: XYItemRenderer, title: String): JPanel = {
-    val xAxis: NumberAxis = new NumberAxis
-    xAxis.setAutoRangeIncludesZero(false)
-    val yAxis: NumberAxis = new NumberAxis
-    val plot: XYPlot = new XYPlot(dataset, xAxis, yAxis, renderer)
-    plot.setOrientation(PlotOrientation.VERTICAL)
-    val chart: JFreeChart = new JFreeChart(null, JFreeChart.DEFAULT_TITLE_FONT, plot, false)
-    val panel = new ChartPanel(chart)
-    panel.setPreferredSize(new Dimension(1300, 200))
-    val result = new PlainPanel(sessionManager.guiLayoutConfig)
-    result.add(panel, BorderLayout.CENTER)
-    result.surroundWithTitledBorder(title)
-    return result
-  }
+//  def createLatencyChart(label: String): JPanel = {
+//    //generating data for the chart
+//    val n = stats.numberOfCompletelyFinalizedBlocks.toInt
+//    val points = new YIntervalSeries(0, false, false)
+//    for (generation <- 0 to n) {
+//      val average = stats.movingWindowLatencyAverage(generation)
+//      val sd = stats.movingWindowLatencyStandardDeviation(generation)
+//      points.add(generation, average, average - sd, average + sd)
+//    }
+//
+//    //wrapping data into jfreechart-friendly structure
+//    val dataset = new YIntervalSeriesCollection
+//    dataset.addSeries(points)
+//
+//    //displaying as XY chart
+//    val renderer = new DeviationRenderer(true, false)
+//    renderer.setSeriesStroke(0, new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND))
+//    renderer.setSeriesStroke(0, new BasicStroke(3.0f))
+//    renderer.setSeriesFillPaint(0, new Color(200, 200, 255))
+//    return createChartPanel(dataset, renderer,s"Blockchain latency ($label)")
+//  }
+//
+//  private def createChartPanel(dataset: XYDataset, renderer: XYItemRenderer, title: String): JPanel = {
+//    val xAxis: NumberAxis = new NumberAxis
+//    xAxis.setAutoRangeIncludesZero(false)
+//    val yAxis: NumberAxis = new NumberAxis
+//    val plot: XYPlot = new XYPlot(dataset, xAxis, yAxis, renderer)
+//    plot.setOrientation(PlotOrientation.VERTICAL)
+//    val chart: JFreeChart = new JFreeChart(null, JFreeChart.DEFAULT_TITLE_FONT, plot, false)
+//    val panel = new ChartPanel(chart)
+//    panel.setPreferredSize(new Dimension(1300, 200))
+//    val result = new PlainPanel(sessionManager.guiLayoutConfig)
+//    result.add(panel, BorderLayout.CENTER)
+//    result.surroundWithTitledBorder(title)
+//    return result
+//  }
 
   private def parseLongAndInformUserIfFailed(s: String, paramIndex: Int, paramInfo: String, expectPositiveValue: Boolean): Long = {
     val result: Long =
