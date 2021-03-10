@@ -38,11 +38,16 @@ class GeneralSimulationStatsPresenter extends Presenter[SimulationDisplayModel, 
 
 class GeneralSimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends RibbonPanel(guiLayoutConfig, Orientation.VERTICAL) with MvpView[BlockchainSimulationStats, PresentersTreeVertex] {
 
-  private val desEnginePanel = new FieldsLadderPanel(guiLayoutConfig)
+  private val desEnginePanel: FieldsLadderPanel = new FieldsLadderPanel(guiLayoutConfig)
+  desEnginePanel.fixedLabelWidth = 220
   private val validatorsPanel = new FieldsLadderPanel(guiLayoutConfig)
+  validatorsPanel.fixedLabelWidth = 220
   private val perNodePerformancePanel = new FieldsLadderPanel(guiLayoutConfig)
+  perNodePerformancePanel.fixedLabelWidth = 220
   private val brickdagGeometryPanel = new FieldsLadderPanel(guiLayoutConfig)
+  brickdagGeometryPanel.fixedLabelWidth = 220
   private val transactionsProcessingPerformancePanel = new FieldsLadderPanel(guiLayoutConfig)
+  transactionsProcessingPerformancePanel.fixedLabelWidth = 220
 
   /*   DES engine   */
 
@@ -162,11 +167,12 @@ class GeneralSimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends R
   finalizedBlocks_Ribbon.addSpacer()
 
   private val averageBlock_Ribbon: RibbonPanel = brickdagGeometryPanel.addRibbon("average block")
-  private val averageBlocksSize_TextField: JTextField = averageBlock_Ribbon.addTxtField(label = "binary size [bytes]", width = 70, preGap = 0)
-  private val averageBlocksPayload_TextField: JTextField = averageBlock_Ribbon.addTxtField(label = "payload size [bytes]", width = 70)
+  private val averageBlocksSize_TextField: JTextField = averageBlock_Ribbon.addTxtField(label = "binary size [MB]", width = 70, preGap = 0)
+  private val averageBlocksPayload_TextField: JTextField = averageBlock_Ribbon.addTxtField(label = "payload size [MB]", width = 70)
   private val averageNumberOfTransactionsInOneBlock_TextField: JTextField = averageBlock_Ribbon.addTxtField(label = "transactions", width = 70)
-  private val averageBlockCost_TextField: JTextField = averageBlock_Ribbon.addTxtField(label = "cost [gas]", width = 70)
   averageBlock_Ribbon.addSpacer()
+
+  private val averageBlockCost_TextField: JTextField = brickdagGeometryPanel.addTxtField(label = "transactions in av block cost [gas]", width = 70)
 
   private val averageTransaction_Ribbon: RibbonPanel = brickdagGeometryPanel.addRibbon("average transaction")
   private val averageTransactionSize_TextField: JTextField = averageTransaction_Ribbon.addTxtField(label = "size [bytes]", width = 70, preGap = 0)

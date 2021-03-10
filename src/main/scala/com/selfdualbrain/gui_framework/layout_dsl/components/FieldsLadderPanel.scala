@@ -1,16 +1,23 @@
 package com.selfdualbrain.gui_framework.layout_dsl.components
 
 import java.awt.{Dimension, GridBagConstraints, GridBagLayout, Insets}
-
 import com.selfdualbrain.gui_framework.Orientation
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.swing_tweaks.SmartTextField
-import javax.swing.{JCheckBox, JLabel, JPanel, JTextField}
+
+import javax.swing.{JCheckBox, JLabel, JPanel, JTextField, SwingConstants}
 
 class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) {
   self: JPanel =>
 
   private var lastRowUsed: Int = -1
+  private var minLabelWidthX: Option[Int] = None
+
+  def fixedLabelWidth: Int = minLabelWidthX.get
+
+  def fixedLabelWidth_=(x: Int): Unit = {
+    minLabelWidthX = Some(x)
+  }
 
   this.setLayout(new GridBagLayout)
 
@@ -85,6 +92,12 @@ class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
     //label
     val labelComponent = new JLabel(label)
+    if (minLabelWidthX.isDefined) {
+      labelComponent.setMinimumSize(new Dimension(minLabelWidthX.get, guiLayoutConfig.fieldsHeight))
+      labelComponent.setPreferredSize(new Dimension(minLabelWidthX.get, guiLayoutConfig.fieldsHeight))
+      labelComponent.setMaximumSize(new Dimension(minLabelWidthX.get, guiLayoutConfig.fieldsHeight))
+      labelComponent.setHorizontalAlignment(SwingConstants.RIGHT)
+    }
     val gbc = new GridBagConstraints
     gbc.gridx = 0
     gbc.gridy = lastRowUsed
