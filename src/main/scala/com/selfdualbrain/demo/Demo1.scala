@@ -122,8 +122,8 @@ object Demo1 {
     val latencyChart = createLatencyChart("finalization delay as seconds")
     val throughputChart = createThroughputChart("finalized blocks per hour")
     val chartsPanel = new RibbonPanel(sessionManager.guiLayoutConfig, Orientation.VERTICAL)
-    chartsPanel.addPanel(latencyChart, preGap = 0, postGap = 0, wantGrow = true)
-    chartsPanel.addPanel(throughputChart, preGap = 0, postGap = 0, wantGrow = true)
+    chartsPanel.addPanel(latencyChart, preGap = 0, postGap = 0)
+    chartsPanel.addPanel(throughputChart, preGap = 0, postGap = 0)
     sessionManager.encapsulateViewInFrame(chartsPanel, "Blockchain performance history")
 
     //display events log

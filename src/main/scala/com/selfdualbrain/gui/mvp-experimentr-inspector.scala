@@ -11,13 +11,13 @@ import com.selfdualbrain.gui_framework.{MvpView, PanelEdge, Presenter}
 class ExperimentInspectorPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, ExperimentInspectorPresenter,ExperimentInspectorView, ExperimentInspectorPresenter.Ev] {
   private val eventsLog = new EventsLogPresenter
   private val experimentConfig = new ExperimentInspectorPresenter
-  private val simulationStats = new SimulationStatsPresenter
+  private val simulationStats = new GeneralSimulationStatsPresenter
   private val continueSimulation = new ContinueSimulationPresenter
   private val filterEditor = new FilterEditorPresenter
 //  private val currentValidatorRenderedState = new ValidatorRenderedStatePresenter
 //  private val selectedBrickInfo = new SelectedBrickInfoPresenter
 
-  override protected def createComponents(): Unit = {
+  protected def registerComponents(): Unit = {
     this.addSubpresenter("events-log", eventsLog)
     this.addSubpresenter("experiment-config", experimentConfig)
     this.addSubpresenter("simulation-stats", simulationStats)
@@ -25,10 +25,6 @@ class ExperimentInspectorPresenter extends Presenter[SimulationDisplayModel, Sim
     this.addSubpresenter("filter-editor", filterEditor)
 //    this.addSubpresenter("validator-rendered-state", currentValidatorRenderedState)
 //    this.addSubpresenter("selected-brick-info", selectedBrickInfo)
-  }
-
-  override protected def createSchematicWiring(): Unit = {
-    //todo
   }
 
   override def createDefaultView(): ExperimentInspectorView = new ExperimentInspectorView(guiLayoutConfig)

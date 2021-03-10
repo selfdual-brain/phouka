@@ -10,8 +10,9 @@ abstract class MultiWindowOrchestrator[M,E] extends Presenter[M,Nothing,Nothing,
       p.show(None)
   }
 
-  override def ensureViewIsConnected(): Unit = {
+  override def ensureViewIsConnected(): Nothing = {
     //do nothing
+    throw new RuntimeException
   }
 
 }

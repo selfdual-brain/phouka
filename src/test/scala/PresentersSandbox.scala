@@ -15,7 +15,7 @@ import scala.util.Random
 
 object PresentersSandbox {
   private val log = LoggerFactory.getLogger(s"presenter-sandbox")
-  private val NUMBER_OF_STEPS: Int = 20000
+  private val NUMBER_OF_STEPS: Int = 100000
 
 //  val defaultFont = new Font("Ubuntu", Font.PLAIN, 13)
 
@@ -137,7 +137,7 @@ object PresentersSandbox {
         p.model = config
         p
       case 2 =>
-        val p = new SimulationStatsPresenter
+        val p = new GeneralSimulationStatsPresenter
         p.model = simulationDisplayModel
         p
       case 3 =>
@@ -162,6 +162,14 @@ object PresentersSandbox {
         p
       case 8 =>
         val p = new MessageBufferPresenter
+        p.model = simulationDisplayModel
+        p
+      case 9 =>
+        val p = new PerformanceChartsPresenter
+        p.model = simulationDisplayModel
+        p
+      case 10 =>
+        val p = new CombinedSimulationStatsPresenter
         p.model = simulationDisplayModel
         p
 

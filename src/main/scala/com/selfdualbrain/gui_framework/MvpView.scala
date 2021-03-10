@@ -22,6 +22,7 @@ trait MvpView[M, P <: PresentersTreeVertex] {
 
   def presenter_=(value: P): Unit = {
     _presenter = Some(value)
+    afterPresenterConnected()
   }
 
   def model: M = {
@@ -35,7 +36,13 @@ trait MvpView[M, P <: PresentersTreeVertex] {
     afterModelConnected()
   }
 
-  def afterModelConnected(): Unit
+  def afterPresenterConnected(): Unit = {
+    //by default do nothing
+  }
+
+  def afterModelConnected(): Unit = {
+    //by default do nothing
+  }
 
 }
 

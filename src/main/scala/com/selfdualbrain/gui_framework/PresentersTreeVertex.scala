@@ -15,12 +15,12 @@ abstract class PresentersTreeVertex {
   private val _subpresenters = new mutable.HashMap[String, PresentersTreeVertex]
   private var _parentPresenter: Option[PresentersTreeVertex] = None
 
-  init()
+//  init()
 
-  protected def init(): Unit = {
-    createComponents()
-    createSchematicWiring()
-  }
+//  protected def init(): Unit = {
+//    createComponents()
+//    createSchematicWiring()
+//  }
 
   def initParent(p: PresentersTreeVertex): Unit = {
     assert(_parentPresenter.isEmpty)
@@ -58,13 +58,13 @@ abstract class PresentersTreeVertex {
 
   protected def subpresentersIterator: Iterator[PresentersTreeVertex] = _subpresenters.valuesIterator
 
-  protected def createComponents(): Unit = {
-    //do nothing
-  }
-
-  protected def createSchematicWiring(): Unit = {
-    //do nothing
-  }
+//  protected def createComponents(): Unit = {
+//    //do nothing
+//  }
+//
+//  protected def createSchematicWiring(): Unit = {
+//    //do nothing
+//  }
 
   def show(windowTitleOverride: Option[String]): Unit
 

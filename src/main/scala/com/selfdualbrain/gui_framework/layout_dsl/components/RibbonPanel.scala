@@ -167,7 +167,7 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
     return checkboxComponent
   }
 
-  def addPanel(panel: JPanel, preGap: Int = guiLayoutConfig.ribbonPreGap, postGap: Int = guiLayoutConfig.ribbonPostGap, wantGrow: Boolean = true): Unit = {
+  def addPanel(panel: JPanel, preGap: Int = guiLayoutConfig.ribbonPreGap, postGap: Int = guiLayoutConfig.ribbonPostGap, wantGrowX: Boolean = true, wantGrowY: Boolean = true): Unit = {
     position += 1
     val gbc = new GridBagConstraints
     orientation match {
@@ -175,16 +175,16 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
         gbc.gridx = position
         gbc.gridy = 0
         gbc.anchor = GridBagConstraints.CENTER
-        gbc.weightx = if (wantGrow) 1.0 else 0.0
-        gbc.weighty = if (wantGrow) 1.0 else 0.0
+        gbc.weightx = if (wantGrowX) 1.0 else 0.0
+        gbc.weighty = if (wantGrowY) 1.0 else 0.0
         gbc.fill = GridBagConstraints.BOTH
         gbc.insets = new Insets(0, preGap, 0, postGap)
       case Orientation.VERTICAL =>
         gbc.gridx = 0
         gbc.gridy = position
         gbc.anchor = GridBagConstraints.CENTER
-        gbc.weightx = if (wantGrow) 1.0 else 0.0
-        gbc.weighty = if (wantGrow) 1.0 else 0.0
+        gbc.weightx = if (wantGrowX) 1.0 else 0.0
+        gbc.weighty = if (wantGrowY) 1.0 else 0.0
         gbc.fill = GridBagConstraints.BOTH
         gbc.insets = new Insets(preGap, 0, postGap, 0)
     }

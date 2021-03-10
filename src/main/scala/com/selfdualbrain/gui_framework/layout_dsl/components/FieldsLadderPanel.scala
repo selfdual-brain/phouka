@@ -14,7 +14,7 @@ class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
   this.setLayout(new GridBagLayout)
 
-  def addTxtField(width: Int, label: String, isEditable: Boolean, wantGrow: Boolean = false): JTextField = {
+  def addTxtField(width: Int, label: String, isEditable: Boolean = false, wantGrow: Boolean = false): JTextField = {
     addLabel(label)
     val textFieldComponent = new SmartTextField()
     textFieldComponent.setMinimumSize(new Dimension(width, guiLayoutConfig.fieldsHeight))
@@ -33,7 +33,7 @@ class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     return textFieldComponent
   }
 
-  def addCheckBox(label: String, isEditable: Boolean): JCheckBox = {
+  def addCheckBox(label: String, isEditable: Boolean = false): JCheckBox = {
     addLabel(label)
     val checkboxComponent = new JCheckBox()
     checkboxComponent.setEnabled(isEditable)

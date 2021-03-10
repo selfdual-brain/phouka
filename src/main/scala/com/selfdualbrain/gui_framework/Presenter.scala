@@ -38,7 +38,7 @@ abstract class Presenter[M,VM,VP<:PresentersTreeVertex,V <: MvpView[VM,VP], E] e
   }
 
   def model_=(value: M): Unit = {
-    assert (!hasModel)
+    assert (! hasModel)
     _model = Some(value)
     if (this.hasView)
       this.view.model = this.viewModel
@@ -56,11 +56,12 @@ abstract class Presenter[M,VM,VP<:PresentersTreeVertex,V <: MvpView[VM,VP], E] e
     }
   }
 
-  def ensureViewIsConnected(): Unit = {
+  def ensureViewIsConnected(): V = {
     if (! this.hasView) {
       val v = createDefaultView()
       this.view = v
     }
+    return view
   }
 
   override def show(windowTitleOverride: Option[String]): Unit = {

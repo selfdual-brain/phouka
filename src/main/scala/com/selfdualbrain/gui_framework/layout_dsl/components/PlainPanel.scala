@@ -1,8 +1,8 @@
 package com.selfdualbrain.gui_framework.layout_dsl.components
 
-import java.awt.BorderLayout
-
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
+
+import java.awt.BorderLayout
 import javax.swing.border.TitledBorder
 import javax.swing.{BorderFactory, JPanel}
 
@@ -25,5 +25,7 @@ class PlainPanel(guiLayoutConfig: GuiLayoutConfig) extends JPanel {
 
     this.setBorder(border)
   }
+
+  def wrappedInScroll(horizontalScrollPolicy: String, verticalScrollPolicy: String) = new ScrollablePanel(guiLayoutConfig, this, horizontalScrollPolicy, verticalScrollPolicy)
 
 }
