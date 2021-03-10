@@ -57,7 +57,7 @@ This is what you will see:
 
 ![Simulation stats](./doc/phouka-simulation-stats.png)
 
-![Events log](./docs/phouka-events-log.png)
+![Events log](./doc/phouka-events-log.png)
 
 `Demo1` class accepts up to 3 command-line arguments:
 
