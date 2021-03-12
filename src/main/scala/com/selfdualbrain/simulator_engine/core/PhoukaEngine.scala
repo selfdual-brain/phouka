@@ -92,14 +92,14 @@ class PhoukaEngine(
       if (engineIsHalted)
         return None
 
-      stepId += 1 //first step executed will have number 0
-
       var event: Option[Event[BlockchainNodeRef, EventPayload]] = None
       do {
         if (! desQueue.hasNext)
           return None
         event = processNextEventFromQueue()
       } while (event.isEmpty)
+
+      stepId += 1 //first step executed will have number 0
 
       if (log.isDebugEnabled() && stepId % 1000 == 0)
         log.debug(s"step $stepId")

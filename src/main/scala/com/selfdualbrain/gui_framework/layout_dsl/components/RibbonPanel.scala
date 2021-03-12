@@ -140,9 +140,18 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
     return button
   }
 
-  def addCheckbox(text: String, isEditable: Boolean, preGap: Int = guiLayoutConfig.ribbonPreGap, postGap: Int = guiLayoutConfig.ribbonPostGap): JCheckBox = {
+  def addCheckbox(label: String, isEditable: Boolean, preGap: Int = guiLayoutConfig.ribbonPreGap, postGap: Int = guiLayoutConfig.ribbonPostGap, useNativeLabel: Boolean = false): JCheckBox = {
+    val declaredPreGap = preGap
+    if (! useNativeLabel && label != "")
+      this.addLabel(label, preGap = declaredPreGap)
+
     position += 1
-    val checkboxComponent = new JCheckBox(text)
+    val checkboxComponent =
+      if (useNativeLabel)
+        new JCheckBox(label)
+      else
+        new JCheckBox()
+
     checkboxComponent.setEnabled(isEditable)
     val gbc = new GridBagConstraints
     orientation match {

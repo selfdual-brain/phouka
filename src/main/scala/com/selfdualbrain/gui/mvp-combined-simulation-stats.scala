@@ -52,7 +52,7 @@ class CombinedSimulationStatsView(val guiLayoutConfig: GuiLayoutConfig)
   }
 
   override def afterModelConnected(): Unit = {
-
+    //do nothing
   }
 
 }

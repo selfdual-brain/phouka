@@ -171,6 +171,8 @@ class NodeStatsProcessor(
   //generation of last finalized block; this value coincides with the length of finalized chain (not counting Genesis)
   private var lastFinalizedBlockGeneration: Long = 0
 
+  private var lastSummitTimepointX: SimTimepoint = SimTimepoint.zero
+
   //summit that was built at the moment of finalizing last finalized block
   private var summitForLastFinalizedBlockX: Option[ACC.Summit] = None
 
@@ -363,6 +365,7 @@ class NodeStatsProcessor(
         summitForLastFinalizedBlockX = Some(summit)
         lastPartialSummitForCurrentBGameX = None
         lastFinalizedBlockGeneration = finalizedBlock.generation
+        lastSummitTimepointX = eventTimepoint
         currentBGameStatusX = None
         allFinalizedBlocksCumulativeLatency += eventTimepoint timePassedSince finalizedBlock.timepoint
         allFinalizedBlocksTransactionsCounter += finalizedBlock.numberOfTransactions
@@ -454,6 +457,8 @@ class NodeStatsProcessor(
 
   override def lastFinalizedBlock: Block = lastFinalizedBlockX
 
+  override def lastSummitTimepoint: SimTimepoint = lastSummitTimepointX
+
   override def lastForkChoiceWinner: Block = lastForkChoiceWinnerX
 
   override def currentBGameStatus: Option[(ValidatorId, AbstractNormalBlock)] = currentBGameStatusX
@@ -465,6 +470,10 @@ class NodeStatsProcessor(
   override def jdagSize: Long = localBrickdagSize
 
   override def jdagDepth: Long = localBrickdagDepth
+
+  override def downloadQueueLengthAsBytes: TimeDelta = downloadQueueLengthAsBytesX
+
+  override def downloadQueueLengthAsItems: TimeDelta = downloadQueueLengthAsItemsX
 
   override def numberOfObservedEquivocators: Int = observedEquivocators.size
 

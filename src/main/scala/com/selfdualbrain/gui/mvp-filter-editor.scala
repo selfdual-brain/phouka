@@ -129,7 +129,7 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
     val checkboxesContainer = new RibbonPanel(guiLayoutConfig, Orientation.VERTICAL)
 
     for (nodeId <- 0 until model.engine.numberOfAgents) {
-      val checkbox = checkboxesContainer.addCheckbox(text = nodeId.toString, isEditable = true, preGap = 0, postGap = 0)
+      val checkbox = checkboxesContainer.addCheckbox(label = nodeId.toString, isEditable = true, preGap = 0, postGap = 0, useNativeLabel = true)
       node2checkbox += BlockchainNodeRef(nodeId) -> checkbox
       checkbox ~~> {
         if (checkboxHandlersEnabled)
@@ -153,7 +153,7 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
     //the assumption is that these numbers are consecutive (no holes in numbering)
     for (tag <- 0 until numberOfEventTypes) {
       val eventTypeName: String = EventTag.collection(tag)
-      val checkbox = panel.addCheckbox(text = eventTypeName, isEditable = true, preGap = 0, postGap = 0)
+      val checkbox = panel.addCheckbox(label = eventTypeName, isEditable = true, preGap = 0, postGap = 0, useNativeLabel = true)
       eventTag2checkbox += tag -> checkbox
       checkbox ~~> {
         if (checkboxHandlersEnabled)

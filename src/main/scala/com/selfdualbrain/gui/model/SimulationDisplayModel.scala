@@ -107,7 +107,8 @@ class SimulationDisplayModel(
 
   import SimulationDisplayModel.Ev
 
-  //ever-growing collection of (all) events: step-id ----> event
+  //ever-growing collection of (all) events
+  //this is a map: step-id ----> event
   private val allEvents = new FastMapOnIntInterval[Event[BlockchainNodeRef, EventPayload]](expectedNumberOfEvents)
 
   //Subset of all-events - obtained via applying current filter. This is what "events log" table is showing in the main window.
@@ -134,7 +135,7 @@ class SimulationDisplayModel(
     summits(i) = new FastIntMap[ACC.Summit](lfbChainMaxLengthEstimation)
 
   //Step selection (the GUI shows the state of the simulation as it was just AFTER the execution of this step).
-  private var selectedStepX: Int = 0
+  private var selectedStepX: Int = -1
 
   //The id of selected node (= for which the jdag graph is displayed).
   private var selectedNodeX: BlockchainNodeRef = BlockchainNodeRef(0)
@@ -166,6 +167,8 @@ class SimulationDisplayModel(
                                  receivedBricks: Int,
                                  receivedBlocks: Int,
                                  receivedBallots: Int,
+                                 downloadQueueLengthAsNumberOfItems: Long,
+                                 downloadQueueLengthAsBytes: Long,
                                  acceptedBricks: Int,
                                  acceptedBlocks: Int,
                                  acceptedBallots: Int,
@@ -176,9 +179,11 @@ class SimulationDisplayModel(
                                  ownBlocksOrphaned: Int,
                                  numberOfObservedEquivocators: Int,
                                  weightOfObservedEquivocators: Ether,
+                                 equivocatorsList: Iterable[ValidatorId],
                                  isAfterObservingEquivocationCatastrophe: Boolean,
                                  lfbChainLength: Int,
-                                 lastFinality: Option[ACC.Summit],
+                                 lastSummit: Option[ACC.Summit],
+                                 lastSummitTimepoint: SimTimepoint,
                                  currentBGameAnchor: Block, //this is just last finalized block
                                  currentBGameLastPartialSummit: Option[ACC.Summit],
                                  lastForkChoiceWinner: Block
@@ -313,6 +318,8 @@ class SimulationDisplayModel(
     }
   }
 
+  def selectedEvent: Event[BlockchainNodeRef, EventPayload] = allEvents(selectedStep)
+
   def selectedBrick: Option[Brick] = selectedBrickX
 
   def selectBrick_=(brick: Option[Brick]): Unit = {
@@ -382,6 +389,8 @@ class SimulationDisplayModel(
       receivedBricks = nodeStats.allBricksReceived.toInt,
       receivedBlocks = nodeStats.allBlocksReceived.toInt,
       receivedBallots = nodeStats.allBallotsReceived.toInt,
+      downloadQueueLengthAsNumberOfItems = nodeStats.downloadQueueLengthAsItems,
+      downloadQueueLengthAsBytes = nodeStats.downloadQueueLengthAsBytes,
       acceptedBricks = (nodeStats.allBlocksAccepted + nodeStats.allBallotsAccepted).toInt,
       acceptedBlocks = nodeStats.allBlocksAccepted.toInt,
       acceptedBallots = nodeStats.allBallotsAccepted.toInt,
@@ -392,9 +401,11 @@ class SimulationDisplayModel(
       ownBlocksOrphaned = nodeStats.ownBlocksOrphaned.toInt,
       numberOfObservedEquivocators = nodeStats.numberOfObservedEquivocators,
       weightOfObservedEquivocators = nodeStats.weightOfObservedEquivocators,
+      equivocatorsList = nodeStats.knownEquivocators,
       isAfterObservingEquivocationCatastrophe = nodeStats.isAfterObservingEquivocationCatastrophe,
       lfbChainLength = nodeStats.lengthOfLfbChain.toInt,
-      lastFinality = nodeStats.summitForLastFinalizedBlock,
+      lastSummit = nodeStats.summitForLastFinalizedBlock,
+      lastSummitTimepoint = nodeStats.lastSummitTimepoint,
       currentBGameAnchor = nodeStats.lastFinalizedBlock,
       currentBGameLastPartialSummit = nodeStats.lastPartialSummitForCurrentBGame,
       lastForkChoiceWinner = nodeStats.lastForkChoiceWinner

@@ -4,7 +4,7 @@ import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure._
 import com.selfdualbrain.simulator_engine.MsgBufferSnapshot
 import com.selfdualbrain.simulator_engine.core.NodeStatus
-import com.selfdualbrain.time.TimeDelta
+import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 /**
   * Per blockchain node statistics.
@@ -141,6 +141,9 @@ trait BlockchainPerNodeStats {
   /** Currently last element of LFB chain this node is building. */
   def lastFinalizedBlock: Block
 
+  /** Timepoint when the summit for the last finalized block was established.*/
+  def lastSummitTimepoint: SimTimepoint
+
   /** The block which was the fork-choice winner during last creation of brick done by this node.*/
   def lastForkChoiceWinner: Block
 
@@ -177,6 +180,10 @@ trait BlockchainPerNodeStats {
     * Formally: simulation(t).jdagBricks(v).map(b => b.jDagLevel).max
     */
   def jdagDepth: Long
+
+  def downloadQueueLengthAsBytes: Long
+
+  def downloadQueueLengthAsItems: Long
 
   /** Number of equivocators this node was able to observe so far.*/
   def numberOfObservedEquivocators: Int
