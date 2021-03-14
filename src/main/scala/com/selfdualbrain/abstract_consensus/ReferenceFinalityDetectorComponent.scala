@@ -30,27 +30,25 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
       else
         summitLevel2executionTimeInMicros(summitLevel) / summitLevel2numberOfCases(summitLevel)
 
-    def onLocalJDagUpdated(latestPanorama: Panorama): Option[Summit] = {
+    def onLocalJDagUpdated(latestPanorama: Panorama): FinalityDetectionStatus = {
       invocationsCounter += 1
       val t1 = System.nanoTime()
 
-      val result: Option[Summit] = estimator.winnerConsensusValue match {
+      val result: FinalityDetectionStatus = estimator.winnerConsensusValue match {
         case None =>
-          None
-        case Some(winnerConsensusValue) =>
-          val validatorsVotingForThisValue: Iterable[ValidatorId] = estimator.supportersOfTheWinnerValue
-          val baseTrimmer: Trimmer = findBaseTrimmerOptimized(winnerConsensusValue, validatorsVotingForThisValue, latestPanorama)
-
-          val sumOfWeightsInBaseTrimmer: Ether = sumOfWeights(baseTrimmer.validators)
-          if (sumOfWeightsInBaseTrimmer < quorum)
-            None
+          FinalityDetectionStatus.NoWinnerCandidateYet
+        case Some((winnerConsensusValue, sumOfVotes)) =>
+          if (sumOfVotes < quorum)
+            FinalityDetectionStatus.WinnerCandidateBelowQuorum(winnerConsensusValue, sumOfVotes)
           else {
+            val baseTrimmer: Trimmer = findBaseTrimmerOptimized(winnerConsensusValue, estimator.supportersOfTheWinnerValue, latestPanorama)
             @tailrec
             def detectSummit(committeesStack: List[Trimmer], effectiveQuorumThreshold: Ether, levelEstablished: Int): Summit =
               findCommittee(context = committeesStack.head, candidatesConsidered = committeesStack.head.validatorsSet) match {
                 case None =>
                   Summit(
                     winnerConsensusValue,
+                    sumOfVotes,
                     levelEstablished,
                     effectiveQuorumThreshold,
                     calculateAbsoluteFtt(effectiveQuorumThreshold, levelEstablished),
@@ -61,6 +59,7 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                   if (levelEstablished + 1 == ackLevel)
                     Summit(
                       winnerConsensusValue,
+                      sumOfVotes,
                       levelEstablished + 1,
                       effectiveQ,
                       calculateAbsoluteFtt(q, levelEstablished + 1),
@@ -70,19 +69,30 @@ trait ReferenceFinalityDetectorComponent[MessageId, ValidatorId, Con, ConsensusM
                     detectSummit(trimmer :: committeesStack, effectiveQ, levelEstablished + 1)
               }
 
-            Some(detectSummit(List(baseTrimmer), effectiveQuorumThreshold = sumOfWeightsInBaseTrimmer, levelEstablished = 0))
+            val summit = detectSummit(committeesStack = List(baseTrimmer), effectiveQuorumThreshold = sumOfVotes, levelEstablished = 0)
+            if (summit.ackLevel == ackLevel)
+              FinalityDetectionStatus.Finality(summit)
+            else
+              FinalityDetectionStatus.PreFinality(summit)
           }
       }
 
+      //this is some build-in diagnostic feature (i.e. not essential for the protocol)
       val t2: Long = System.nanoTime()
       val microsConsumed: Long = (t2 - t1) / 1000
       result match {
-        case None =>
+        case FinalityDetectionStatus.NoWinnerCandidateYet =>
           summitLevel2numberOfCases(0) += 1
           summitLevel2executionTimeInMicros(0) += microsConsumed
-        case Some(Summit(consensusValue, level, quorumWeight, absoluteFtt, committees, isAtMaxAckLevel)) =>
-          summitLevel2numberOfCases(level) += 1
-          summitLevel2executionTimeInMicros(level) += microsConsumed
+        case FinalityDetectionStatus.WinnerCandidateBelowQuorum(winner, sumOfVotes) =>
+          summitLevel2numberOfCases(0) += 1
+          summitLevel2executionTimeInMicros(0) += microsConsumed
+        case FinalityDetectionStatus.PreFinality(partialSummit) =>
+          summitLevel2numberOfCases(partialSummit.ackLevel) += 1
+          summitLevel2executionTimeInMicros(partialSummit.ackLevel) += microsConsumed
+        case FinalityDetectionStatus.Finality(summit) =>
+          summitLevel2numberOfCases(summit.ackLevel) += 1
+          summitLevel2executionTimeInMicros(summit.ackLevel) += microsConsumed
       }
 
       return result

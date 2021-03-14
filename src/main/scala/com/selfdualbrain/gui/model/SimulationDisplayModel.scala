@@ -185,6 +185,8 @@ class SimulationDisplayModel(
                                  lastSummit: Option[ACC.Summit],
                                  lastSummitTimepoint: SimTimepoint,
                                  currentBGameAnchor: Block, //this is just last finalized block
+                                 currentBGameWinnerCandidate: Option[AbstractNormalBlock],
+                                 currentBGameWinnerCandidateVotes: Ether,
                                  currentBGameLastPartialSummit: Option[ACC.Summit],
                                  lastForkChoiceWinner: Block
                                )
@@ -407,6 +409,8 @@ class SimulationDisplayModel(
       lastSummit = nodeStats.summitForLastFinalizedBlock,
       lastSummitTimepoint = nodeStats.lastSummitTimepoint,
       currentBGameAnchor = nodeStats.lastFinalizedBlock,
+      currentBGameWinnerCandidate = nodeStats.currentBGameWinnerCandidate,
+      currentBGameWinnerCandidateVotes = nodeStats.currentBGameWinnerCandidateSumOfVotes,
       currentBGameLastPartialSummit = nodeStats.lastPartialSummitForCurrentBGame,
       lastForkChoiceWinner = nodeStats.lastForkChoiceWinner
     )

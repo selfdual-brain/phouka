@@ -154,6 +154,10 @@ trait BlockchainPerNodeStats {
     */
   def currentBGameStatus: Option[(Int, AbstractNormalBlock)]
 
+  def currentBGameWinnerCandidate: Option[AbstractNormalBlock]
+
+  def currentBGameWinnerCandidateSumOfVotes: Ether
+
   /**
     * The (full) summit achieved for the last finalized block (i.e. currently last element of the LFB chain).
     * Returns None if the LFB chain is empty.

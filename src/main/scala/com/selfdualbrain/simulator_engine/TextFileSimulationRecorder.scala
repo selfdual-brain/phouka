@@ -1,5 +1,7 @@
 package com.selfdualbrain.simulator_engine
 
+import com.selfdualbrain.abstract_consensus.Ether
+import com.selfdualbrain.blockchain_structure.AbstractNormalBlock
 import com.selfdualbrain.des.{Event, SimulationObserver}
 import com.selfdualbrain.time.TimeDelta
 import com.selfdualbrain.util.LineUnreachable
@@ -96,6 +98,8 @@ class TextFileSimulationRecorder[A](file: File, eagerFlush: Boolean, agentsToBeL
           case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshotAfter) =>
             val bufSnapshot = msgBufferSnapshotDescription(snapshotAfter)
             s"accepted incoming ${brick.loggingString} (after buffering) buf-snapshot=[$bufSnapshot]"
+          case EventPayload.CurrentBGameUpdate(bGameAnchor, leadingConsensusValue, sumOfVotesForThisValue) =>
+            s"updated current b-game: winner candidate is ${leadingConsensusValue.map(block => block.loggingString)} with sum of votes $sumOfVotesForThisValue"
           case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
             s"pre-finality - level ${partialSummit.ackLevel} for b-game ${bGameAnchor.id}, finality candidate is ${partialSummit.consensusValue.loggingString}"
           case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>

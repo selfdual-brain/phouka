@@ -168,6 +168,10 @@ abstract class ValidatorBaseImpl[CF <: ValidatorBaseImpl.Config,ST <: ValidatorB
   //caution: this is also crucial while cloning (cloned Finalizer has output in "not-connected" state
   //and here we properly connect it to the cloned instance of validator)
   state.finalizer.connectOutput(new Finalizer.Listener {
+    override def currentBGameUpdate(bGameAnchor: Block, leadingConsensusValue: Option[AbstractNormalBlock], sumOfVotesForThisValue: Ether): Unit = {
+      context.addOutputEvent(EventPayload.CurrentBGameUpdate(bGameAnchor, leadingConsensusValue, sumOfVotesForThisValue))
+    }
+
     override def preFinality(bGameAnchor: Block, partialSummit: ACC.Summit): Unit = {
       context.addOutputEvent(EventPayload.PreFinality(bGameAnchor, partialSummit))
       onPreFinality(bGameAnchor, partialSummit)

@@ -47,9 +47,13 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
   private val receivedTotal_TextField: JTextField = received_Ribbon.addTxtField(label = "total", width = 60, preGap = 0)
   private val receivedBlocks_TextField: JTextField = received_Ribbon.addTxtField(label = "blocks", width = 60)
   private val receivedBallots_TextField: JTextField = received_Ribbon.addTxtField(label = "ballots", width = 60)
-  private val downloadQueueItems_TextField: JTextField = received_Ribbon.addTxtField(label = "download queue [items]", width = 60, preGap = 0)
-  private val downloadQueueDataVolume_TextField: JTextField = received_Ribbon.addTxtField(label = "download queue [MB]", width = 60)
   received_Ribbon.addSpacer()
+
+  /* download queue */
+  private val downloadQueue: RibbonPanel = addRibbon("download queue")
+  private val downloadQueueItems_TextField: JTextField = downloadQueue.addTxtField(label = "items", width = 60, preGap = 0)
+  private val downloadQueueDataVolume_TextField: JTextField = downloadQueue.addTxtField(label = "data volume [MB]", width = 60)
+  downloadQueue.addSpacer()
 
   /* bricks accepted */
   private val accepted_Ribbon: RibbonPanel = addRibbon("bricks accepted")
@@ -85,14 +89,18 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
   /* last finalized block */
   private val lfb_Ribbon: RibbonPanel = addRibbon("last finalized block")
   private val lfbGeneration_TextField: JTextField = lfb_Ribbon.addTxtField(label = "generation", width = 50, preGap = 0)
-  private val lfbLatency_TextField: JTextField = lfb_Ribbon.addTxtField(label = "latency", width = 50)
-  private val timePassedSinceLastSummit_TextField: JTextField = lfb_Ribbon.addTxtField(label = "time ago", width = 60)
-  private val lfbDetails_TextField: JTextField = lfb_Ribbon.addTxtField(label = "block details", width = 200, wantGrow = true)
+  private val lfbLatency_TextField: JTextField = lfb_Ribbon.addTxtField(label = "latency", width = 80)
+  private val timePassedSinceLastSummit_TextField: JTextField = lfb_Ribbon.addTxtField(label = "time ago", width = 80)
+  lfb_Ribbon.addSpacer()
+
+  /* last finalized block details */
+  private val lfbDetails_TextField: JTextField = addTxtField(label = "LFB details", width = 200, wantGrow = true)
 
   /* current b-game status */
   private val currentBGame_Ribbon: RibbonPanel = addRibbon("current b-game")
-  private val currentBGameForkChoiceWinner_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "fork choice winner", width = 50, preGap = 0)
-  private val currentBGameLastPartialSummitLevel_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "last partial summit level", width = 50)
+  private val currentBGameWinnerCandidate_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "winner candidate", width = 50, preGap = 0)
+  private val currentBGameWinnerCandidateVotes_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "winner votes", width = 50, preGap = 0)
+  private val currentBGameLastPartialSummitLevel_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "partial summit level", width = 60)
   currentBGame_Ribbon.addSpacer()
 
   override def afterModelConnected(): Unit = {
@@ -171,10 +179,11 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
         })
 
         /* current b-game status */
-        currentBGameForkChoiceWinner_TextField <-- snapshot.lastForkChoiceWinner.id
+        currentBGameWinnerCandidate_TextField <-- snapshot.currentBGameWinnerCandidate
+        currentBGameWinnerCandidateVotes_TextField <-- snapshot.currentBGameWinnerCandidateVotes
         currentBGameLastPartialSummitLevel_TextField <-- (snapshot.currentBGameLastPartialSummit match {
           case Some(summit) => summit.ackLevel
-          case None => emptyString
+          case None => "not yet"
         })
 
       case None =>
@@ -228,7 +237,7 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
         lfbDetails_TextField <-- emptyString
 
         /* current b-game status */
-        currentBGameForkChoiceWinner_TextField <-- emptyString
+        currentBGameWinnerCandidate_TextField <-- emptyString
         currentBGameLastPartialSummitLevel_TextField <-- emptyString
     }
 

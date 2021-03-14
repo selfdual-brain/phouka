@@ -93,7 +93,7 @@ class BGame private (
     return brick2con.size
   }
 
-  override def winnerConsensusValue: Option[AbstractNormalBlock] =
+  override def winnerConsensusValue: Option[(AbstractNormalBlock, Ether)] =
     if (con2sum.isEmpty)
       None
     else {
@@ -102,13 +102,15 @@ class BGame private (
         forkChoiceWinnerMemoized = Some(this.findForkChoiceWinner)
         isFcMemoValid = true
       }
-      forkChoiceWinnerMemoized
+      val winner = forkChoiceWinnerMemoized.get
+      val resultTuple = (winner, con2sum.get(winner))
+      Some(resultTuple)
     }
 
   override def supportersOfTheWinnerValue: Iterable[ValidatorId] =
     this.winnerConsensusValue match {
       case None => Iterable.empty
-      case Some(x) => validator2con.filter{case (vid,con) => con == x}.keys
+      case Some((winnerBlock, sumOfVotes)) => validator2con.filter{case (vid,con) => con == winnerBlock}.keys
     }
 
 

@@ -64,7 +64,12 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
 
   //------- outside cloning -----------------------------------------
   private var currentFinalityDetector: Option[ACC.FinalityDetector] = None
+  private var bGameAnchoredAtLastFinalizedBlock: Option[BGame] = None
   private var output: Option[Finalizer.Listener] = None
+  val quorum: Ether = {
+    val q: Double = (config.absoluteFTT.toDouble / (1 - math.pow(2, - config.ackLevel)) + config.totalWeight.toDouble) / 2
+    math.ceil(q).toLong
+  }
 
   //-----------------------------------------------------------------
 
@@ -183,40 +188,50 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
   @tailrec
   private def advanceLfbChainAsManyStepsAsPossible(): Unit = {
     finalityDetector.onLocalJDagUpdated(state.globalPanorama) match {
-      case Some(summit) =>
-        if (! summit.isAtMaxAckLevel && output.isDefined)
-          output.get.preFinality(state.lastFinalizedBlock, summit)
-        if (summit.isAtMaxAckLevel) {
-          if (output.isDefined)
-            output.get.blockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit, currentFinalityDetector.get)
-          state.lastFinalizedBlock = summit.consensusValue
-          state.block2bgame.pruneLevelsBelow(state.lastFinalizedBlock.generation)
-          state.brick2nextBrickInTheSwimlane.pruneLevelsBelow(state.lastFinalizedBlock.daglevel)
-          currentFinalityDetector = None
-          advanceLfbChainAsManyStepsAsPossible()
-        }
+      case ACC.FinalityDetectionStatus.NoWinnerCandidateYet =>
+        if (output.isDefined)
+          output.get.currentBGameUpdate(bGameAnchor = state.lastFinalizedBlock, leadingConsensusValue = None, 0L)
 
-      case None =>
-      //no consensus yet, do nothing
+      case ACC.FinalityDetectionStatus.WinnerCandidateBelowQuorum(winner, sumOfVotes) =>
+        if (output.isDefined)
+          output.get.currentBGameUpdate(bGameAnchor = state.lastFinalizedBlock, leadingConsensusValue = Some(winner), sumOfVotes)
+
+      case ACC.FinalityDetectionStatus.PreFinality(summit) =>
+        if (output.isDefined)
+          output.get.preFinality(state.lastFinalizedBlock, summit)
+
+      case ACC.FinalityDetectionStatus.Finality(summit) =>
+        if (output.isDefined)
+          output.get.blockFinalized(state.lastFinalizedBlock, summit.consensusValue, summit, currentFinalityDetector.get)
+        state.lastFinalizedBlock = summit.consensusValue
+        state.block2bgame.pruneLevelsBelow(state.lastFinalizedBlock.generation)
+        state.brick2nextBrickInTheSwimlane.pruneLevelsBelow(state.lastFinalizedBlock.daglevel)
+        currentFinalityDetector = None
+        bGameAnchoredAtLastFinalizedBlock = None
+        advanceLfbChainAsManyStepsAsPossible()
     }
   }
 
   protected def finalityDetector: ACC.FinalityDetector = currentFinalityDetector match {
     case Some(fd) => fd
     case None =>
-      val fd = this.createFinalityDetector(state.lastFinalizedBlock)
+      val fd = this.createFinalityDetector()
       currentFinalityDetector = Some(fd)
       fd
   }
 
+  private def getBGameAnchoredAtLastFinalizedBlock: BGame = bGameAnchoredAtLastFinalizedBlock match {
+    case Some(bg) => bg
+    case None =>
+      val game = state.block2bgame(state.lastFinalizedBlock)
+      bGameAnchoredAtLastFinalizedBlock = Some(game)
+      game
+  }
+
   def nextInSwimlane(brick: Brick): Option[Brick] = state.brick2nextBrickInTheSwimlane.get(brick)
 
-  protected def createFinalityDetector(bGameAnchor: Block): ACC.FinalityDetector = {
-    val bgame: BGame = state.block2bgame(bGameAnchor)
-    val quorum: Ether = {
-      val q: Double = (config.absoluteFTT.toDouble / (1 - math.pow(2, - config.ackLevel)) + config.totalWeight.toDouble) / 2
-      math.ceil(q).toLong
-    }
+  protected def createFinalityDetector(): ACC.FinalityDetector = {
+    val bgame: BGame = getBGameAnchoredAtLastFinalizedBlock
     return new ACC.ReferenceFinalityDetector(
       quorum,
       config.ackLevel,
@@ -226,7 +241,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
       vote = brick => bgame.decodeVote(brick),
       message2panorama = panoramaOf,
       estimator = bgame,
-      anchorDaglevel = bGameAnchor.daglevel
+      anchorDaglevel = state.lastFinalizedBlock.daglevel
     )
   }
 
@@ -245,7 +260,7 @@ class BGamesDrivenFinalizerWithForkchoiceStartingAtLfb private(
   @tailrec
   private def forkChoice(startingBlock: Block): Block =
     state.block2bgame(startingBlock).winnerConsensusValue match {
-      case Some(child) => forkChoice(child)
+      case Some((child, sumOfVotes)) => forkChoice(child)
       case None => startingBlock
     }
 

@@ -231,6 +231,11 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
           case EventPayload.AcceptedIncomingBrickWithoutBuffering(brick) => s"$brick"
           case EventPayload.AddedIncomingBrickToMsgBuffer(brick, dependencies, snapshot) => s"$brick (missing dependencies: ${dependenciesListAsString(dependencies)})"
           case EventPayload.AcceptedIncomingBrickAfterBuffering(brick, snapshot) => s"$brick"
+          case EventPayload.CurrentBGameUpdate(bGameAnchor, leadingConsensusValue, sumOfVotesForThisValue) =>
+            leadingConsensusValue match {
+              case None => "no winner yet"
+              case Some(block) => s"winner=${block.loggingString} sum-of-votes=$sumOfVotesForThisValue"
+            }
           case EventPayload.PreFinality(bGameAnchor, partialSummit) => s"level=${partialSummit.ackLevel} on block ${partialSummit.consensusValue.id}"
           case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) => s"block ${finalizedBlock.id} generation ${finalizedBlock.generation}"
           case EventPayload.EquivocationDetected(evilValidator, brick1, brick2) => s"validator $evilValidator conflict=(${brick1.id},${brick2.id})"

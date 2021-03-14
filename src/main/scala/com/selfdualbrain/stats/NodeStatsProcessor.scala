@@ -165,6 +165,12 @@ class NodeStatsProcessor(
   //last fork choice winner (updated on every brick publishing); initially points to genesis
   private var lastForkChoiceWinnerX: Block = genesis
 
+  //current winner of the b-game anchored at the last finalized block (if any)
+  private var currentBGameWinnerX: Option[AbstractNormalBlock] = None
+
+  //sum of votes for the winner of the b-game anchored at the last finalized block
+  private var currentBGameWinnerSumOfVotesX: Ether = 0
+
   //level of last partial summit for current b-game
   private var currentBGameStatusX: Option[(Int, AbstractNormalBlock)] = None
 
@@ -350,9 +356,15 @@ class NodeStatsProcessor(
         sumOfBufferingTimes += eventTimepoint.micros - brick.timepoint.micros
         allBricksTotalBinarySize += brick.binarySize
 
+      case EventPayload.CurrentBGameUpdate(bGameAnchor, leadingConsensusValue, sumOfVotesForThisValue) =>
+        currentBGameWinnerX = leadingConsensusValue
+        currentBGameWinnerSumOfVotesX = sumOfVotesForThisValue
+
       case EventPayload.PreFinality(bGameAnchor, partialSummit) =>
         currentBGameStatusX = Some(partialSummit.ackLevel -> partialSummit.consensusValue)
         lastPartialSummitForCurrentBGameX = Some(partialSummit)
+        currentBGameWinnerX = Some(partialSummit.consensusValue)
+        currentBGameWinnerSumOfVotesX = partialSummit.sumOfZeroLevelVotes
 
       case EventPayload.BlockFinalized(bGameAnchor, finalizedBlock, summit) =>
         if (vid == finalizedBlock.creator) {
@@ -367,6 +379,8 @@ class NodeStatsProcessor(
         lastFinalizedBlockGeneration = finalizedBlock.generation
         lastSummitTimepointX = eventTimepoint
         currentBGameStatusX = None
+        currentBGameWinnerX = None
+        currentBGameWinnerSumOfVotesX = 0
         allFinalizedBlocksCumulativeLatency += eventTimepoint timePassedSince finalizedBlock.timepoint
         allFinalizedBlocksTransactionsCounter += finalizedBlock.numberOfTransactions
         allFinalizedBlocksCumulativePayloadSize += finalizedBlock.payloadSize
@@ -462,6 +476,10 @@ class NodeStatsProcessor(
   override def lastForkChoiceWinner: Block = lastForkChoiceWinnerX
 
   override def currentBGameStatus: Option[(ValidatorId, AbstractNormalBlock)] = currentBGameStatusX
+
+  override def currentBGameWinnerCandidate: Option[AbstractNormalBlock] = currentBGameWinnerX
+
+  override def currentBGameWinnerCandidateSumOfVotes: Ether = currentBGameWinnerSumOfVotesX
 
   override def summitForLastFinalizedBlock: Option[ACC.Summit] = summitForLastFinalizedBlockX
 

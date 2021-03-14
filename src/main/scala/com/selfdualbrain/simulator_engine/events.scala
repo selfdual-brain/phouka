@@ -71,6 +71,10 @@ object EventPayload {
     override val filteringTag: Int = EventTag.REMOVED_ENTRY_FROM_BUF
   }
 
+  case class CurrentBGameUpdate(bGameAnchor: Block, leadingConsensusValue: Option[AbstractNormalBlock], sumOfVotesForThisValue: Ether) extends EventPayload {
+    override val filteringTag: Int = EventTag.REMOVED_ENTRY_FROM_BUF
+  }
+
   case class PreFinality(bGameAnchor: Block, partialSummit: ACC.Summit) extends EventPayload {
     override val filteringTag: Int = EventTag.PRE_FINALITY
   }
@@ -163,6 +167,7 @@ object EventTag {
   val HALT = 25
   val DIAGNOSTIC_INFO = 26
   val HEARTBEAT = 27
+  val BGAME_UPDATE = 28
 
   val collection = Map(
     NEW_AGENT_SPAWNED -> "agent created",
@@ -192,7 +197,8 @@ object EventTag {
     STRATEGY_SPECIFIC_OUTPUT -> "strategy-specific",
     HALT -> "halt",
     DIAGNOSTIC_INFO -> "diagnostic",
-    HEARTBEAT -> "heartbeat"
+    HEARTBEAT -> "heartbeat",
+    BGAME_UPDATE -> "b-game update"
   )
 
   def of(event: Event[BlockchainNodeRef, EventPayload]): Int = event.payload.filteringTag
