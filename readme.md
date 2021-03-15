@@ -235,9 +235,9 @@ Milestones achieved:
 
 Current roadmap (estimated):
 - 2021-04-15: demo-4: (demo-3) + limited experiments config GUI + improved memory optimizations + j-dag graph
-- 2021-05-xx: beta-1: (demo-3) + full experiments-manager
-- 2021-06-xx: beta-2: scope to be defined
-- 2021-07-xx: beta-3: scope to be defined  
+- 2021-05-xx: beta-1: demo-4 + full experiments-manager + binary release
+- 2021-06-xx: beta-2: improved test coverage, improved memory management
+- 2021-07-xx: beta-3: scope to be defined later
 - 2021-08-xx: official release of ver 1.0
 
 Features expected in ver 2.0:
