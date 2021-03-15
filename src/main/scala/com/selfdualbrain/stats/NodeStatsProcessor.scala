@@ -487,6 +487,8 @@ class NodeStatsProcessor(
 
   override def jdagSize: Long = localBrickdagSize
 
+  override def jdagBinarySize: TimeDelta = allBricksTotalBinarySize
+
   override def jdagDepth: Long = localBrickdagDepth
 
   override def downloadQueueLengthAsBytes: TimeDelta = downloadQueueLengthAsBytesX

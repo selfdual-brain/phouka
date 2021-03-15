@@ -171,7 +171,7 @@ trait BlockchainPerNodeStats {
   def lastPartialSummitForCurrentBGame: Option[ACC.Summit]
 
   /**
-    * The size of local j-dag.
+    * The size of local j-dag (as number of bricks).
     * In other words this is number of all bricks created locally plus these bricks received for which all dependencies were fulfilled (hence they were
     * integrated into bricks DAG).
     *
@@ -179,6 +179,10 @@ trait BlockchainPerNodeStats {
     */
   def jdagSize: Long
 
+  /**
+    * The binary size of local j-dag (as bytes).
+    */
+  def jdagBinarySize: Long
   /**
     * The depth (= height) of bricks DAG.
     * Formally: simulation(t).jdagBricks(v).map(b => b.jDagLevel).max

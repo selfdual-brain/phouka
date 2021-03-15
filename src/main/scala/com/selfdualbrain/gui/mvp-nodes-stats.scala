@@ -1,6 +1,5 @@
 package com.selfdualbrain.gui
 
-import java.awt.{BorderLayout, Color, Dimension}
 import com.selfdualbrain.abstract_consensus.Ether
 import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
 import com.selfdualbrain.gui.model.SimulationDisplayModel
@@ -9,6 +8,8 @@ import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.ColumnDe
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartTable}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
 import com.selfdualbrain.simulator_engine.core.NodeStatus
+
+import java.awt.{BorderLayout, Color, Dimension}
 
 /**
   * Shows per-node statistics. This as stats calculated for the "current state" of the simulation, i.e. after the last step.
@@ -263,12 +264,23 @@ class NodeStatsView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ),
       ColumnDefinition[Long](
         name = "Jdag size",
-        headerTooltip = "Total size of the local j-dag",
+        headerTooltip = "Number of bricks in the local j-dag",
         runtimeClassOfValues = classOf[Long],
         cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).jdagSize,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = Some {(rowIndex: Int, value: Long) => Some(JDAG_GEOMETRY_COLOR)},
         preferredWidth = 50,
+        maxWidth = 80
+      ),
+      ColumnDefinition[Double](
+        name = "Jdag binary size",
+        headerTooltip = "Total binary size of bricks in the local j-dag [GB]",
+        runtimeClassOfValues = classOf[Double],
+        cellValueFunction = (rowIndex: Int) => model.perNodeStats(BlockchainNodeRef(rowIndex)).jdagBinarySize.toDouble / 1000000000,
+        decimalRounding = Some(3),
+        textAlignment = TextAlignment.RIGHT,
+        cellBackgroundColorFunction = Some {(rowIndex: Int, value: Double) => Some(JDAG_GEOMETRY_COLOR)},
+        preferredWidth = 60,
         maxWidth = 80
       ),
       ColumnDefinition[Long](
