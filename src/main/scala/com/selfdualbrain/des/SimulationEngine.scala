@@ -19,7 +19,7 @@ trait SimulationEngine[A,P] extends Iterator[(Long, Event[A,P])] {
 
   //Tells the step-id of last event pulled from the iterator.
   //Caution: first event in the simulation has step=id=0.
-  def lastStepExecuted: Long
+  def lastStepEmitted: Long
 
   //Simulated timepoint of last event pulled from the iterator.
   //In practice calling this method equals to checking the "master clock" of the simulation.

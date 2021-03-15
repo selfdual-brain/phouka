@@ -20,6 +20,8 @@ object PingPong {
     override def justifications: Iterable[Brick] = Iterable.empty
 
     override def loggingString: String = s"barrel-$id"
+
+    override def toStringLong: String = s"Barrel-$id(creator=$creator, binarySize=$binarySize, origin=$origin)"
   }
 
   case object Genesis extends AbstractGenesis {

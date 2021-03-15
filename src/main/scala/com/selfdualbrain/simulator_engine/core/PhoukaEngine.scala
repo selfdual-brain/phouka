@@ -49,7 +49,8 @@ class PhoukaEngine(
       heartbeatEventsPayloadFactory = (seqNumber: Long) => EventPayload.Heartbeat(seqNumber)
     )
   private var lastBrickId: BlockdagVertexId = 0
-  private var stepId: Long = -1L
+  private var internalStepsCounter: Long = -1L
+  private var lastStepEmittedX: Long = -1L
   private var lastNodeIdAllocated: Int = -1
   private var engineIsHalted: Boolean = false
 
@@ -79,7 +80,11 @@ class PhoukaEngine(
 
   override def hasNext: Boolean = internalIterator.hasNext
 
-  override def next(): (Long, Event[BlockchainNodeRef,EventPayload]) = internalIterator.next()
+  override def next(): (Long, Event[BlockchainNodeRef,EventPayload]) = {
+    val result = internalIterator.next()
+    lastStepEmittedX = result._1
+    return result
+  }
 
   //While getting next event to be published we need to:
   //1. Handle the underlying processing of the engine.
@@ -99,18 +104,18 @@ class PhoukaEngine(
         event = processNextEventFromQueue()
       } while (event.isEmpty)
 
-      stepId += 1 //first step executed will have number 0
+      internalStepsCounter += 1 //first step executed will have number 0
 
-      if (log.isDebugEnabled() && stepId % 1000 == 0)
-        log.debug(s"step $stepId")
+      if (log.isDebugEnabled() && internalStepsCounter % 1000 == 0)
+        log.debug(s"step $internalStepsCounter")
 
-      return Some((stepId, event.get))
+      return Some((internalStepsCounter, event.get))
     }
   }
 
   private val internalIterator = pseudoiterator.toIterator
 
-  override def lastStepExecuted: Long = stepId
+  override def lastStepEmitted: Long = lastStepEmittedX
 
   override def currentTime: SimTimepoint = desQueue.currentTime
 

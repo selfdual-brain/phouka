@@ -40,13 +40,14 @@ class CombinedSimulationStatsView(val guiLayoutConfig: GuiLayoutConfig)
     with MvpView[SimulationDisplayModel, CombinedSimulationStatsPresenter] {
 
   override def afterPresenterConnected(): Unit = {
+    val generalStatsView = presenter.generalStatsPresenter.createAndConnectDefaultView()
+    val chartsView = presenter.chartsPresenter.createAndConnectDefaultView()
+    val nodeStatsView = presenter.perNodeStatsPresenter.createAndConnectDefaultView()
+
     val upperPane = new StaticSplitPanel(guiLayoutConfig, locationOfSatellite = PanelEdge.WEST)
-    val generalStatsView = presenter.generalStatsPresenter.ensureViewIsConnected()
     val generalStatsWrappedInScrollPane = generalStatsView.wrappedInScroll(horizontalScrollPolicy = "never", verticalScrollPolicy = "always")
     generalStatsWrappedInScrollPane.setPreferredSize(new Dimension(850,400))
     generalStatsWrappedInScrollPane.surroundWithTitledBorder("Overall blockchain statistics")
-    val chartsView = presenter.chartsPresenter.ensureViewIsConnected()
-    val nodeStatsView = presenter.perNodeStatsPresenter.ensureViewIsConnected()
     upperPane.mountChildPanels(chartsView, generalStatsWrappedInScrollPane)
     this.mountChildPanels(upperPane, nodeStatsView)
   }

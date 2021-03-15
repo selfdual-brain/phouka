@@ -1,11 +1,12 @@
 package com.selfdualbrain.gui_framework.layout_dsl.components
 
 import java.awt.{BorderLayout, Color, Component}
-
 import com.selfdualbrain.gui_framework.{EventsBroadcaster, TextAlignment}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.{ColumnDefinition, ColumnsScalingMode, GenericCellRenderer, SmartTableModelAdapter}
 import com.selfdualbrain.gui_framework.swing_tweaks.TableHeaderWithTooltipsSupport
+import org.slf4j.LoggerFactory
+
 import javax.swing._
 import javax.swing.event.ListSelectionEvent
 import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer}
@@ -18,6 +19,8 @@ import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer}
   * limited API, but fitting better for the needs we have in Phouka GUI. We just have a single, simplified definition of the table and this is it.
   */
 class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) {
+  private val log = LoggerFactory.getLogger("smart-table")
+
   private var tableDefinition: SmartTable.Model = _
 
   private val swingTable = new JTable()
@@ -61,10 +64,22 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
     }
     swingTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
     swingTable.getSelectionModel.addListSelectionListener((e: ListSelectionEvent) => {
-      val selectedRow = e.getFirstIndex
-      tableDefinition.onRowSelected(selectedRow)
+      if (! e.getValueIsAdjusting) {
+        val swingLevelSelectedRowIndex = swingTable.getSelectedRow
+        tableDefinition.onRowSelected(swingLevelSelectedRowIndex)
+      }
     })
     scrollPane.setViewportView(swingTable)
+  }
+
+  /**
+    * Selects specified row.
+    * This is equivalent to the selection a user normally would do by mouse-clicking on a desired row.
+    *
+    * @param row row to become selected
+    */
+  def emulateUserSelectingSpecifiedRow(row: Int): Unit = {
+    swingTable.getSelectionModel.setSelectionInterval(row, row)
   }
 
 }

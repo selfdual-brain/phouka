@@ -1,7 +1,5 @@
 package com.selfdualbrain.gui
 
-import java.awt.{BorderLayout, Dimension}
-
 import com.selfdualbrain.blockchain_structure.{BlockdagVertexId, Brick, ValidatorId}
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
@@ -9,6 +7,8 @@ import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.ColumnDe
 import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartTable}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
 import com.selfdualbrain.simulator_engine.MsgBufferSnapshot
+
+import java.awt.BorderLayout
 
 class MessageBufferPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, MessageBufferPresenter, MessageBufferView, Nothing] {
 
@@ -27,7 +27,6 @@ class MessageBufferPresenter extends Presenter[SimulationDisplayModel, Simulatio
 
 class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, MessageBufferPresenter] {
   private val events_Table = new SmartTable(guiLayoutConfig)
-  this.setPreferredSize(new Dimension(330,400))
   this.add(events_Table, BorderLayout.CENTER)
   this.surroundWithTitledBorder("Messages buffer")
 
@@ -40,7 +39,7 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
   }
 
   private def refreshDataSnapshot(): Unit = {
-    rawBufferSnapshot = model.stateSnapshotForSelectedNodeAndStep match {
+    rawBufferSnapshot = model.stateSnapshotForSelectedStep match {
       case Some(snapshot) => snapshot.msgBufferSnapshot
       case None => Map.empty
     }
@@ -64,12 +63,12 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
       ),
       ColumnDefinition[ValidatorId](
         name = "CR",
-        headerTooltip = "If of the validator that created the waiting brick",
+        headerTooltip = "Validator that created the waiting brick",
         runtimeClassOfValues = classOf[ValidatorId],
         cellValueFunction = (rowIndex: Int) => sortedSeqOfWaitingBricks(rowIndex).creator,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 30,
+        preferredWidth = 50,
         maxWidth = 50
       ),
       ColumnDefinition[Int](
@@ -79,7 +78,7 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         cellValueFunction = (rowIndex: Int) => sortedSeqOfWaitingBricks(rowIndex).daglevel,
         textAlignment = TextAlignment.RIGHT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 30,
+        preferredWidth = 50,
         maxWidth = 50
       ),
       ColumnDefinition[String](
@@ -93,8 +92,8 @@ class MessageBufferView(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         },
         textAlignment = TextAlignment.LEFT,
         cellBackgroundColorFunction = None,
-        preferredWidth = 300,
-        maxWidth = 500
+        preferredWidth = 800,
+        maxWidth = 1000
       )
     )
 

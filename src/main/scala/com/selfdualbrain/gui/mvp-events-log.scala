@@ -10,8 +10,9 @@ import com.selfdualbrain.gui_framework.layout_dsl.components.{PlainPanel, SmartT
 import com.selfdualbrain.gui_framework.{MvpView, Presenter, TextAlignment}
 import com.selfdualbrain.simulator_engine.{EventPayload, EventTag}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import org.slf4j.LoggerFactory
 
-import java.awt.{BorderLayout, Color, Dimension}
+import java.awt.{BorderLayout, Color}
 
 /**
   * Shows history of a simulation (as list of events).
@@ -30,8 +31,8 @@ class EventsLogPresenter extends Presenter[SimulationDisplayModel, SimulationDis
     //do nothing
   }
 
-  def onRowSelected(row: Int): Unit = {
-    model.displayStepByDisplayPosition(row)
+  def onStepSelected(stepOrNone: Option[Int]): Unit = {
+    model.selectedStep = stepOrNone
   }
 }
 
@@ -40,8 +41,9 @@ object EventsLogPresenter {
 }
 
 class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[SimulationDisplayModel, EventsLogPresenter] {
+  private val log = LoggerFactory.getLogger(s"mvp-events-log[View]")
+
   private val events_Table = new SmartTable(guiLayoutConfig)
-  this.setPreferredSize(new Dimension(1400,800))
   this.add(events_Table, BorderLayout.CENTER)
   this.surroundWithTitledBorder("Simulation events (filtered)")
 
@@ -55,13 +57,12 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     private val FINALITY_COLOR = new Color(150, 200, 255)
     private val BLOCK_PROPOSE_COLOR = new Color(232, 240, 161)
 
-
     override val columns: Array[ColumnDefinition[_]] = Array(
       ColumnDefinition[Int](
         name = "Step id",
         headerTooltip = "Sequential number of simulation step",
         runtimeClassOfValues = classOf[Int],
-        cellValueFunction = (rowIndex: Int )=> {
+        cellValueFunction = (rowIndex: Int ) => {
           val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
           stepId
         },
@@ -179,7 +180,16 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
     )
 
-    override def onRowSelected(rowIndex: Int): Unit = presenter.onRowSelected(rowIndex)
+    override def onRowSelected(rowIndex: Int): Unit = {
+      log.debug(s"selected row with index $rowIndex")
+      if (rowIndex == -1)
+        presenter.onStepSelected(None)
+      else {
+        val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
+        log.debug(s"decoded selection as step $stepId")
+        presenter.onStepSelected(Some(stepId))
+      }
+    }
 
     override val columnsScalingMode: SmartTable.ColumnsScalingMode = SmartTable.ColumnsScalingMode.OFF
 
@@ -205,7 +215,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
       case Event.Engine(id, timepoint, agent, payload) =>
         payload match {
-          case EventPayload.BroadcastProtocolMsg(brick, cpuTimeConsumed) => s"$brick"
+          case EventPayload.BroadcastProtocolMsg(brick, cpuTimeConsumed) => s"${brick.toStringLong}"
           case EventPayload.ProtocolMsgAvailableForDownload(sender, brick) => s"sender=$sender brick=$brick"
           case EventPayload.NetworkDisruptionEnd(disruptionEventId) => s"disruption-begin = event $disruptionEventId"
           case EventPayload.NewAgentSpawned(validatorId, progenitor) => if (progenitor.isEmpty) s"validator-id=$validatorId" else s"cloned from node $progenitor (validator-id=$validatorId)"
@@ -216,7 +226,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
       case Event.Transport(id, timepoint, source, destination, payload) =>
         payload match {
-          case EventPayload.BrickDelivered(block) => s"$block"
+          case EventPayload.BrickDelivered(block) => s"${block.toStringLong}"
           case other => throw new RuntimeException(s"unexpected payload: $payload")
         }
 

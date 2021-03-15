@@ -9,8 +9,7 @@ import com.selfdualbrain.gui_framework.{MvpViewWithSealedModel, Orientation, Pan
 import com.selfdualbrain.simulator_engine.EventTag
 
 import java.awt._
-import javax.swing.border.EtchedBorder
-import javax.swing.{JCheckBox, JScrollPane, ScrollPaneConstants}
+import javax.swing.JCheckBox
 import scala.collection.mutable
 
 /**
@@ -103,12 +102,8 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
   eventsContainerPanel.setPreferredSize(new Dimension(240, -1))
   allNodesSwitchPanel.add(allNodesCheckbox, BorderLayout.WEST)
   allEventsSwitchPanel.add(allEventsCheckbox, BorderLayout.WEST)
+  this.surroundWithTitledBorder("Filter events")
   this.mountChildPanels(nodesContainerPanel, eventsContainerPanel)
-
-//  allNodesSwitchPanel.setBackground(Color.GREEN)
-//  allEventsSwitchPanel.setBackground(Color.MAGENTA)
-//  eventsContainerPanel.setBackground(Color.CYAN)
-//  nodesContainerPanel.setBackground(Color.ORANGE)
 
   allNodesCheckbox ~~> {
     if (checkboxHandlersEnabled)
@@ -120,29 +115,22 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
       presenter.toggleAllEventsSwitch(allEventsCheckbox.isSelected)
   }
 
-  setPreferredSize(new Dimension(330, 680))
-
   this.afterModelConnected()
 
   private def buildValidatorsSelectionPanel(): PlainPanel = {
-    val result = new PlainPanel(guiLayoutConfig)
-    val checkboxesContainer = new RibbonPanel(guiLayoutConfig, Orientation.VERTICAL)
+    val panel = new RibbonPanel(guiLayoutConfig, Orientation.VERTICAL)
 
     for (nodeId <- 0 until model.engine.numberOfAgents) {
-      val checkbox = checkboxesContainer.addCheckbox(label = nodeId.toString, isEditable = true, preGap = 0, postGap = 0, useNativeLabel = true)
+      val checkbox = panel.addCheckbox(label = nodeId.toString, isEditable = true, preGap = 0, postGap = 0, useNativeLabel = true)
       node2checkbox += BlockchainNodeRef(nodeId) -> checkbox
       checkbox ~~> {
         if (checkboxHandlersEnabled)
           presenter.toggleSingleNode(BlockchainNodeRef(nodeId), checkbox.isSelected)
       }
     }
-    checkboxesContainer.addSpacer()
+    panel.addSpacer()
 
-    val scrollPane = new JScrollPane(checkboxesContainer)
-    scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
-    scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS)
-
-    result.add(scrollPane, BorderLayout.CENTER)
+    val result = panel.wrappedInScroll(horizontalScrollPolicy = "never", verticalScrollPolicy = "always")
     return result
   }
 
@@ -161,7 +149,8 @@ class FilterEditorView(val guiLayoutConfig: GuiLayoutConfig, override val model:
       }
     }
     panel.addSpacer()
-    return panel
+    val result = panel.wrappedInScroll(horizontalScrollPolicy = "never", verticalScrollPolicy = "always")
+    return result
   }
 
   override def afterModelConnected(): Unit = {

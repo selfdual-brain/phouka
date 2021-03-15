@@ -1,11 +1,12 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.blockchain_structure.BlockchainNodeRef
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.MvpView.{JCheckBoxOps, JTextComponentOps}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{FieldsLadderPanel, RibbonPanel}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
+import com.selfdualbrain.time.TimeDelta
+import org.slf4j.LoggerFactory
 
 import javax.swing.{JCheckBox, JTextField}
 
@@ -25,6 +26,7 @@ class StepOverviewPresenter extends Presenter[SimulationDisplayModel, Simulation
 }
 
 class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadderPanel(guiLayoutConfig)  with MvpView[SimulationDisplayModel, StepOverviewPresenter] {
+  private val log = LoggerFactory.getLogger(s"mvp-step-overview[view]")
 
   /* step */
   private val step_TextField: JTextField = addTxtField(label = "step", width = 100, isEditable = false)
@@ -100,8 +102,10 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
   private val currentBGame_Ribbon: RibbonPanel = addRibbon("current b-game")
   private val currentBGameWinnerCandidate_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "winner candidate", width = 50, preGap = 0)
   private val currentBGameWinnerCandidateVotes_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "winner votes", width = 50, preGap = 0)
-  private val currentBGameLastPartialSummitLevel_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "partial summit level", width = 60)
+  private val currentBGameLastPartialSummitLevel_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "partial summit level", width = 80)
   currentBGame_Ribbon.addSpacer()
+
+  this.surroundWithTitledBorder("Node state snapshot")
 
   override def afterModelConnected(): Unit = {
     model.subscribe(this) {
@@ -114,12 +118,14 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
   }
 
   private def refreshData(): Unit = {
-    val step: Int = model.selectedStep
-    val node: BlockchainNodeRef = model.selectedNode
     val emptyString: String = ""
 
-    model.stateSnapshotForSelectedNodeAndStep match {
+    model.stateSnapshotForSelectedStep match {
       case Some(snapshot) =>
+        val step: Int = model.selectedStep.get
+        val selectedEvent = model.selectedEvent.get
+        val node = selectedEvent.loggingAgent.get
+
         /* step */
         step_TextField <-- step
 
@@ -166,11 +172,11 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
         /* last finalized block */
         lfbGeneration_TextField <-- snapshot.lfbChainLength
         lfbLatency_TextField <-- (snapshot.lastSummit match {
-          case Some(summit) => snapshot.lastSummitTimepoint timePassedSince summit.consensusValue.timepoint
+          case Some(summit) => TimeDelta.toString(snapshot.lastSummitTimepoint timePassedSince summit.consensusValue.timepoint)
           case None => emptyString
         })
         timePassedSinceLastSummit_TextField <-- (snapshot.lastSummit match {
-          case Some(summit) => model.selectedEvent.timepoint timePassedSince snapshot.lastSummitTimepoint
+          case Some(summit) => TimeDelta.toString(selectedEvent.timepoint timePassedSince snapshot.lastSummitTimepoint)
           case None => emptyString
         })
         lfbDetails_TextField <-- (snapshot.lastSummit match {
@@ -179,7 +185,10 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
         })
 
         /* current b-game status */
-        currentBGameWinnerCandidate_TextField <-- snapshot.currentBGameWinnerCandidate
+        currentBGameWinnerCandidate_TextField <-- (snapshot.currentBGameWinnerCandidate match {
+          case Some(block) => block.id
+          case None => ""
+        })
         currentBGameWinnerCandidateVotes_TextField <-- snapshot.currentBGameWinnerCandidateVotes
         currentBGameLastPartialSummitLevel_TextField <-- (snapshot.currentBGameLastPartialSummit match {
           case Some(summit) => summit.ackLevel
@@ -238,6 +247,7 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
 
         /* current b-game status */
         currentBGameWinnerCandidate_TextField <-- emptyString
+        currentBGameWinnerCandidateVotes_TextField <-- emptyString
         currentBGameLastPartialSummitLevel_TextField <-- emptyString
     }
 

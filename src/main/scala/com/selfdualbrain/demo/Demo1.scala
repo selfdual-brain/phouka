@@ -2,7 +2,7 @@ package com.selfdualbrain.demo
 
 import com.selfdualbrain.blockchain_structure.AbstractGenesis
 import com.selfdualbrain.gui.model.SimulationDisplayModel
-import com.selfdualbrain.gui.{CombinedSimulationStatsPresenter, EventsLogPresenter}
+import com.selfdualbrain.gui.{CombinedSimulationStatsPresenter, EventsLogAnalyzerPresenter}
 import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.network.NetworkSpeed
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
@@ -103,18 +103,19 @@ object Demo1 {
     //run simulation
     //run short simulation
     log.info("starting the simulation")
+    log.debug(s"we are before running the simulation, current step reported by the engine is ${engine.lastStepEmitted}")
     val t1 = measureExecutionTime {
       simulationDisplayModel.advanceTheSimulationBy(numberOfSteps.toInt)
     }
-    log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepExecuted}")
+    log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepEmitted}")
 
     //print final statistics to System.out
     printStatsToConsole()
 
-    //display events log
-    val eventsLogPresenter = new EventsLogPresenter
-    eventsLogPresenter.model = simulationDisplayModel
-    sessionManager.mountTopPresenter(eventsLogPresenter, Some("Simulation events log"))
+    //display events log analyzer
+    val eventsLogAnalyzer = new EventsLogAnalyzerPresenter
+    eventsLogAnalyzer.model = simulationDisplayModel
+    sessionManager.mountTopPresenter(eventsLogAnalyzer, Some("Simulation events log analyzer"))
 
     //display stats
     val statsPresenter = new CombinedSimulationStatsPresenter

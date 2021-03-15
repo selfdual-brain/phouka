@@ -1,9 +1,12 @@
 package com.selfdualbrain.gui
 
 import com.selfdualbrain.gui.model.SimulationDisplayModel
+import com.selfdualbrain.gui_framework.Orientation.VERTICAL
 import com.selfdualbrain.gui_framework.{MvpView, PanelEdge, Presenter}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.layout_dsl.components.StaticSplitPanel
+import com.selfdualbrain.gui_framework.layout_dsl.components.{DynamicSplitPanel, StaticSplitPanel}
+
+import java.awt.Dimension
 
 /*                                                                        PRESENTER                                                                                        */
 
@@ -41,7 +44,21 @@ class EventsLogAnalyzerView(val guiLayoutConfig: GuiLayoutConfig)
   with MvpView[SimulationDisplayModel, EventsLogAnalyzerPresenter] {
 
   override def afterPresenterConnected(): Unit = {
-    //todo
+    val eventsLogView = presenter.eventsLogPresenter.createAndConnectDefaultView()
+    val filterEditorView = presenter.filterEditorPresenter.createAndConnectDefaultView()
+    val stepOverviewView = presenter.stepOverviewPresenter.createAndConnectDefaultView()
+    stepOverviewView.setPreferredSize(new Dimension(1000, 310))
+    val msgBufferView = presenter.msgBufferPresenter.createAndConnectDefaultView()
+    msgBufferView.setPreferredSize(new Dimension(900, 310))
+
+    val upperPane = new StaticSplitPanel(guiLayoutConfig, locationOfSatellite = PanelEdge.EAST)
+    upperPane.mountChildPanels(center = eventsLogView, satellite = filterEditorView)
+
+    val lowerPane = new DynamicSplitPanel(guiLayoutConfig, splitterOrientation = VERTICAL)
+    lowerPane.mountChildPanels(upOrLeft = stepOverviewView, downOrRight = msgBufferView)
+
+    this.mountChildPanels(center = upperPane, satellite = lowerPane)
+    this.setPreferredSize(new Dimension(1900, 1000))
   }
 
 }

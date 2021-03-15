@@ -10,9 +10,10 @@ import com.selfdualbrain.gui_framework.EventsBroadcaster
 import com.selfdualbrain.simulator_engine.config.{ConfigBasedSimulationSetup, ExperimentConfig}
 import com.selfdualbrain.simulator_engine.core.PhoukaEngine
 import com.selfdualbrain.simulator_engine.{EventPayload, _}
-import com.selfdualbrain.stats.{BlockchainSimulationStats, BlockchainPerNodeStats}
+import com.selfdualbrain.stats.{BlockchainPerNodeStats, BlockchainSimulationStats}
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.util.RepeatUntilExitCondition
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -48,14 +49,16 @@ import scala.collection.mutable.ArrayBuffer
   *   - control the engine to execute given range of the simulation; the range can be extended any time
   *   - browse the history & statistics of the simulation executed so far
   *
-  * The running experiment is visualized and controlled with 2 top-level windows:
-  *   - experiment inspector: displays even log and statistics; also has controls for interaction with the engine
-  *   - blockchain graph: shows graphically blockchain snapshots
+  * The running experiment is visualized and controlled with 4 top-level windows:
+  *   - experiment runner: shows simulation progress, allows starting/pausing/stopping
+  *   - events log analyzer: displays events log, allows filtering and browsing events
+  *   - simulation statistics: shows statistical data on the simulation
+  *   - local j-dag graph: shows graphically the state of local j-dag and history of lfb-chain/summits (for a selected blockchain node)
   *
-  * GUI offers 3-dimensional browsing:
+  * GUI offers 3-dimensional browsing of the recorded simulation:
   *   - dimension 1: selecting steps along the events log
-  *   - dimension 2: selecting a blockchain node to be observed
-  *   - dimension 3: selecting a brick within the local jdag of a selected node
+  *   - dimension 2: selecting a blockchain node to analyzed with j-dag graph
+  *   - dimension 3: selecting a brick within the local jdag
   *
   * ### Implementation remark ###
   * The collection of all events is kept in the "allEvents" ArrayBuffer. The last step simulated so far (= emitted by the engine) we refer
@@ -105,6 +108,8 @@ class SimulationDisplayModel(
                               lfbChainMaxLengthEstimation: Int
                             ) extends EventsBroadcaster[SimulationDisplayModel.Ev]{
 
+  private val log = LoggerFactory.getLogger(s"display-model")
+
   import SimulationDisplayModel.Ev
 
   //ever-growing collection of (all) events
@@ -135,7 +140,7 @@ class SimulationDisplayModel(
     summits(i) = new FastIntMap[ACC.Summit](lfbChainMaxLengthEstimation)
 
   //Step selection (the GUI shows the state of the simulation as it was just AFTER the execution of this step).
-  private var selectedStepX: Int = -1
+  private var selectedStepX: Option[Int] = None
 
   //The id of selected node (= for which the jdag graph is displayed).
   private var selectedNodeX: BlockchainNodeRef = BlockchainNodeRef(0)
@@ -204,7 +209,7 @@ class SimulationDisplayModel(
   /*-------- horizon -----------*/
 
   //the number of last event generated from the engine
-  def simulationHorizon: Int = engine.lastStepExecuted.toInt //for the GUI, we must assume that the number of steps in within Int range (this limitation is not present in the engine itself)
+  def simulationHorizon: Int = engine.lastStepEmitted.toInt //for the GUI, we must assume that the number of steps in within Int range (this limitation is not present in the engine itself)
 
   def advanceTheSimulationBy(numberOfSteps: Int): Unit = advanceTheSimulation(SimulationEngineStopCondition.NextNumberOfSteps(numberOfSteps))
 
@@ -287,7 +292,7 @@ class SimulationDisplayModel(
     trigger(
       Ev.SimulationAdvanced(
         numberOfSteps = eventsTableInsertedRowsBuffer.size,
-        lastStep = engine.lastStepExecuted.toInt,
+        lastStep = engine.lastStepEmitted.toInt,
         eventsCollectionInsertedInterval = newEventsRowsInterval,
         agentsSpawnedInterval = newAgentsInterval
       )
@@ -302,45 +307,48 @@ class SimulationDisplayModel(
 
   /*------------- current selection ---------------*/
 
-  def selectedNode: BlockchainNodeRef = selectedNodeX
+  def jDagBrowserNode: BlockchainNodeRef = selectedNodeX
 
-  def selectedNode_=(node: BlockchainNodeRef): Unit = {
-    if (node != selectedNode) {
+  def jDagBrowserNode_=(node: BlockchainNodeRef): Unit = {
+    if (node != jDagBrowserNode) {
       selectedNodeX = node
       trigger(Ev.NodeSelectionChanged(selectedNodeX))
     }
   }
 
-  def selectedStep: Int = selectedStepX
+  def selectedStep: Option[Int] = selectedStepX
 
-  def selectedStep_=(stepId: Int): Unit = {
+  def selectedStep_=(stepId: Option[Int]): Unit = {
+    log.debug(s"selected step: $stepId")
     if (stepId != selectedStep) {
       selectedStepX = stepId
       trigger(Ev.StepSelectionChanged(stepId))
     }
   }
 
-  def selectedEvent: Event[BlockchainNodeRef, EventPayload] = allEvents(selectedStep)
+  def selectedEvent: Option[Event[BlockchainNodeRef, EventPayload]] = selectedStep map {step => allEvents(step)}
 
-  def selectedBrick: Option[Brick] = selectedBrickX
+  def jDagSelectedBrick: Option[Brick] = selectedBrickX
 
-  def selectBrick_=(brick: Option[Brick]): Unit = {
-    if (brick != selectedBrick) {
+  def jDagSelectBrick_=(brick: Option[Brick]): Unit = {
+    if (brick != jDagSelectedBrick) {
       selectedBrickX = brick
       trigger(Ev.BrickSelectionChanged(brick))
     }
   }
 
-  def stateSnapshotForSelectedNodeAndStep: Option[AgentStateSnapshot] = {
-    val stepOrNothing = (selectedStep to 0 by -1) find { step =>
-      agentStateSnapshots.get(step) match {
-        case Some(snapshot) => snapshot.agent == selectedNodeX
-        case None => false
-      }
-    }
+//  def stateSnapshotForSelectedNodeAndStep: Option[AgentStateSnapshot] = {
+//    val stepOrNothing = (selectedStep to 0 by -1) find { step =>
+//      agentStateSnapshots.get(step) match {
+//        case Some(snapshot) => snapshot.agent == selectedNodeX
+//        case None => false
+//      }
+//    }
+//
+//    return stepOrNothing map (step => agentStateSnapshots(step))
+//  }
 
-    return stepOrNothing map (step => agentStateSnapshots(step))
-  }
+  def stateSnapshotForSelectedStep: Option[AgentStateSnapshot] = selectedStep flatMap {s => agentStateSnapshots.get(s)}
 
   def getSummit(generation: Int): Option[ACC.Summit] = {
     val summitsOfCurrentValidator: FastIntMap[ACC.Summit] = summits(selectedNodeX.address)
@@ -361,15 +369,11 @@ class SimulationDisplayModel(
     trigger(Ev.FilterChanged)
   }
 
-  def displayStepByDisplayPosition(positionInFilteredEventsCollection: Int): Unit = {
-    selectedStep = filteredEvents(positionInFilteredEventsCollection)._1
-  }
-
   /*------------- graphical jdag --------------*/
 
   def getSelectedBrick: Option[Brick] = selectedBrickX
 
-  def selectBrick(brickOrNone: Option[Brick]): Unit = {
+  def jDagSelectBrick(brickOrNone: Option[Brick]): Unit = {
     selectedBrickX = brickOrNone
     trigger(Ev.BrickSelectionChanged(selectedBrickX))
   }
@@ -380,7 +384,7 @@ class SimulationDisplayModel(
     val nodeStats: BlockchainPerNodeStats = stats.perNodeStats(node)
 
     return AgentStateSnapshot(
-      step = engine.lastStepExecuted.toInt,
+      step = engine.lastStepEmitted.toInt,
       agent = node,
       jDagBricksSnapshot = agent2bricksHistory(node.address).currentJdagBricksSnapshotIndex,
       jDagSize = nodeStats.jdagSize.toInt,
@@ -476,7 +480,7 @@ object SimulationDisplayModel {
       *
       * @param step the "now selected" step id
       */
-    case class StepSelectionChanged(step: Int) extends Ev
+    case class StepSelectionChanged(step: Option[Int]) extends Ev
 
     /**
       * The user picked another brick as the "current brick" that the GUI should focus on.
@@ -562,7 +566,7 @@ object SimulationDisplayModel {
       override def caseTag: Int = 0
       override def render(): String = n.toString
       override def createNewChecker(engine: SimulationEngine[BlockchainNodeRef, EventPayload]): EngineStopConditionChecker = new EngineStopConditionChecker {
-        private val start = engine.lastStepExecuted
+        private val start = engine.lastStepEmitted
         private val stop = start + n
         override def checkStop(step: TimeDelta, event: Event[BlockchainNodeRef, EventPayload]): Boolean = step == stop
       }

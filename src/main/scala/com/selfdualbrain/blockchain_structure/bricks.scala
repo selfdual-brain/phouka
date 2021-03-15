@@ -36,6 +36,8 @@ trait Brick extends BlockchainVertex {
       justifications.map(j => j.daglevel).max + 1
 
   def loggingString: String
+
+  def toStringLong: String
 }
 
 trait Block extends BlockchainVertex {
@@ -54,6 +56,9 @@ trait Ballot extends Brick {
   def targetBlock: Block
 
   override lazy val toString: String =
+    s"Ballot-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,target=${targetBlock.id})"
+
+  override def toStringLong: String =
     s"Ballot-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,target=${targetBlock.id},j=[${justifications.map(_.id).mkString(",")}])"
 
   override def loggingString: String = s"ballot-$id"
@@ -76,6 +81,9 @@ trait AbstractNormalBlock extends Block with Brick {
   override val generation: ValidatorId = parent.generation + 1
 
   override lazy val toString: String =
+    s"Block-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,parent=${parent.id},payload=$payloadSize,trans=$numberOfTransactions,gas=$totalGas)"
+
+  override def toStringLong: String =
     s"Block-$id(creator=$creator,seq=$positionInSwimlane,prev=${prevInSwimlane.map(_.id)},daglevel=$daglevel,parent=${parent.id},payload=$payloadSize,trans=$numberOfTransactions,gas=$totalGas,j=[${justifications.map(_.id).mkString(",")}])"
 
   override def loggingString: String = s"block-$id"

@@ -50,14 +50,14 @@ The simulation will stop after processing 1 million events. This should take abo
 a counter of processed events showing up on system console. Upon stopping, the following things will happen:
 
 - complete simulation stats will be printed on System.out
-- a window "Simulation events log" will open
-- a window "Simulation stats" will open
+- a window "Simulation events log analyzer" will open
+- a window "Simulation statistics" will open
 
 This is what you will see:
 
 ![Simulation stats](./doc/phouka-simulation-stats.png)
 
-![Events log](./doc/phouka-events-log.png)
+![Events log analyzer](./doc/phouka-log-analyzer.png)
 
 `Demo1` class accepts up to 3 command-line arguments:
 

@@ -17,7 +17,7 @@ class SimulationEngineChassis[A,P](engine: SimulationEngine[A,P]) extends Observ
 
   override def observers: Iterable[SimulationObserver[A,P]] = observersX
 
-  override def lastStepExecuted: Long = engine.lastStepExecuted
+  override def lastStepEmitted: Long = engine.lastStepEmitted
 
   override def currentTime: SimTimepoint = engine.currentTime
 

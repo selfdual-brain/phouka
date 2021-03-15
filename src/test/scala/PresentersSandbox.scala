@@ -119,15 +119,9 @@ object PresentersSandbox {
     val t1 = measureExecutionTime {
       simulationDisplayModel.advanceTheSimulationBy(NUMBER_OF_STEPS)
     }
-    log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepExecuted}")
+    log.info(s"simulation completed ($t1 millis), last step was: ${engine.lastStepEmitted}")
 
-    //select last step
-    log.info("selecting last step (this involves updating the rendered state of validator 0)")
-
-    val t2 = measureExecutionTime {
-      simulationDisplayModel.selectedStep = simulationDisplayModel.engine.lastStepExecuted.toInt
-    }
-    log.info(s"selection of last step completed ($t2 millis)")
+    simulationDisplayModel.selectedStep = Some(simulationDisplayModel.engine.lastStepEmitted.toInt)
 
     //create desired controller
     val sessionManager = new SwingSessionManager

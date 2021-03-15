@@ -56,7 +56,7 @@ abstract class Presenter[M,VM,VP<:PresentersTreeVertex,V <: MvpView[VM,VP], E] e
     }
   }
 
-  def ensureViewIsConnected(): V = {
+  def createAndConnectDefaultView(): V = {
     if (! this.hasView) {
       val v = createDefaultView()
       this.view = v
@@ -66,7 +66,7 @@ abstract class Presenter[M,VM,VP<:PresentersTreeVertex,V <: MvpView[VM,VP], E] e
 
   override def show(windowTitleOverride: Option[String]): Unit = {
     ensureModelIsConnected()
-    ensureViewIsConnected()
+    createAndConnectDefaultView()
 
     val windowTitle = windowTitleOverride.getOrElse(this.defaultWindowTitle)
     sessionManager.encapsulateViewInFrame(this.view, windowTitle)
