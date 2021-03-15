@@ -229,14 +229,15 @@ IN PROGRESS:
 
 Milestones achieved:
 - 2020-05-14: project kick-off
-- 2021-02-15: demo-1: hardcoded experiments, limited log analyzer, limited stats, no j-dag graph
-- 2021-03-10: demo-2: hardcoded experiments, limited log analyzer, full stats, no j-dag graph
+- 2021-02-15: demo-1: hardcoded experiments config, limited log analyzer, limited stats, j-dag graph missing
+- 2021-03-10: demo-2: hardcoded experiments config, limited log analyzer, complete stats, j-dag graph missing
+- 2021-03-15: demo-3: hardcoded experiments config, complete log analyzer, complete stats, j-dag graph missing
 
 Current roadmap (estimated):
-- 2021-04-15: demo-3: (demo-2) + limited experiments-manager + full log analyzer + improved memory optimizations
+- 2021-04-15: demo-4: (demo-3) + limited experiments config GUI + improved memory optimizations + j-dag graph
 - 2021-05-xx: beta-1: (demo-3) + full experiments-manager
-- 2021-06-xx: beta-2: (beta-1) + full j-dag graph
-- 2021-07-xx: beta-3: (beta-2) + whatever fixes / improvements will be needed at this point  
+- 2021-06-xx: beta-2: scope to be defined
+- 2021-07-xx: beta-3: scope to be defined  
 - 2021-08-xx: official release of ver 1.0
 
 Features expected in ver 2.0:
