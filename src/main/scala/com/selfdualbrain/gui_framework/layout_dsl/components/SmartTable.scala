@@ -1,12 +1,12 @@
 package com.selfdualbrain.gui_framework.layout_dsl.components
 
-import java.awt.{BorderLayout, Color, Component}
-import com.selfdualbrain.gui_framework.{EventsBroadcaster, TextAlignment}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.SmartTable.{ColumnDefinition, ColumnsScalingMode, GenericCellRenderer, SmartTableModelAdapter}
 import com.selfdualbrain.gui_framework.swing_tweaks.TableHeaderWithTooltipsSupport
+import com.selfdualbrain.gui_framework.{EventsBroadcaster, TextAlignment}
 import org.slf4j.LoggerFactory
 
+import java.awt.{BorderLayout, Color, Component, Rectangle}
 import javax.swing._
 import javax.swing.event.ListSelectionEvent
 import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer}
@@ -78,8 +78,11 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
     *
     * @param row row to become selected
     */
-  def emulateUserSelectingSpecifiedRow(row: Int): Unit = {
+  def emulateUserSelectingSpecifiedRow(row: Int, scrollTableToMakeItVisible: Boolean): Unit = {
     swingTable.getSelectionModel.setSelectionInterval(row, row)
+
+    if (scrollTableToMakeItVisible)
+      swingTable.scrollRectToVisible(new Rectangle(swingTable.getCellRect(row, 0, true)))
   }
 
 }

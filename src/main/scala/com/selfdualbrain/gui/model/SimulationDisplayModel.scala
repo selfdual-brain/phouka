@@ -15,6 +15,7 @@ import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 import com.selfdualbrain.util.RepeatUntilExitCondition
 import org.slf4j.LoggerFactory
 
+import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -367,6 +368,46 @@ class SimulationDisplayModel(
     eventsFilter = filter
     filteredEvents = allEvents.underlyingArrayBuffer.zipWithIndex collect { case (ev, step) if filter.isEventIncluded(ev) => (step,ev)}
     trigger(Ev.FilterChanged)
+  }
+
+  def isStepWithinTheScopeOfCurrentFilter(stepId: Int): Boolean = {
+    val event = allEvents(stepId)
+    return this.getFilter.isEventIncluded(event)
+  }
+
+  /**
+    * Finds the position of an event with given step-id within the collection of filtered events.
+    *
+    * @param stepId step-id of the event to be searched for
+    * @return Some(p) when the event is found at position p, None if the event is not present in the current list of filtered events
+    */
+  def findPositionOfStep(stepId: Int): Option[Int] = {
+
+    @tailrec
+    def binarySearch(left: Int, right: Int): Option[Int] = {
+      if (left > right)
+        None
+      else
+        if (left == right) {
+          if (filteredEvents(left)._1 == stepId)
+            Some(left)
+          else
+            None
+        } else {
+          val mid = left + (right - left) / 2
+          val stepIdInTheMiddlePointOfInterval = filteredEvents(mid)._1
+          if (stepIdInTheMiddlePointOfInterval == stepId)
+            Some(mid)
+          else
+            if (stepIdInTheMiddlePointOfInterval < stepId) binarySearch(mid + 1, right)
+            else binarySearch(left, mid - 1)
+        }
+    }
+
+    if (filteredEvents.isEmpty)
+      None
+    else
+      binarySearch(0, filteredEvents.size - 1)
   }
 
   /*------------- graphical jdag --------------*/

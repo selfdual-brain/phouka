@@ -182,9 +182,17 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
     override def onRowSelected(rowIndex: Int): Unit = {
       log.debug(s"selected row with index $rowIndex")
-      if (rowIndex == -1)
-        presenter.onStepSelected(None)
-      else {
+      if (rowIndex == -1) {
+        //this happens after new filter was applied, so that we the table displaying a completely new subset of events
+        //however, it may happen that the previously selected event is visible after the filter change
+        //if yes, we would like to keep the previous selection
+        if (model.selectedStep.isDefined && model.isStepWithinTheScopeOfCurrentFilter(model.selectedStep.get)) {
+          val rowToBeMagicallySelected: Int = model.findPositionOfStep(model.selectedStep.get).get
+          events_Table.emulateUserSelectingSpecifiedRow(rowToBeMagicallySelected, scrollTableToMakeItVisible = true)
+        } else {
+          presenter.onStepSelected(None)
+        }
+      } else {
         val (stepId, event) = simulationDisplayModel.eventsAfterFiltering(rowIndex)
         log.debug(s"decoded selection as step $stepId")
         presenter.onStepSelected(Some(stepId))
