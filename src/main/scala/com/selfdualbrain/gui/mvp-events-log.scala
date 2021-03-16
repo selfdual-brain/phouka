@@ -188,8 +188,10 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
         //if yes, we would like to keep the previous selection
         if (model.selectedStep.isDefined && model.isStepWithinTheScopeOfCurrentFilter(model.selectedStep.get)) {
           val rowToBeMagicallySelected: Int = model.findPositionOfStep(model.selectedStep.get).get
+          log.debug(s"attempting to do magic re-selection of ${model.selectedStep} (row $rowToBeMagicallySelected)")
           events_Table.emulateUserSelectingSpecifiedRow(rowToBeMagicallySelected, scrollTableToMakeItVisible = true)
         } else {
+          log.debug(s"magic re-selection of a row was not possible")
           presenter.onStepSelected(None)
         }
       } else {

@@ -262,10 +262,16 @@ class NodeStatsProcessor(
         maxDownloadQueueLengthAsBytesX = math.max(maxDownloadQueueLengthAsBytesX, downloadQueueLengthAsBytesX)
 
       case EventPayload.NetworkDisruptionEnd(disruptionEventId) =>
-      //ignore
+        //ignore
 
       case EventPayload.NewAgentSpawned(validatorId, progenitor) =>
-      //ignore
+        //ignore
+
+      case EventPayload.Halt(reason) =>
+        //ignore
+
+      case EventPayload.Heartbeat(impulse) =>
+        //ignore
     }
   }
 

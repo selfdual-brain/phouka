@@ -274,7 +274,7 @@ class SimulationDisplayModel(
       }
 
       //check loop exit condition
-      stopConditionChecker.checkStop(step, event) || step == Int.MaxValue
+      stopConditionChecker.checkStop(step, event) || step == Int.MaxValue || ! engine.hasNext
     }
 
     //announce to listeners that we just advanced the simulation

@@ -464,7 +464,7 @@ class HighwayValidator private (
     def runaheadSlowdownCheck(roundExponent: Int): Boolean = state.myLastMessagePublished match {
       case Some(msg) =>
         val currentRunahead: TimeDelta = state.myLastMessagePublished.get.timepoint.timePassedSince(state.finalizer.lastFinalizedBlock.timepoint)
-        val tolerance: TimeDelta = config.runaheadTolerance * roundLengthAsNumberOfTicks(roundExponent)
+        val tolerance: TimeDelta = config.runaheadTolerance * roundLengthAsTimeDelta(roundExponent)
         currentRunahead > tolerance
       case None =>
         false
@@ -486,7 +486,7 @@ class HighwayValidator private (
       }
 
     //true = slowdown is needed
-    def roundTooShortInRelationToOmegaMarginCheck(roundExponent: Int): Boolean = state.effectiveOmegaMargin.toDouble / roundLengthAsNumberOfTicks(roundExponent) > 0.5
+    def roundTooShortInRelationToOmegaMarginCheck(roundExponent: Int): Boolean = state.effectiveOmegaMargin.toDouble / roundLengthAsTimeDelta(roundExponent) > 0.5
 
     //true = slowdown is needed
     def orphanRateTooHighCheck(exponent: Int): Boolean = {
@@ -587,6 +587,9 @@ class HighwayValidator private (
     assert (exponent <= 62)
     return 1L << exponent
   }
+
+  //tick = 1 millisecond, while simulation time is measured in microseconds
+  def roundLengthAsTimeDelta(exponent: Int): TimeDelta = roundLengthAsNumberOfTicks(exponent) * 1000
 
   override protected def onBlockFinalized(bGameAnchor: Block, finalizedBlock: AbstractNormalBlock, summit: ACC.Summit): Unit = {
     super.onBlockFinalized(bGameAnchor, finalizedBlock, summit)

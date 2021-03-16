@@ -6,7 +6,7 @@ import com.selfdualbrain.gui_framework.swing_tweaks.TableHeaderWithTooltipsSuppo
 import com.selfdualbrain.gui_framework.{EventsBroadcaster, TextAlignment}
 import org.slf4j.LoggerFactory
 
-import java.awt.{BorderLayout, Color, Component, Rectangle}
+import java.awt.{BorderLayout, Color, Component, EventQueue}
 import javax.swing._
 import javax.swing.event.ListSelectionEvent
 import javax.swing.table.{AbstractTableModel, DefaultTableCellRenderer}
@@ -81,8 +81,13 @@ class SmartTable(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutC
   def emulateUserSelectingSpecifiedRow(row: Int, scrollTableToMakeItVisible: Boolean): Unit = {
     swingTable.getSelectionModel.setSelectionInterval(row, row)
 
-    if (scrollTableToMakeItVisible)
-      swingTable.scrollRectToVisible(new Rectangle(swingTable.getCellRect(row, 0, true)))
+    if (scrollTableToMakeItVisible) {
+      log.debug(s"swing-level refocusing of scroll pane to make row $row visible")
+      EventQueue invokeLater {
+        () => swingTable.scrollRectToVisible(swingTable.getCellRect(row, 0, true))
+      }
+
+    }
   }
 
 }
