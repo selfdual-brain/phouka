@@ -54,7 +54,7 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
   /* download queue */
   private val downloadQueue: RibbonPanel = addRibbon("download queue")
   private val downloadQueueItems_TextField: JTextField = downloadQueue.addTxtField(label = "items", width = 60, preGap = 0)
-  private val downloadQueueDataVolume_TextField: JTextField = downloadQueue.addTxtField(label = "data volume [MB]", width = 60)
+  private val downloadQueueDataVolume_TextField: JTextField = downloadQueue.addTxtField(label = "data volume [MB]", width = 100)
   downloadQueue.addSpacer()
 
   /* bricks accepted */
@@ -91,8 +91,8 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
   /* last finalized block */
   private val lfb_Ribbon: RibbonPanel = addRibbon("last finalized block")
   private val lfbGeneration_TextField: JTextField = lfb_Ribbon.addTxtField(label = "generation", width = 50, preGap = 0)
-  private val lfbLatency_TextField: JTextField = lfb_Ribbon.addTxtField(label = "latency", width = 80)
-  private val timePassedSinceLastSummit_TextField: JTextField = lfb_Ribbon.addTxtField(label = "time ago", width = 80)
+  private val lfbLatency_TextField: JTextField = lfb_Ribbon.addTxtField(label = "latency", width = 100)
+  private val timePassedSinceLastSummit_TextField: JTextField = lfb_Ribbon.addTxtField(label = "time ago", width = 100)
   lfb_Ribbon.addSpacer()
 
   /* last finalized block details */
@@ -100,8 +100,8 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
 
   /* current b-game status */
   private val currentBGame_Ribbon: RibbonPanel = addRibbon("current b-game")
-  private val currentBGameWinnerCandidate_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "winner candidate", width = 50, preGap = 0)
-  private val currentBGameWinnerCandidateVotes_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "winner votes", width = 50, preGap = 0)
+  private val currentBGameWinnerCandidate_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "winner candidate", width = 60, preGap = 0)
+  private val currentBGameWinnerCandidateVotes_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "winner votes", width = 100, preGap = 0)
   private val currentBGameLastPartialSummitLevel_TextField: JTextField = currentBGame_Ribbon.addTxtField(label = "partial summit level", width = 80)
   currentBGame_Ribbon.addSpacer()
 
@@ -143,7 +143,7 @@ class StepOverviewView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadde
         receivedBlocks_TextField <-- snapshot.receivedBlocks
         receivedBallots_TextField <-- snapshot.receivedBallots
         downloadQueueItems_TextField <-- snapshot.downloadQueueLengthAsNumberOfItems
-        downloadQueueDataVolume_TextField <-- snapshot.downloadQueueLengthAsBytes
+        downloadQueueDataVolume_TextField <-- f"${snapshot.downloadQueueLengthAsBytes.toDouble / 1000000}%.4f"
 
         /* bricks accepted */
         acceptedTotal_TextField <-- snapshot.acceptedBricks

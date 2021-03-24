@@ -72,7 +72,8 @@ object NetworkingBarrelsTest {
     bifurcationsFreq = Some(50),
     crashesFreq = Some(50),
     outagesFreq = Some(50),
-    outageLengthMinMax = Some((TimeDelta.seconds(1), TimeDelta.minutes(10)))
+    outageLengthMinMax = Some((TimeDelta.seconds(1), TimeDelta.minutes(10))),
+    faultyValidatorsRelativeWeightThreshold = 0.3
   )
 
   val networkModel: NetworkModel[BlockchainNodeRef, Brick] = new SymmetricLatencyBandwidthGraphNetwork(
@@ -104,6 +105,7 @@ object NetworkingBarrelsTest {
     random,
     absoluteFTT,
     weightsOfValidatorsAsMap,
+    totalWeight,
     numberOfValidators
   )
 

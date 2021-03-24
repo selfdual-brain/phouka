@@ -1,10 +1,9 @@
 package com.selfdualbrain.gui_framework
 
-import java.awt.{BorderLayout, Dimension, GraphicsEnvironment, Toolkit}
-
 import com.selfdualbrain.gui_framework.layout_dsl.{GuiLayoutConfig, HardcodedLayoutConfig}
-import javax.swing.{JFrame, JPanel, WindowConstants}
 
+import java.awt.{BorderLayout, Dimension, GraphicsEnvironment}
+import javax.swing.{JFrame, JPanel, WindowConstants}
 import scala.collection.mutable
 
 /**
@@ -22,7 +21,7 @@ class SwingSessionManager extends GuiSessionManager {
   override def encapsulateViewInFrame(view: Any, windowTitle: String): Unit = {
     val defaultScreen = GraphicsEnvironment.getLocalGraphicsEnvironment.getDefaultScreenDevice
     val frame = new JFrame(defaultScreen.getDefaultConfiguration)
-    frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
+    frame.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE)
     frame.getContentPane.add(view.asInstanceOf[JPanel], BorderLayout.CENTER)
     frame.pack()
     frame.setTitle(windowTitle)

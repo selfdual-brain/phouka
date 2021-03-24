@@ -2,13 +2,14 @@ package com.selfdualbrain.gui_framework
 
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 
+/**
+  * Manages displaying of top-level windows.
+  */
 trait GuiSessionManager {
 
   /**
     * I install given presenter as part of current session.
-    * In effect this presenter will initialize its presenters hierarchy and show its view.
-    * Caution: possibly several top-level windows can be managed by a single presenter, so top-level
-    * presenters do not always correspond to top-level views.
+    * In effect this presenter will initialize its presenters hierarchy and its view will be displayed on screen.
     * @param presenter
     */
   def mountTopPresenter(presenter: PresentersTreeVertex, windowTitleOverride: Option[String])

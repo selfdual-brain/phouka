@@ -104,7 +104,8 @@ object ReferenceExpConfig {
         bifurcationsFreq = Some(5),
         crashesFreq = Some(3),
         outagesFreq = Some(10),
-        outageLengthMinMax = Some((TimeDelta.seconds(20), TimeDelta.minutes(5)))
+        outageLengthMinMax = Some((TimeDelta.seconds(20), TimeDelta.minutes(5))),
+        faultyValidatorsRelativeWeightThreshold = 0.3
       )
     )
 

@@ -1,6 +1,7 @@
 package com.selfdualbrain.des
 
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
@@ -13,10 +14,12 @@ import scala.collection.mutable
   * @tparam E type of "events"
   */
 class EventStreamsMerge[E](streams: IndexedSeq[Iterator[E]], timepoint: E => SimTimepoint, eventsPullQuantum: TimeDelta) extends Iterator[E] {
+  private val log = LoggerFactory.getLogger("event-streams-merge")
+
   private val ordering: Ordering[E] = (x: E, y: E) => timepoint(y).compare(timepoint(x))
   private val queue = new mutable.PriorityQueue[E]()(ordering)
   private val numberOfSourceStreams: Int = streams.size
-  private val bufferedStreams: Array[scala.collection.BufferedIterator[E]] = (streams.map(s => s.buffered)).toArray
+  private val bufferedStreams: Array[scala.collection.BufferedIterator[E]] = streams.map(s => s.buffered).toArray
   private val clocks: Array[SimTimepoint] = Array.fill(numberOfSourceStreams)(SimTimepoint.zero)
   private val eofFlags: Array[Boolean] = Array.fill(numberOfSourceStreams)(false)
   private var currentEventsHorizon: SimTimepoint = SimTimepoint.zero

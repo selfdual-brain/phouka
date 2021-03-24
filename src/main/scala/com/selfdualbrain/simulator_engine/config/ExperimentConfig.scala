@@ -116,7 +116,13 @@ object DisruptionModelConfig {
   case class BifurcationsRainfall(disasterTimepoint: SimTimepoint, fttApproxMode: FttApproxMode) extends DisruptionModelConfig
   case class ExplicitDisruptionsSchedule(events: Seq[DisruptionEventDesc]) extends DisruptionModelConfig
   //frequencies using [events/hour] units
-  case class FixedFrequencies(bifurcationsFreq: Option[Double], crashesFreq: Option[Double],outagesFreq: Option[Double], outageLengthMinMax: Option[(TimeDelta, TimeDelta)]) extends DisruptionModelConfig
+  case class FixedFrequencies(
+                               bifurcationsFreq: Option[Double],
+                               crashesFreq: Option[Double],
+                               outagesFreq: Option[Double],
+                               outageLengthMinMax: Option[(TimeDelta, TimeDelta)],
+                               faultyValidatorsRelativeWeightThreshold: Double
+                             ) extends DisruptionModelConfig
   case class SingleBifurcationBomb(targetBlockchainNode: BlockchainNodeRef, disasterTimepoint: SimTimepoint, numberOfClones: Int) extends DisruptionModelConfig
 }
 

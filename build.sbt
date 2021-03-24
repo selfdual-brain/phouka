@@ -2,7 +2,7 @@ name := "phouka"
 
 version := "0.1"
 
-scalaVersion := "2.13.4"
+scalaVersion := "2.13.5"
 
 libraryDependencies ++= {
   Seq(
@@ -13,6 +13,7 @@ libraryDependencies ++= {
     "org.jfree" % "jfreechart" % "1.5.0",
     "org.json4s" %% "json4s-native" % "3.6.9",
     "org.scalatest" %% "scalatest" % "3.2.3" % Test,
-    "org.apache.commons" % "commons-math3" % "3.6.1"
+    "org.apache.commons" % "commons-math3" % "3.6.1",
+    "org.swinglabs" % "swingx-core" % "1.6.2-2"
   )
 }

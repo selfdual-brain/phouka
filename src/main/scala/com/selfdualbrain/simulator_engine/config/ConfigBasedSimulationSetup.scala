@@ -40,7 +40,7 @@ class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends Simulatio
   private val blockPayloadGenerator: BlockPayloadBuilder = BlockPayloadBuilder.fromConfig(config.blocksBuildingStrategy, transactionsStream)
   val networkModel: NetworkModel[BlockchainNodeRef, Brick] = buildNetworkModel()
   val downloadBandwidthModel: DownloadBandwidthModel[BlockchainNodeRef] = buildDownloadBandwidthModel()
-  val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(config.disruptionModel, randomGenerator, absoluteFTT, weightsOfValidatorsAsFunction, config.numberOfValidators)
+  val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(config.disruptionModel, randomGenerator, absoluteFTT, weightsOfValidatorsAsFunction, totalWeight, config.numberOfValidators)
   private val computingPowersGenerator: LongSequence.Generator = LongSequence.Generator.fromConfig(config.nodesComputingPowerModel, randomGenerator)
   private val runForkChoiceFromGenesis: Boolean = config.forkChoiceStrategy match {
     case ForkChoiceStrategy.IteratedBGameStartingAtLastFinalized => false

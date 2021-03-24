@@ -205,13 +205,7 @@ class EventsLogView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
 
     override def calculateNumberOfRows: Int = simulationDisplayModel.eventsAfterFiltering.length
 
-    private def dependenciesListAsString(dep: Iterable[Brick]): String = {
-      val coll = dep map {
-        case block: Block => s"block-${block.id}"
-        case ballot: Ballot => s"ballot-${ballot.id}"
-      }
-      return coll.mkString(",")
-    }
+    private def dependenciesListAsString(dep: Iterable[Brick]): String = dep.map(b => b.id).mkString(",")
     private val EMPTY: String = ""
     private def eventDetails(event: Event[BlockchainNodeRef, EventPayload]): String = event match {
 

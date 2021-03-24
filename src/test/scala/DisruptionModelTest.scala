@@ -24,7 +24,8 @@ object DisruptionModelTest {
     bifurcationsFreq = Some(50),
     crashesFreq = Some(50),
     outagesFreq = Some(50),
-    outageLengthMinMax = Some((TimeDelta.seconds(1), TimeDelta.minutes(10)))
+    outageLengthMinMax = Some((TimeDelta.seconds(1), TimeDelta.minutes(10))),
+    faultyValidatorsRelativeWeightThreshold = 0.3
   )
 
   val disruptionModel: DisruptionModel = DisruptionModel.fromConfig(
@@ -32,6 +33,7 @@ object DisruptionModelTest {
     random,
     absoluteFTT,
     weightsOfValidatorsAsMap,
+    totalWeight,
     numberOfValidators
   )
 

@@ -1,6 +1,5 @@
 package com.selfdualbrain.des
 
-import com.selfdualbrain.simulator_engine.EventPayload
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta}
 
 import scala.collection.mutable
@@ -22,7 +21,7 @@ class ClassicDesQueue[A,P](
   private val queue = new mutable.PriorityQueue[Event[A,P]]()(Ordering[Event[A,P]].reverse)
   private var highestTimepointOfExplicitlyAddedEvent: SimTimepoint = SimTimepoint.zero
   private var currentExtEventsHorizon: SimTimepoint = SimTimepoint.zero
-  private val heartbeatGenerator: Iterator[Long] = Iterator.iterate(0L)(_ + heartbeatPeriod)
+//  private val heartbeatGenerator: Iterator[Long] = Iterator.iterate(0L)(_ + heartbeatPeriod)
   private var lastHeartbeatSeqNumber: Long = 0
 
   override def addExternalEvent(timepoint: SimTimepoint, destination: A, payload: P): Event[A,P] = {

@@ -38,6 +38,5 @@ case class HumanReadableTimeAmount(
     }
   }
 
-
 }
 

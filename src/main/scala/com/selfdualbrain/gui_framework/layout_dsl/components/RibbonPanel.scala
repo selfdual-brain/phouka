@@ -1,11 +1,14 @@
 package com.selfdualbrain.gui_framework.layout_dsl.components
 
 import java.awt.{Color, Dimension, GridBagConstraints, GridBagLayout, Insets}
-
 import com.selfdualbrain.gui_framework.{Orientation, TextAlignment}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.swing_tweaks.SmartTextField
-import javax.swing.{JButton, JCheckBox, JLabel, JPanel, JTextField, SwingConstants}
+import com.selfdualbrain.gui_framework.swing_tweaks.{SmartFormattedTextField, SmartMaskedTextField, SmartTextField}
+
+import java.text.Format
+import javax.swing.JFormattedTextField.AbstractFormatter
+import javax.swing.text.MaskFormatter
+import javax.swing.{JButton, JCheckBox, JFormattedTextField, JLabel, JPanel, JTextField, SwingConstants}
 
 class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) extends PlainPanel(guiLayoutConfig) {
   self: JPanel =>
@@ -39,13 +42,61 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
     return labelComponent
   }
 
-  def addTxtField(width: Int,
+  def addTxtField(
+                   width: Int,
+                   isEditable: Boolean = false,
+                   alignment: TextAlignment = TextAlignment.LEFT,
+                   preGap: Int = guiLayoutConfig.ribbonPreGap,
+                   postGap: Int = guiLayoutConfig.ribbonPostGap,
+                   wantGrow: Boolean = false,
+                   label: String = ""
+                 ): JTextField = {
+
+    val textFieldComponent = new SmartTextField()
+    this.privateAddTxtField(width, isEditable, alignment, preGap, postGap, wantGrow, label, textFieldComponent)
+    return textFieldComponent
+  }
+
+  def addMaskedTxtField(
+                  width: Int = 60,
+                  format: MaskFormatter,
                   isEditable: Boolean = false,
                   alignment: TextAlignment = TextAlignment.LEFT,
                   preGap: Int = guiLayoutConfig.ribbonPreGap,
                   postGap: Int = guiLayoutConfig.ribbonPostGap,
                   wantGrow: Boolean = false,
-                  label: String = ""): JTextField = {
+                  label: String = ""): JFormattedTextField = {
+
+    val textFieldComponent = new SmartMaskedTextField(format)
+    this.privateAddTxtField(width, isEditable, alignment, preGap, postGap, wantGrow, label, textFieldComponent)
+    return textFieldComponent
+  }
+
+  def addFormattedTxtField(
+                         width: Int = 60,
+                         format: AbstractFormatter,
+                         isEditable: Boolean = false,
+                         alignment: TextAlignment = TextAlignment.LEFT,
+                         preGap: Int = guiLayoutConfig.ribbonPreGap,
+                         postGap: Int = guiLayoutConfig.ribbonPostGap,
+                         wantGrow: Boolean = false,
+                         label: String = ""): JFormattedTextField = {
+
+    val textFieldComponent = new SmartFormattedTextField(format)
+    this.privateAddTxtField(width, isEditable, alignment, preGap, postGap, wantGrow, label, textFieldComponent)
+    return textFieldComponent
+  }
+
+
+  private def privateAddTxtField(
+                      width: Int,
+                      isEditable: Boolean = false,
+                      alignment: TextAlignment = TextAlignment.LEFT,
+                      preGap: Int = guiLayoutConfig.ribbonPreGap,
+                      postGap: Int = guiLayoutConfig.ribbonPostGap,
+                      wantGrow: Boolean = false,
+                      label: String = "",
+                      textFieldComponent: JTextField): Unit = {
 
     val declaredPreGap = preGap
     if (label != "")
@@ -54,7 +105,6 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
     val preGapForTheField: Int = if (label == "") declaredPreGap else guiLayoutConfig.ribbonPreGap
 
     position += 1
-    val textFieldComponent = new SmartTextField()
     textFieldComponent.setMinimumSize(new Dimension(width, guiLayoutConfig.fieldsHeight))
     textFieldComponent.setPreferredSize(new Dimension(width, guiLayoutConfig.fieldsHeight))
     textFieldComponent.setEditable(true)
@@ -83,7 +133,6 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
         gbc.insets = new Insets(preGap, 0, postGap, 0)
     }
     this.add(textFieldComponent, gbc)
-    return textFieldComponent
   }
 
   def addSpacer(): Unit = {

@@ -170,6 +170,9 @@ object PresentersSandbox {
         val p = new StepOverviewPresenter
         p.model = simulationDisplayModel
         p
+      case 12 =>
+        val p = new SandboxPresenter
+        p
 
     }
     log.info("controller instance created")
@@ -177,7 +180,7 @@ object PresentersSandbox {
     //show the controller
     sessionManager.mountTopPresenter(presenter, Some("test"))
 
-    printStatsToConsole()
+//    printStatsToConsole()
   }
 
   def printStatsToConsole(): Unit = {
