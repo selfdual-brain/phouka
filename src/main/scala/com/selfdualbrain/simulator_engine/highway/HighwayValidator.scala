@@ -186,7 +186,7 @@ object HighwayValidator {
   * (2) A validator monitors the moving average of bricks dropped for being too late. If this average exceeds certain fraction (see the config),
   * "dropped bricks alarm" is raised and this alarm is handled later by increasing round exponent by 1. The  "dropped bricks alarm" condition is checked
   * after every dropped brick.
-  * (3) After an activation of "dropped bricks alarm", the alarm is suppressed for specified amount of rounds.
+  * (3) After an activation of "dropped bricks alarm", the alarm is suppressed for specified number of rounds.
   *
   * ### SPEEDUP ###
   * Every 'exponentAccelerationPeriod' rounds a validator decreases the round exponent by 1, unless at least one of the following conditions is true:

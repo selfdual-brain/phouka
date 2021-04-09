@@ -1,11 +1,11 @@
 package com.selfdualbrain.gui
 
 import com.selfdualbrain.gui.model.SimulationDisplayModel
-import com.selfdualbrain.gui.model.SimulationDisplayModel.SimulationEngineStopCondition
 import com.selfdualbrain.gui_framework.MvpView.{AbstractButtonOps, JTextComponentOps}
 import com.selfdualbrain.gui_framework._
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{RadioButtonsListPanel, RibbonPanel, StaticSplitPanel}
+import com.selfdualbrain.simulator_engine.SimulationEngineStopCondition
 
 /**
   * Component that offers control over starting the simulation engine.
@@ -43,7 +43,7 @@ class ContinueSimulationView(val guiLayoutConfig: GuiLayoutConfig) extends Stati
 
   //### mode panel ###
   private val stopConditionMode_Panel = new RadioButtonsListPanel(guiLayoutConfig, Orientation.VERTICAL)
-  private val mapOfStopConditionVariants = SimulationDisplayModel.SimulationEngineStopCondition.variants
+  private val mapOfStopConditionVariants = SimulationEngineStopCondition.variants
   private val sortedListOfVariants = (0 until mapOfStopConditionVariants.size) map (i => mapOfStopConditionVariants(i))
   stopConditionMode_Panel.initItems(sortedListOfVariants)
   stopConditionMode_Panel.surroundWithTitledBorder("Pick stop condition variant")
