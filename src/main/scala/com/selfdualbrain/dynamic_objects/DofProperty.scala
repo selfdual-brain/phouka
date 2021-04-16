@@ -1,5 +1,7 @@
 package com.selfdualbrain.dynamic_objects
 
+import com.selfdualbrain.data_structures.FastMapOnIntInterval
+
 abstract class DofProperty[T](val name: String) {
   var displayName: String = _
   var group: String = _
@@ -9,8 +11,30 @@ abstract class DofProperty[T](val name: String) {
   var quantity: Quantity = _
   var validationInfo: String = _
 
-  def read(context: DynamicObject, index: Int): T = context.valuesBuffer(name)(index)
+//  @deprecated
+//  def read(context: DynamicObject, index: Int): Option[T] = {
+//    val coll = context.attrValuesBuffer(name)
+//    return if (coll.size >= index + 1)
+//      coll(index)
+//    else
+//      None
+//  }
 
-  def write(context: DynamicObject, index: Int, value: T): Unit = context.valuesBuffer(name)(index) = value
+  def readSingleValue(context: DynamicObject): Option[T]
+
+  def writeSingleValue(context: DynamicObject, newValue: Option[T]): Unit
+
+  def readInterval(context: DynamicObject): Option[(T,T)]
+
+  def writeInterval(context: DynamicObject, newValue: Option[(T,T)]): Unit
+
+  def getCollection(context: DynamicObject): FastMapOnIntInterval[T]
+
+  def createNewValueContainer(): DynamicObject.ValueContainer[T]
+
+//  @deprecated
+//  def write(context: DynamicObject, index: Int, value: Option[T]): Unit = {
+//    context.attrValuesBuffer(name)(index) = value
+//  }
 
 }
