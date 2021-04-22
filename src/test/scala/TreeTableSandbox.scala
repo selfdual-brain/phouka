@@ -1,5 +1,5 @@
 import com.selfdualbrain.gui_framework.SwingSessionManager
-import org.jdesktop.swingx.JXTreeTable
+import com.selfdualbrain.gui_framework.swing_tweaks.JXTreeTableTweaked
 import org.jdesktop.swingx.treetable.FileSystemModel
 
 import java.awt.{BorderLayout, Dimension, Font}
@@ -14,7 +14,8 @@ object TreeTableSandbox {
     UIManager.put("TextField.font", defaultFont)
 
     val treeTableModel = new FileSystemModel
-    val treeTable = new JXTreeTable(treeTableModel)
+    val treeTable = new JXTreeTableTweaked(treeTableModel)
+    val adapter = treeTable.getModel
     treeTable.setShowHorizontalLines(true)
     treeTable.setShowVerticalLines(true)
     val scroll = new JScrollPane(treeTable)

@@ -1,9 +1,11 @@
 package com.selfdualbrain.gui_framework.dof_editor
 
+import com.selfdualbrain.config.ConfigDofModel
 import com.selfdualbrain.dynamic_objects.DynamicObject
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
+import com.selfdualbrain.gui_framework.swing_tweaks.JXTreeTableTweaked
 import org.jdesktop.swingx.JXTreeTable
 import org.slf4j.LoggerFactory
 
@@ -17,13 +19,17 @@ import javax.swing.{JPanel, JScrollPane}
 class DofTreeEditorPresenter extends Presenter[DynamicObject, DynamicObject, DofTreeEditorPresenter, DofTreeEditorView, Nothing] {
   private val log = LoggerFactory.getLogger(s"mvp-dof-tree-editor[Presenter]")
 
-  override def afterModelConnected(): Unit = ???
+  override def afterModelConnected(): Unit = {
+    //do nothing
+  }
 
-  override def afterViewConnected(): Unit = ???
+  override def afterViewConnected(): Unit = {
+    //do nothing
+  }
 
-  override def createDefaultView(): DofTreeEditorView = ???
+  override def createDefaultView(): DofTreeEditorView = new DofTreeEditorView(guiLayoutConfig)
 
-  override def createDefaultModel(): DynamicObject = ???
+  override def createDefaultModel(): DynamicObject = new DynamicObject(ConfigDofModel.ExperimentConfig)
 }
 
 /*                                                                          VIEW                                                                                        */
@@ -33,14 +39,26 @@ class DofTreeEditorView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel
 
   override def afterModelConnected(): Unit = {
     val treeTableModel = new TTModel(this.model)
-    val treeTable = new JXTreeTable(treeTableModel) {
 
-      override def getCellRenderer(row: Int, column: Int): TableCellRenderer = super.getCellRenderer(row, column)
+    val treeTable = new JXTreeTableTweaked(treeTableModel) {
 
-      override def getCellEditor(row: Int, column: Int): TableCellEditor = super.getCellEditor(row, column)
+      override def getCellRenderer(row: Int, column: Int): TableCellRenderer = {
+        if (column == 0)
+          super.getCellRenderer(row, column)
+        else {
+          val ttNode: TTNode[_] = this.convertRowToNode(row).asInstanceOf[TTNode[_]]
+          ttNode.cellEditor
+        }
+      }
 
-      override def editingStopped(e: ChangeEvent): Unit = super.editingStopped(e)
-
+      override def getCellEditor(row: Int, column: Int): TableCellEditor = {
+        if (column == 0)
+          super.getCellEditor(row, column)
+        else {
+          val ttNode: TTNode[_] = this.convertRowToNode(row).asInstanceOf[TTNode[_]]
+          ttNode.cellEditor
+        }
+      }
     }
 
     treeTable.setShowHorizontalLines(true)

@@ -1,6 +1,5 @@
 package com.selfdualbrain.config
 
-import com.selfdualbrain.dynamic_objects.DofAttribute.Multiplicity
 import com.selfdualbrain.dynamic_objects.NullPolicy._
 import com.selfdualbrain.dynamic_objects._
 import com.selfdualbrain.time.TimeDelta
@@ -9,33 +8,6 @@ object ConfigDofModel {
 
   /*                                                                              QUANTITIES                                                                                            */
 
-  val ConnectionSpeed: Quantity = new Quantity(name = "connection-speed", "connection speed", baseUnitName = "bit/sec")
-  ConnectionSpeed.addSuperunit("kbit/sec", 1000)
-  ConnectionSpeed.addSuperunit("Mbit/sec", 1000000)
-  ConnectionSpeed.addSuperunit("Gbit/sec", 1000000000)
-
-  val DataVolume: Quantity = new Quantity(name = "data-volume", "data volume", baseUnitName = "byte")
-  DataVolume.addSuperunit("kbyte", 1000)
-  DataVolume.addSuperunit("Mbyte", 1000000)
-  DataVolume.addSuperunit("Gbyte", 1000000000)
-
-  val InternalCurrencyAmount: Quantity = new Quantity(name = "internal-currency-amount", "internal currency amount", baseUnitName = "ether")
-
-  val ComputingCost: Quantity = new Quantity(name = "computing-cost", "computing cost", baseUnitName = "gas")
-
-  val ComputingPower: Quantity = new Quantity(name = "computing-power", "computing power", baseUnitName = "sprocket")
-  ComputingPower.addSubunit("gas/sec", 1000000)
-
-  val EventsFrequency: Quantity = new Quantity(name = "events-frequency", displayName = "events frequency", baseUnitName = "events/sec")
-  EventsFrequency.addSubunit(name = "events/min", multiplier = 60)
-  EventsFrequency.addSubunit(name = "events/h", multiplier = 3600)
-  EventsFrequency.addSubunit(name = "events/day", multiplier = 3600 * 24)
-
-  val IntervalOfSimulatedTime: Quantity = new Quantity(name = "simulated-time-interval", displayName = "simulated time interval", baseUnitName = "sec")
-  IntervalOfSimulatedTime.addSuperunit(name = "hours", multiplier = 3600)
-  IntervalOfSimulatedTime.addSuperunit(name = "minutes", multiplier = 60)
-  IntervalOfSimulatedTime.addSubunit(name = "millis", multiplier = 1000)
-  IntervalOfSimulatedTime.addSubunit(name = "micros", multiplier = 1000000)
 
 
   /*                                                                              CLASSES                                                                                            */
@@ -186,7 +158,7 @@ object ConfigDofModel {
   /*     ExperimentConfig     */
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "randomGenerator", valueType = RandomGenerator, polymorphic = true)
+    val p = new DofLink(name = "randomGenerator", valueType = RandomGenerator, polymorphic = true) with SingleValueProperty[DynamicObject]
     p.displayName = "random generator"
     p.nullPolicy = Mandatory
     p.help = "Source of randomness for the simulation"
@@ -196,7 +168,7 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "consensus" /* group: consensus */
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeInt(name = "numberOfValidators")
+    val p = new DofAttributeInt(name = "numberOfValidators") with SingleValueProperty[Int]
     p.group = "consensus"
     p.displayName = "number of validators"
     p.nullPolicy = Mandatory
@@ -206,17 +178,18 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "validatorsWeights", valueType = IntegerSequence , polymorphic = true)
+    val p = new DofLink(name = "validatorsWeights", valueType = IntegerSequence , polymorphic = true) with SingleValueProperty[DynamicObject]
     p.group = "consensus"
     p.displayName = "validators weights"
     p.nullPolicy = Mandatory
-    p.quantity = InternalCurrencyAmount
-    p.help = "Numeric sequence encoding algorithm of generating weights of validators."
+    p.quantity = Quantity.InternalCurrencyAmount
+    p.help = "Algorithm of generating weights of validators."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "ftt")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "ftt") with SingleValueProperty[Double]
+    p.quantity = Quantity.PlainNumber
     p.group = "consensus"
     p.displayName = "relative ftt"
     p.nullPolicy = Mandatory
@@ -268,50 +241,53 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "disruptions" /* group: disruptions */
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "networkOutagesFreq")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "networkOutagesFreq")
+    p.quantity = Quantity.EventsFrequency
     p.group = "disruptions"
     p.displayName = "network connection outages frequency"
-    p.quantity = EventsFrequency
     p.nullPolicy = Optional(present = "on", absent = "off")
     p.help = "Every node can independently experience temporary network outage. Frequency of such outage events (per node) is defined here. Outage events are simulated as Poisson process"
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "networkOutagesLength")
+    val p = new DofAttributeInterval(name = "networkOutagesLength")
+    p.quantity = Quantity.AmountOfSimulatedTime
     p.group = "disruptions"
     p.displayName = "outages length"
     p.nullPolicy = Optional(present = "on", absent = "off")
-    p.multiplicity = DofAttribute.Multiplicity.Interval(leftEndName = "min", rightEndName = "max")
+    p.leftEndName = "min"
+    p.rightEndName = "max"
+    p.leftEndRange  = (1, TimeDelta.days(100))
+    p.spreadRange = (1, TimeDelta.days(100))
     p.help = "Every node can independently experience temporary network outage. Frequency of such outage is randomly selected within this interval."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "nodeCrashFreq")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "nodeCrashFreq")
+    p.quantity = Quantity.EventsFrequency
     p.group = "disruptions"
     p.displayName = "node crashes frequency"
-    p.quantity = EventsFrequency
     p.nullPolicy = Optional(present = "on", absent = "off")
     p.help = "Every node can crash. Frequency of such crash events (normalized as per single node) is defined here."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "bifurcationsFreq")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "bifurcationsFreq")
+    p.quantity = Quantity.EventsFrequency
     p.group = "disruptions"
     p.displayName = "node bifurcations frequency"
-    p.quantity = EventsFrequency
     p.nullPolicy = Optional(present = "on", absent = "off")
     p.help = "Every node can bifurcate. Frequency of such bifurcation events (normalized as per single node) is defined here."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "faultyValidatorsRelativeWeightThreshold")
+    val p = new DofAttributeFraction(name = "faultyValidatorsRelativeWeightThreshold")
     p.group = "disruptions"
     p.displayName = "faulty validators threshold"
-    p.range = (0.0, 1.0)
     p.nullPolicy = Mandatory
     p.help = "Crashed and bifurcated validators count as faulty. Disruption events generated during the simulation will respect the limit set here (i.e. at some point" +
       " no more crashes will happen and also the number of honest validators will be constant)"
@@ -321,20 +297,20 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "simulated-payload-calibration" /* group: simulated payload calibration */
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeInt(name = "brickHeaderCoreSize")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "brickHeaderCoreSize")
+    p.quantity = Quantity.DataVolume
     p.group = "simulated-payload-calibration"
     p.displayName = "brickHeaderCoreSize"
-    p.quantity = DataVolume
     p.nullPolicy = Mandatory
     p.help = "Size of brick headers. This value does not count the size of justifications list."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeInt(name = "singleJustificationSize")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "singleJustificationSize")
+    p.quantity = Quantity.DataVolume
     p.group = "simulated-payload-calibration"
     p.displayName = "single justification size"
-    p.quantity = DataVolume
     p.nullPolicy = Mandatory
     p.help = "Size of a single justification. This is used to calculate bricks binary size."
     p
@@ -367,7 +343,7 @@ object ConfigDofModel {
     p.group = "simulated-time-calibration"
     p.displayName = "nodes computing power distribution"
     p.nullPolicy = Mandatory
-    p.quantity = ComputingPower
+    p.quantity = Quantity.ComputingPower
     p.help = "todo"
     p
   }
@@ -376,7 +352,6 @@ object ConfigDofModel {
     val p = new DofAttributeTimeDelta(name = "consumptionDelayHardLimit")
     p.group = "simulated-time-calibration"
     p.displayName = "consumption delay hard limit"
-    p.quantity = IntervalOfSimulatedTime
     p.nullPolicy = Mandatory
     p.help = "Size of a single justification. This is used to calculate bricks binary size."
     p
@@ -387,7 +362,7 @@ object ConfigDofModel {
     p.group = "simulated-time-calibration"
     p.displayName = "nodes computing power distribution"
     p.nullPolicy = Mandatory
-    p.quantity = ComputingCost
+    p.quantity = Quantity.ComputingCost
     p.help = "We simulate computing cost of bricks creation by randomized values. This parameter defines the corresponding probabilistic distribution."
     p
   }
@@ -397,7 +372,7 @@ object ConfigDofModel {
     p.group = "simulated-time-calibration"
     p.displayName = "nodes computing power distribution"
     p.nullPolicy = Mandatory
-    p.quantity = ComputingCost
+    p.quantity = Quantity.ComputingCost
     p.help = "We simulate computing cost of bricks validation by randomized values. This parameter defines the corresponding probabilistic distribution."
     p
   }
@@ -415,7 +390,6 @@ object ConfigDofModel {
     val p = new DofAttributeTimeDelta(name = "chartsSamplingPeriod")
     p.displayName = "charts sampling period"
     p.nullPolicy = Mandatory
-    p.quantity = IntervalOfSimulatedTime
     p.help = "Time interval between subsequent stats snapshot. We take these snapshots for charts only. Smaller value means better charts resolution, but it consumes more RAM" +
       " and slows down the simulator."
     p
@@ -517,7 +491,7 @@ object ConfigDofModel {
     val p = new DofLink(name = "delaysGenerator", valueType = IntegerSequence, polymorphic = true)
     p.displayName = "delays distribution"
     p.nullPolicy = Mandatory
-    p.quantity = IntervalOfSimulatedTime
+    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "Distribution of node-to-node delivery delays."
     p
   }
@@ -528,7 +502,7 @@ object ConfigDofModel {
     val p = new DofLink(name = "connGraphLatencyAverageGenCfg", valueType = IntegerSequence, polymorphic = true)
     p.displayName = "connection latency average (distribution)"
     p.nullPolicy = Mandatory
-    p.quantity = IntervalOfSimulatedTime
+    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "For every edge in the connection graph, latency mean value is assigned (from the sequence defined here)"
     p
   }
@@ -547,7 +521,7 @@ object ConfigDofModel {
     val p = new DofLink(name = "connGraphBandwidthGenCfg", valueType = IntegerSequence, polymorphic = true)
     p.displayName = "connection bandwidth (distribution)"
     p.nullPolicy = Mandatory
-    p.quantity = ConnectionSpeed
+    p.quantity = Quantity.ConnectionSpeed
     p.help = "For every edge in the connection graph, bandwidth is assigned (from the sequence defined here)"
     p
   }
@@ -555,7 +529,7 @@ object ConfigDofModel {
   /*       IntegerSequence_Fixed                               */
 
   IntegerSequence_Fixed defineProperty {
-    val p = new DofAttributeLong(name = "value")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "value")
     p.displayName = "value"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
@@ -566,7 +540,7 @@ object ConfigDofModel {
   /*       IntegerSequence_ArithmeticSeq                        */
 
   IntegerSequence_ArithmeticSeq defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "start")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "start")
     p.displayName = "start"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
@@ -575,7 +549,7 @@ object ConfigDofModel {
   }
 
   IntegerSequence_ArithmeticSeq defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "step")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "step")
     p.displayName = "step"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
@@ -587,7 +561,7 @@ object ConfigDofModel {
   /*       IntegerSequence_GeometricSeq                        */
 
   IntegerSequence_GeometricSeq defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "start")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "start")
     p.displayName = "start"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
@@ -596,7 +570,7 @@ object ConfigDofModel {
   }
 
   IntegerSequence_GeometricSeq defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "growthFactor")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "growthFactor")
     p.displayName = "growth factor"
     p.nullPolicy = Mandatory
     p.help = "The sequence is defined as f(n+1) = f(n) * factor"
@@ -606,24 +580,25 @@ object ConfigDofModel {
   /*       IntegerSequence_Uniform                             */
 
   IntegerSequence_Uniform defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "range")
+    val p = new DofAttributeInterval(name = "range")
     p.displayName = "range"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
-    p.multiplicity = Multiplicity.Interval(leftEndName = "min", rightEndName = "max")
+    p.leftEndName = "min"
+    p.rightEndName = "max"
     p.help = "The interval of values."
     p
   }
 
-
   /*       IntegerSequence_PseudoGaussian                      */
 
   IntegerSequence_PseudoGaussian defineProperty {
-    val p = new DofAttributeLong(name = "range")
+    val p = new DofAttributeInterval(name = "range")
     p.displayName = "range"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
-    p.multiplicity = Multiplicity.Interval(leftEndName = "min", rightEndName = "max")
+    p.leftEndName = "min"
+    p.rightEndName = "max"
     p.help = "The interval of values."
     p
   }
@@ -631,10 +606,10 @@ object ConfigDofModel {
   /*       IntegerSequence_PoissonProcess                      */
 
   IntegerSequence_PoissonProcess defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "lambda")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "lambda")
     p.displayName = "lambda"
     p.nullPolicy = Mandatory
-    p.quantity = EventsFrequency
+    p.quantity = Quantity.EventsFrequency
     p.help = "Desired frequency of events."
     p
   }
@@ -642,7 +617,7 @@ object ConfigDofModel {
   /*       IntegerSequence_Exponential                         */
 
   IntegerSequence_Exponential defineProperty {
-    val p = new DofAttributeLong(name = "mean")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "mean")
     p.displayName = "mean"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
@@ -662,10 +637,10 @@ object ConfigDofModel {
   }
 
   IntegerSequence_Erlang defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "lambda")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "lambda")
     p.displayName = "lambda"
     p.nullPolicy = Mandatory
-    p.quantity = EventsFrequency
+    p.quantity = Quantity.EventsFrequency
     p.help = "Rate parameter as defined by the Erlang distribution. Meal value is k/lambda."
     p
   }
@@ -681,7 +656,7 @@ object ConfigDofModel {
   }
 
   IntegerSequence_ErlangViaMeanValueWithHardBoundary defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "mean")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "mean")
     p.displayName = "mean"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
@@ -690,11 +665,12 @@ object ConfigDofModel {
   }
 
   IntegerSequence_ErlangViaMeanValueWithHardBoundary defineProperty {
-    val p = new DofAttributeLong(name = "range")
+    val p = new DofAttributeInterval(name = "range")
     p.displayName = "range"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
-    p.multiplicity = Multiplicity.Interval(leftEndName = "min", rightEndName = "max")
+    p.leftEndName = "min"
+    p.rightEndName = "max"
     p.help = "The interval of values."
     p
   }
@@ -702,7 +678,7 @@ object ConfigDofModel {
   /*       IntegerSequence_Pareto                              */
 
   IntegerSequence_Pareto defineProperty {
-    val p = new DofAttributeLong(name = "minValue")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "minValue")
     p.displayName = "minValue"
     p.nullPolicy = Mandatory
     p.inheritedQuantity = true
@@ -711,7 +687,7 @@ object ConfigDofModel {
   }
 
   IntegerSequence_Pareto defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "alpha")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "alpha")
     p.displayName = "alpha"
     p.nullPolicy = Mandatory
     p.range = (1.0, 10.0)
@@ -722,17 +698,18 @@ object ConfigDofModel {
   /*       IntegerSequence_ParetoWithCap                       */
 
   IntegerSequence_ParetoWithCap defineProperty {
-    val p = new DofAttributeLong(name = "range")
+    val p = new DofAttributeInterval(name = "range")
     p.displayName = "range"
     p.nullPolicy = Mandatory
-    p.multiplicity = Multiplicity.Interval(leftEndName = "minValue", rightEndName = "maxValue")
+    p.leftEndName = "min"
+    p.rightEndName = "max"
     p.inheritedQuantity = true
     p.help = "Range of values"
     p
   }
 
   IntegerSequence_ParetoWithCap defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "alpha")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "alpha")
     p.displayName = "alpha"
     p.nullPolicy = Mandatory
     p.range = (1.0, 10.0)
@@ -746,17 +723,16 @@ object ConfigDofModel {
     val p = new DofLink(name = "brickProposeDelays", valueType = IntegerSequence, polymorphic = true)
     p.displayName = "brick propose delays"
     p.nullPolicy = Mandatory
-    p.quantity = IntervalOfSimulatedTime
+    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "Generator for (usually randomized) delays between subsequent executions of <brick propose> operation. In other words, after a validator publishes a brick, it" +
       " takes the next value from this sequence to decide how long to wait before publishing next brick."
     p
   }
 
   ValidatorImpl_NaiveCasper defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "blocksFractionAsPercentage")
-    p.displayName = "blocks fraction [%]"
+    val p = new DofAttributeFraction(name = "blocksFraction")
+    p.displayName = "blocks fraction"
     p.nullPolicy = Mandatory
-    p.range = (0.0, 100.0)
     p.help = "Probability that a newly created brick will be a block. Whenever a validator reaches a timepoint when it want to publish a new brick, it randomly decides" +
       " should this new brick be rather a block or a ballot. This random decision follows the probability defined here."
     p
@@ -768,7 +744,7 @@ object ConfigDofModel {
     val p = new DofAttributeTimeDelta(name = "roundLength")
     p.displayName = "round length"
     p.nullPolicy = Mandatory
-    p.quantity = IntervalOfSimulatedTime
+    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "Length of a single round. This is a rounds-based protocol, all validators will use the same round length."
     p
   }
@@ -779,6 +755,7 @@ object ConfigDofModel {
     val p = new DofAttributeInt(name = "initialRoundExponent")
     p.displayName = "initialRoundExponent"
     p.nullPolicy = Mandatory
+    p.range = (0, 32)
     p.help = "Round exponent to be used at validator's boot, i.e. at the beginning of the simulation."
     p
   }
@@ -787,7 +764,7 @@ object ConfigDofModel {
     val p = new DofAttributeTimeDelta(name = "omegaWaitingMargin")
     p.displayName = "omegaWaitingMargin"
     p.nullPolicy = Mandatory
-    p.quantity = IntervalOfSimulatedTime
+    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "Creation of omega messages is scheduled at least 'omegaWaitingMargin' microseconds before the end of corresponding round."
     p
   }
@@ -823,14 +800,14 @@ object ConfigDofModel {
     val p = new DofAttributeTimeDelta(name = "droppedBricksMovingAverageWindow")
     p.displayName = "droppedBricksMovingAverageWindow"
     p.nullPolicy = Mandatory
-    p.quantity = IntervalOfSimulatedTime
+    p.quantity = Quantity.AmountOfSimulatedTime
     p.range = (TimeDelta.millis(1), TimeDelta.days(10))
     p.help = "Length of the moving window used for dropped brick statistic calculation."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "droppedBricksAlarmLevel")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "droppedBricksAlarmLevel")
     p.displayName = "droppedBricksAlarmLevel"
     p.nullPolicy = Mandatory
     p.range = (0.00001, 1.0)
@@ -856,7 +833,7 @@ object ConfigDofModel {
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "perLaneOrphanRateThreshold")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "perLaneOrphanRateThreshold")
     p.displayName = "perLaneOrphanRateThreshold"
     p.nullPolicy = Mandatory
     p.range = (0.0, 1.0)
@@ -867,10 +844,10 @@ object ConfigDofModel {
   /*       DownloadBandwidthConfig_Uniform                     */
 
   DownloadBandwidthConfig_Uniform defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "bandwidth")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "bandwidth")
     p.displayName = "bandwidth"
     p.nullPolicy = Mandatory
-    p.quantity = ConnectionSpeed
+    p.quantity = Quantity.ConnectionSpeed
     p.help = "Download speed to be used for all nodes"
     p
   }
@@ -881,7 +858,7 @@ object ConfigDofModel {
     val p = new DofLink(name = "generator", valueType = IntegerSequence, polymorphic = true)
     p.displayName = "generator"
     p.nullPolicy = Mandatory
-    p.quantity = ConnectionSpeed
+    p.quantity = Quantity.ConnectionSpeed
     p.help = "Download bandwidth generator to be applied for configuring nodes."
     p
   }
@@ -892,7 +869,7 @@ object ConfigDofModel {
     val p = new DofLink(name = "sizeDistribution", valueType = IntegerSequence, polymorphic = true)
     p.displayName = "size distribution"
     p.nullPolicy = Mandatory
-    p.quantity = DataVolume
+    p.quantity = Quantity.DataVolume
     p.help = "Transaction size generator."
     p
   }
@@ -901,7 +878,7 @@ object ConfigDofModel {
     val p = new DofLink(name = "costDistribution", valueType = IntegerSequence, polymorphic = true)
     p.displayName = "cost distribution"
     p.nullPolicy = Mandatory
-    p.quantity = ComputingCost
+    p.quantity = Quantity.ComputingCost
     p.help = "Transaction cost generator."
     p
   }
@@ -909,19 +886,19 @@ object ConfigDofModel {
   /*       TransactionsStreamConfig_Constant                            */
 
   TransactionsStreamConfig_Constant defineProperty {
-    val p = new DofAttributeInt(name = "size")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "size")
     p.displayName = "size"
     p.nullPolicy = Mandatory
-    p.quantity = DataVolume
+    p.quantity = Quantity.DataVolume
     p.help = "Transaction fixed size (applied to all transactions)."
     p
   }
 
   TransactionsStreamConfig_Constant defineProperty {
-    val p = new DofAttributeLong(name = "cost")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "cost")
     p.displayName = "cost distribution"
     p.nullPolicy = Mandatory
-    p.quantity = ComputingCost
+    p.quantity = Quantity.ComputingCost
     p.help = "Transaction fixed cost (applied to all transactions)"
     p
   }
@@ -929,10 +906,10 @@ object ConfigDofModel {
   /*       BlocksBuildingStrategyModel_FixedNumberOfTransactions        */
 
   BlocksBuildingStrategyModel_FixedNumberOfTransactions defineProperty {
-    val p = new DofAttributeInt(name = "n")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "n")
     p.displayName = "number of transactions"
     p.nullPolicy = Mandatory
-    p.quantity = DataVolume
+    p.quantity = Quantity.DataVolume
     p.help = "Number of transactions (every block will have the same number of transactions)."
     p
   }
@@ -940,19 +917,19 @@ object ConfigDofModel {
   /*       BlocksBuildingStrategyModel_CostAndSizeLimit                 */
 
   BlocksBuildingStrategyModel_CostAndSizeLimit defineProperty {
-    val p = new DofAttributeInt(name = "sizeLimit")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "sizeLimit")
     p.displayName = "size limit"
     p.nullPolicy = Mandatory
-    p.quantity = DataVolume
+    p.quantity = Quantity.DataVolume
     p.help = "Total limit for (cumulative) size of transaction in a block."
     p
   }
 
   BlocksBuildingStrategyModel_CostAndSizeLimit defineProperty {
-    val p = new DofAttributeLong(name = "costLimit")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "costLimit")
     p.displayName = "cost limit"
     p.nullPolicy = Mandatory
-    p.quantity = ComputingCost
+    p.quantity = Quantity.ComputingCost
     p.help = "Total cost limit for (cumulative) cost of transaction in a block."
     p
   }
@@ -960,7 +937,7 @@ object ConfigDofModel {
   /*       FinalizationCostModel_ScalingOfRealImplementationCost        */
 
   FinalizationCostModel_ScalingOfRealImplementationCost defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "microsToGasConversionRate")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "microsToGasConversionRate")
     p.displayName = "micros-to-gas conversion rate"
     p.nullPolicy = Mandatory
     p.help = "Conversion rate used for scaling wall-clock time to simulation time."
@@ -970,7 +947,7 @@ object ConfigDofModel {
   /*       FinalizationCostModel_DefaultPolynomial                      */
 
   FinalizationCostModel_DefaultPolynomial defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "a")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "a")
     p.displayName = "a"
     p.nullPolicy = Mandatory
     p.help = "Coefficient 'a' in the default polynomial formula."
@@ -978,7 +955,7 @@ object ConfigDofModel {
   }
 
   FinalizationCostModel_DefaultPolynomial defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "b")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "b")
     p.displayName = "b"
     p.nullPolicy = Mandatory
     p.help = "Coefficient 'b' in the default polynomial formula."
@@ -986,7 +963,7 @@ object ConfigDofModel {
   }
 
   FinalizationCostModel_DefaultPolynomial defineProperty {
-    val p = new DofAttributeFloatingPoint(name = "c")
+    val p = new DofAttributeFloatingPointWithQuantity(name = "c")
     p.displayName = "c"
     p.nullPolicy = Mandatory
     p.help = "Coefficient 'c' in the default polynomial formula."
@@ -1024,59 +1001,5 @@ object ConfigDofModel {
     p
 
   }
-
-
-/*                                                                                                                                                              */
-
-//random generator: JDK-Random/JDK-SecureRandom/commons-isaac/commons-split-mix-64/commons-kiss
-//
-//#consensus
-//  number of validators: Int
-//  validators weights: LongSequence
-//  ftt: Long
-//  ack-level: Int
-//  validator implementation
-//
-//#network
-//  internet model
-//  nodes download bandwidth
-//
-//#disruptions
-//  provider outages per-node frequency
-//  outage length min-max
-//  node crash per-node frequency
-//  bifurcations per-node frequency
-//  faultyValidatorsRelativeWeightThreshold
-
-//#simulated payload calibration
-//  brick header core size: Int
-//  single justification size: Int
-//  transactions stream model
-//  blocks building strategy
-//
-//#simulated time calibration
-//  nodes computing power model
-//  nodes computing power baseline
-//  consumption delay hard limit
-//  brick creation cost model
-//  brick validation cost model
-//  finalization cost model
-//
-//charts sampling period: TimeDelta
-//
-//#simulation stop condition
-//  condition: number of steps / simulation time / wall clock time / finalized block generation
-//
-//#GUI output:
-//  log analyzer GUI: Boolean
-//  stats GUI: Boolean
-//
-//#file output
-//  output dir: Option[File]
-//  statistics: Boolean
-//  charts: Boolean
-//  full log (descriptive): Boolean
-//  full log (csv): Boolean
-
 
 }

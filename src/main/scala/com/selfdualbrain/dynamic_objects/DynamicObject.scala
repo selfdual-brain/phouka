@@ -8,19 +8,13 @@ import scala.collection.mutable
 class DynamicObject(val dofClass: DofClass) {
   private val attrValues: mutable.Map[String, ValueContainer[Any]] = new mutable.HashMap[String, ValueContainer[Any]]
 
-  def getSingle[T](propertyName: String): Option[T] = property[T](propertyName).readSingleValue(this)
+  def getSingle[T](propertyName: String): Option[T] = property[T](propertyName).asInstanceOf[SingleValueProperty[T]].readSingleValue(this)
 
   def setSingle[T](propertyName: String, newValue: Option[T]): Unit = {
-    property[T](propertyName).writeSingleValue(this, newValue)
+    property[T](propertyName).asInstanceOf[SingleValueProperty[T]].writeSingleValue(this, newValue)
   }
 
-  def getInterval[T](propertyName: String): Option[(T,T)] = property[T](propertyName).readInterval(this)
-
-  def setInterval[T](propertyName: String, newValue: Option[(T,T)]): Unit = {
-    property[T](propertyName).writeInterval(this, newValue)
-  }
-
-  def getCollection[T](propertyName: String): FastMapOnIntInterval[T] = property[T](propertyName).getCollection(this)
+  def getCollection[T](propertyName: String): FastMapOnIntInterval[T] = property[T](propertyName).asInstanceOf[CollectionProperty[T]].getCollection(this)
 
   def propertyValueHolder[T](propertyName: String): ValueContainer[T] = {
     val buf = attrValues.get(propertyName) match {
@@ -43,10 +37,6 @@ object DynamicObject {
   object ValueContainer {
     class Single[T] extends ValueContainer {
       var value: Option[T] = None
-    }
-
-    class Interval[T] extends ValueContainer {
-      var pair: Option[(T, T)] = None
     }
 
     class Collection[T] extends ValueContainer {
