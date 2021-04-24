@@ -14,7 +14,7 @@ object ConfigDofModel {
 
   val ExperimentConfig: DofClass = new DofClass(name = "ExperimentConfig", displayName = "experiment config", help = "Configuration of a simulation experiment")
 
-  val RandomGenerator: DofClass = new DofClass(name = "RandomGenerator")
+  val RandomGenerator: DofClass = new DofClass(name = "RandomGenerator", displayName = "random numbers generator", isAbstract = true)
   val RandomGenerator_JdkRandom: DofClass = RandomGenerator.newSubclass(name = "RandomGenerator.JdkRandom", displayName = "jdk random",
     help = "Standard random generator built into Java platform"
   )
@@ -34,7 +34,7 @@ object ConfigDofModel {
     help = "Mersenne Twister generator from apache.commons.math"
   )
 
-  val NetworkModel: DofClass = new DofClass(name = "NetworkModel", displayName = "network model")
+  val NetworkModel: DofClass = new DofClass(name = "NetworkModel", displayName = "network model", isAbstract = true)
   val NetworkModel_HomogenousNetworkWithRandomDelays: DofClass = NetworkModel.newSubclass(
     name = "NetworkModel.HomogenousNetworkWithRandomDelays",
     displayName = "homogenous distribution of delays",
@@ -46,7 +46,7 @@ object ConfigDofModel {
     help = "Full graph of connections between nodes is generated. For every edge we pick bandwidth (just single value) and latency (gaussian distribution parameters)."
   )
 
-  val IntegerSequence: DofClass = new DofClass(name = "IntegerSequence", displayName = "integer sequence")
+  val IntegerSequence: DofClass = new DofClass(name = "IntegerSequence", displayName = "integer sequence", isAbstract = true)
   val IntegerSequence_Fixed: DofClass = IntegerSequence.newSubclass(name = "IntegerSequence.Fixed", displayName = "fixed value", help = "Fixed value i.e. this is a constant sequence")
   val IntegerSequence_ArithmeticSeq: DofClass = IntegerSequence.newSubclass(name = "IntegerSequence.ArithmeticSeq", displayName = "arithmetic sequence", help = "Arithmetic sequence.")
   val IntegerSequence_GeometricSeq: DofClass = IntegerSequence.newSubclass(name = "IntegerSequence.GeometricSeq", displayName = "geometric sequence", help = "Geometric sequence.")
@@ -75,7 +75,7 @@ object ConfigDofModel {
     help = "Random variable with Pareto distribution given by shape and min-value, but also with explicit max-value. Values bigger than max-value are skipped."
   )
 
-  val ValidatorImpl: DofClass = new DofClass(name = "ValidatorImpl", displayName = "validator implementation")
+  val ValidatorImpl: DofClass = new DofClass(name = "ValidatorImpl", displayName = "validator implementation", isAbstract = true)
   val ValidatorImpl_NaiveCasper: DofClass = ValidatorImpl.newSubclass(name = "ValidatorImpl.NCB", displayName = "naive casper",
     help = "Naive Casper validator (blocks and ballots are generated at random times, with configured frequency)"
   )
@@ -86,7 +86,7 @@ object ConfigDofModel {
     help = "Dynamic rounds protocol (inspired by Highway paper) with pseudo-randomly selected leader for every round"
   )
 
-  val DownloadBandwidthConfig = new DofClass(name = "DownloadBandwidthConfig", displayName = "download bandwidth config")
+  val DownloadBandwidthConfig = new DofClass(name = "DownloadBandwidthConfig", displayName = "download bandwidth config", isAbstract = true)
   val DownloadBandwidthConfig_Uniform: DofClass = DownloadBandwidthConfig.newSubclass(name = "DownloadBandwidthConfig.Uniform", displayName = "uniform",
     help = "Every node has the same download bandwidth"
   )
@@ -94,7 +94,7 @@ object ConfigDofModel {
     help = "Different download bandwidth is generated per node, using provided integer sequence generator."
   )
 
-  val TransactionsStreamConfig = new DofClass(name = "TransactionsStreamConfig", displayName = "transactions stream config")
+  val TransactionsStreamConfig = new DofClass(name = "TransactionsStreamConfig", displayName = "transactions stream config",isAbstract = true)
   val TransactionsStreamConfig_IndependentSizeAndExecutionCost: DofClass = TransactionsStreamConfig.newSubclass(
     name = "TransactionsStreamConfig.IndependentSizeAndExecutionCost",
     displayName = "independent size and execution cost",
@@ -104,7 +104,7 @@ object ConfigDofModel {
     help = "Every transaction has the same fixed size and cost."
   )
 
-  val BlocksBuildingStrategyModel = new DofClass(name = "BlocksBuildingStrategyModel", displayName = "transactions stream config")
+  val BlocksBuildingStrategyModel = new DofClass(name = "BlocksBuildingStrategyModel", displayName = "transactions stream config", isAbstract = true)
   val BlocksBuildingStrategyModel_FixedNumberOfTransactions: DofClass = BlocksBuildingStrategyModel.newSubclass(
     name = "BlocksBuildingStrategyModel.FixedNumberOfTransactions",
     displayName = "fixed number of transactions",
@@ -116,7 +116,7 @@ object ConfigDofModel {
     help = "A block is filled by taking taking transactions (from the transactions stream) as long as the total cost and total size are below predefined thresholds"
   )
 
-  val FinalizationCostModel = new DofClass(name = "FinalizationCostModel", displayName = "finalization cost model")
+  val FinalizationCostModel = new DofClass(name = "FinalizationCostModel", displayName = "finalization cost model", isAbstract = true)
   val FinalizationCostModel_ScalingOfRealImplementationCost: DofClass = FinalizationCostModel.newSubclass(
     name = "FinalizationCostModel_ScalingOfRealImplementationCost",
     displayName = "scaling of real implementation cost",
@@ -135,7 +135,7 @@ object ConfigDofModel {
     help = "Cost of finalization is always zero, which means we effectively disable this part of time consumption modeling"
   )
 
-  val SimulationEngineStopCondition: DofClass = new DofClass("SimulationEngineStopCondition", displayName = "simulation stop condition")
+  val SimulationEngineStopCondition: DofClass = new DofClass("SimulationEngineStopCondition", displayName = "simulation stop condition", isAbstract = true)
   val SimulationEngineStopCondition_NumberOfSteps: DofClass = SimulationEngineStopCondition.newSubclass(
     name = "SimulationEngineStopCondition_NumberOfSteps",
     displayName = "number of steps",
@@ -158,7 +158,7 @@ object ConfigDofModel {
   /*     ExperimentConfig     */
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "randomGenerator", valueType = RandomGenerator, polymorphic = true) with SingleValueProperty[DynamicObject]
+    val p = new DofLink(name = "randomGenerator", valueType = RandomGenerator) with SingleValueProperty[DynamicObject]
     p.displayName = "random generator"
     p.nullPolicy = Mandatory
     p.help = "Source of randomness for the simulation"
@@ -178,7 +178,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "validatorsWeights", valueType = IntegerSequence , polymorphic = true) with SingleValueProperty[DynamicObject]
+    val p = new DofLink(name = "validatorsWeights", valueType = IntegerSequence) with SingleValueProperty[DynamicObject]
     p.group = "consensus"
     p.displayName = "validators weights"
     p.nullPolicy = Mandatory
@@ -209,7 +209,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "validatorImplementation", valueType = ValidatorImpl, polymorphic = true)
+    val p = new DofLink(name = "validatorImplementation", valueType = ValidatorImpl)
     p.group = "consensus"
     p.displayName = "validator impl variant"
     p.nullPolicy = Mandatory
@@ -220,7 +220,7 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "network" /* group: network */
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "internetModel", valueType = NetworkModel, polymorphic = true)
+    val p = new DofLink(name = "internetModel", valueType = NetworkModel)
     p.group = "network"
     p.displayName = "network model"
     p.nullPolicy = Mandatory
@@ -229,7 +229,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "downloadBandwidthDistribution", valueType = DownloadBandwidthConfig, polymorphic = true)
+    val p = new DofLink(name = "downloadBandwidthDistribution", valueType = DownloadBandwidthConfig)
     p.group = "network"
     p.displayName = "download bandwidth distribution"
     p.nullPolicy = Mandatory
@@ -317,7 +317,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "transactionsStreamModel", valueType = TransactionsStreamConfig, polymorphic = true)
+    val p = new DofLink(name = "transactionsStreamModel", valueType = TransactionsStreamConfig)
     p.group = "simulated-payload-calibration"
     p.displayName = "transactions stream model"
     p.nullPolicy = Mandatory
@@ -327,7 +327,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "blocksBuildingStrategy", valueType = BlocksBuildingStrategyModel, polymorphic = true)
+    val p = new DofLink(name = "blocksBuildingStrategy", valueType = BlocksBuildingStrategyModel)
     p.group = "simulated-payload-calibration"
     p.displayName = "blocks building strategy"
     p.nullPolicy = Mandatory
@@ -339,7 +339,7 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "simulated-time-calibration" /* group: simulated time calibration */
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "nodesComputingPowerModel", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLink(name = "nodesComputingPowerModel", valueType = IntegerSequence)
     p.group = "simulated-time-calibration"
     p.displayName = "nodes computing power distribution"
     p.nullPolicy = Mandatory
@@ -358,7 +358,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "brickCreationCostModel", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLink(name = "brickCreationCostModel", valueType = IntegerSequence)
     p.group = "simulated-time-calibration"
     p.displayName = "nodes computing power distribution"
     p.nullPolicy = Mandatory
@@ -368,7 +368,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "brickValidationCostModel", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLink(name = "brickValidationCostModel", valueType = IntegerSequence)
     p.group = "simulated-time-calibration"
     p.displayName = "nodes computing power distribution"
     p.nullPolicy = Mandatory
@@ -378,7 +378,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig.defineProperty {
-    val p = new DofLink(name = "finalizationCostModel", valueType = FinalizationCostModel, polymorphic = true)
+    val p = new DofLink(name = "finalizationCostModel", valueType = FinalizationCostModel)
     p.group = "simulated-time-calibration"
     p.displayName = "finalization cost model"
     p.nullPolicy = Mandatory
@@ -488,7 +488,7 @@ object ConfigDofModel {
   /*       NetworkModel_HomogenousNetworkWithRandomDelays      */
 
   NetworkModel_HomogenousNetworkWithRandomDelays defineProperty {
-    val p = new DofLink(name = "delaysGenerator", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLink(name = "delaysGenerator", valueType = IntegerSequence)
     p.displayName = "delays distribution"
     p.nullPolicy = Mandatory
     p.quantity = Quantity.AmountOfSimulatedTime
@@ -499,7 +499,7 @@ object ConfigDofModel {
   /*       NetworkModel_SymmetricLatencyBandwidthGraphNetwork  */
 
   NetworkModel_SymmetricLatencyBandwidthGraphNetwork defineProperty {
-    val p = new DofLink(name = "connGraphLatencyAverageGenCfg", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLink(name = "connGraphLatencyAverageGenCfg", valueType = IntegerSequence)
     p.displayName = "connection latency average (distribution)"
     p.nullPolicy = Mandatory
     p.quantity = Quantity.AmountOfSimulatedTime
@@ -518,7 +518,7 @@ object ConfigDofModel {
   }
 
   NetworkModel_SymmetricLatencyBandwidthGraphNetwork defineProperty {
-    val p = new DofLink(name = "connGraphBandwidthGenCfg", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLink(name = "connGraphBandwidthGenCfg", valueType = IntegerSequence)
     p.displayName = "connection bandwidth (distribution)"
     p.nullPolicy = Mandatory
     p.quantity = Quantity.ConnectionSpeed

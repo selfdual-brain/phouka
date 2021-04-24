@@ -1,7 +1,7 @@
 package com.selfdualbrain.dynamic_objects
 import com.selfdualbrain.data_structures.FastMapOnIntInterval
 
-class DofLink(name: String, valueType: DofClass, polymorphic: Boolean = false, group: String = "") extends DofProperty[DynamicObject](name) {
+class DofLink(name: String, val valueType: DofClass, group: String = "") extends DofProperty[DynamicObject](name) {
   var quantity: Quantity = _
 
 //  override def readSingleValue(context: DynamicObject): Option[DynamicObject] = ???

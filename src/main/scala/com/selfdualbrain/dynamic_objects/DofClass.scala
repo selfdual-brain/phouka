@@ -3,7 +3,7 @@ package com.selfdualbrain.dynamic_objects
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class DofClass(val name: String, val displayName: String = "", val superclass: Option[DofClass] = None, val help: String = "") {
+class DofClass(val name: String, val displayName: String = "", val isAbstract: Boolean = false, val superclass: Option[DofClass] = None, val help: String = "") {
   //first element of the pair is a marker
   //"group" -> group-name
   //"property" -> property-name

@@ -1,16 +1,15 @@
 package com.selfdualbrain.gui
 
-import com.selfdualbrain.gui_framework.fields.FloatingPointValueFormatter
+import com.selfdualbrain.gui_framework.fields.{FloatingPointValueFormatter, LongValueFormatter}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.RibbonPanel
-import com.selfdualbrain.gui_framework.{EventsBroadcaster, MvpView, Orientation, Presenter}
+import com.selfdualbrain.gui_framework._
 import com.selfdualbrain.time.{HumanReadableTimeAmount, SimTimepoint}
 import org.slf4j.LoggerFactory
 
 import java.awt.Color
 import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import javax.swing.border.Border
-import javax.swing.text.MaskFormatter
 import javax.swing.{BorderFactory, JFormattedTextField}
 
 class SandboxPresenter extends Presenter[SandboxModel, SandboxModel, SandboxPresenter, SandboxView, Nothing] {
@@ -29,37 +28,52 @@ class SandboxPresenter extends Presenter[SandboxModel, SandboxModel, SandboxPres
   override def createDefaultModel(): SandboxModel = new SandboxModel
 }
 
-class SandboxView(val guiLayoutConfig: GuiLayoutConfig) extends RibbonPanel(guiLayoutConfig, Orientation.VERTICAL) with MvpView[SandboxModel, SandboxPresenter] {
+class SandboxView(val guiLayoutConfig: GuiLayoutConfig) extends RibbonPanel(guiLayoutConfig, Orientation.HORIZONTAL) with MvpView[SandboxModel, SandboxPresenter] {
   private val log = LoggerFactory.getLogger(s"mvp-sandbox-view")
 
-  val mask = new MaskFormatter("###-##:##:##.######")
-  mask.setPlaceholderCharacter('0')
-  val timeField: JFormattedTextField = addMaskedTxtField(label = "time", width = 150, isEditable = true, format = mask)
-
-//  val format = new DecimalFormat()
-//  format.setMaximumFractionDigits(2)
-//  format.setMinimumFractionDigits(2)
-//  format.setMinimumIntegerDigits(1)
-
-  val formatter = new FloatingPointValueFormatter(2)
-  val range = (0.0, 1.0)
   val invalidValueColor: Color = new Color(255, 0, 0)
-  val doubleField: JFormattedTextField = addFormattedTxtField(label = "amount", width = 150, isEditable = true, format = formatter)
-  log.debug(s"default background color was ${doubleField.getBackground}")
-  doubleField.setFocusLostBehavior(JFormattedTextField.COMMIT)
-
   val border: Border = BorderFactory.createLineBorder(Color.RED, 3)
 
-  doubleField.addPropertyChangeListener("value", new PropertyChangeListener {
+  /* FIELD 1 (LONG) */
+
+  val field1_formatter = new LongValueFormatter
+  val field1_range: (Long, Long) = (0, 1000)
+  val field1: JFormattedTextField = addFormattedTxtField(label = s"long value $field1_range", alignment = TextAlignment.RIGHT, width = 150, isEditable = true, format = field1_formatter)
+  field1.setFocusLostBehavior(JFormattedTextField.COMMIT)
+
+  field1.addPropertyChangeListener("value", new PropertyChangeListener {
+    override def propertyChange(evt: PropertyChangeEvent): Unit = {
+      if (evt.getNewValue != null) {
+        val number: Long = evt.getNewValue.asInstanceOf[Long]
+        if (field1_range._1 <= number && number <= field1_range._2) {
+          log.debug(s"value $number is valid")
+          field1.setBorder(null)
+        } else {
+          log.debug(s"value $number is not valid")
+          field1.setBorder(border)
+        }
+      }
+    }
+  })
+
+  /* FIELD 2 (DOUBLE) */
+
+  val field2_formatter = new FloatingPointValueFormatter(2)
+  val field2_range: (Double, Double) = (0.0, 1.0)
+  val field2: JFormattedTextField = addFormattedTxtField(label = s"double value $field2_range", alignment = TextAlignment.RIGHT, width = 150, isEditable = true, format = field2_formatter)
+//  log.debug(s"default background color was ${field2.getBackground}")
+  field2.setFocusLostBehavior(JFormattedTextField.COMMIT_OR_REVERT)
+
+  field2.addPropertyChangeListener("value", new PropertyChangeListener {
     override def propertyChange(evt: PropertyChangeEvent): Unit = {
       if (evt.getNewValue != null) {
         val number: Double = evt.getNewValue.asInstanceOf[Double]
-        if (range._1 <= number && number <= range._2) {
+        if (field2_range._1 <= number && number <= field2_range._2) {
           log.debug(s"value $number is valid")
-          doubleField.setBorder(null)
+          field2.setBorder(null)
         } else {
           log.debug(s"value $number is not valid")
-          doubleField.setBorder(border)
+          field2.setBorder(border)
         }
       }
     }

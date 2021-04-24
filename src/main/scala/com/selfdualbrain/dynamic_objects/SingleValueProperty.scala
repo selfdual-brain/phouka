@@ -15,5 +15,4 @@ trait SingleValueProperty[T] {
 
   override def createNewValueContainer(): DynamicObject.ValueContainer[T] = new DynamicObject.ValueContainer.Single[T]
 
-
 }

@@ -87,7 +87,6 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
     return textFieldComponent
   }
 
-
   private def privateAddTxtField(
                       width: Int,
                       isEditable: Boolean = false,

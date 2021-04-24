@@ -1,9 +1,8 @@
 package com.selfdualbrain.gui_framework.dof_editor
 
 import com.selfdualbrain.data_structures.FastMapOnIntInterval
-import com.selfdualbrain.dynamic_objects.{CollectionProperty, DofAttribute, DofClass, DofLink, DofProperty, DynamicObject, SingleValueProperty}
-import com.selfdualbrain.gui_framework.dof_editor.cell_editors.{CellEditorString, DofCellEditor}
-import com.selfdualbrain.util.ValueHolder
+import com.selfdualbrain.dynamic_objects._
+import com.selfdualbrain.gui_framework.dof_editor.cell_editors.{CellEditorLinkClassSelection, DofCellEditor}
 
 /**
   * Nodes making the tree structure we use underneath tree-table of dof editor.
@@ -29,7 +28,7 @@ import com.selfdualbrain.util.ValueHolder
   * @param obj dynamic object which contains information displayed by this node
   * @tparam V type of values this node encapsulates
   */
-sealed abstract class TTNode[V](owner: TTModel, obj: DynamicObject) extends ValueHolder[V]{
+sealed abstract class TTNode[V](owner: TTModel, obj: DynamicObject) extends ValueHolderWithValidation[V]{
   private var childNodesX: Option[Seq[TTNode[_]]] = None
   private var cellEditorX: Option[DofCellEditor[V]] = None
 
@@ -112,7 +111,7 @@ object TTNode {
 
   /* AttrSingle */
   class AttrSingle[A](owner: TTModel, obj: DynamicObject, propertyName: String) extends TTNode[Option[A]](owner, obj) {
-    private val property = obj.dofClass.getProperty(propertyName)
+    private val property: DofAttribute = obj.dofClass.getProperty(propertyName)
 
     override def displayedName: String = property.displayName
 
@@ -131,7 +130,7 @@ object TTNode {
 
   /* AttrCollection */
   class AttrCollection(owner: TTModel, obj: DynamicObject, propertyName: String) extends TTNode[Int](owner: TTModel, obj: DynamicObject) {
-    private val property = obj.dofClass.getProperty(propertyName)
+    private val property = obj.dofClass.getProperty(propertyName).asInstanceOf[DofAttribute]
 
     override def displayedName: String = property.displayName
 
@@ -164,7 +163,7 @@ object TTNode {
 
   /* LinkSingle */
   class LinkSingle(owner: TTModel, obj: DynamicObject, propertyName: String) extends TTNode[Option[DofClass]](owner, obj) {
-    private val property = obj.dofClass.getProperty(propertyName)
+    private val property: DofLink = obj.dofClass.getProperty(propertyName).asInstanceOf[DofLink]
 
     override def displayedName: String = propertyName
 
@@ -192,7 +191,11 @@ object TTNode {
       }
     }
 
-    override protected def createCellEditor: DofCellEditor[Option[DofClass]] = ???
+    override def check(x: Option[DofClass]): Option[String] = None
+
+    override protected def createCellEditor: DofCellEditor[Option[DofClass]] =
+      if (property.)
+        new CellEditorLinkClassSelection(this)
   }
 
   /* LinkCollection */
