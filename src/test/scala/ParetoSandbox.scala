@@ -1,5 +1,5 @@
 import org.apache.commons.math3.distribution.ParetoDistribution
-import org.apache.commons.math3.random.{ISAACRandom, JDKRandomGenerator}
+import org.apache.commons.math3.random.ISAACRandom
 
 import java.math.MathContext
 import scala.util.Random

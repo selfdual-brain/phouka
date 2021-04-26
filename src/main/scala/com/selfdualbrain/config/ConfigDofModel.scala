@@ -168,17 +168,16 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "consensus" /* group: consensus */
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeInt(name = "numberOfValidators") with SingleValueProperty[Int]
+    val p = new DofAttributeSingleWithStaticType(name = "numberOfValidators", staticValueType = new DofInt(range = (3, 1000)))
     p.group = "consensus"
     p.displayName = "number of validators"
     p.nullPolicy = Mandatory
-    p.range = (3, 1000)
     p.help = "Number of validators forming blockchain network. On blockchain start validators are 1-1 with nodes."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "validatorsWeights", valueType = IntegerSequence) with SingleValueProperty[DynamicObject]
+    val p = new DofLinkSingle(name = "validatorsWeights", valueType = IntegerSequence) with SingleValueProperty[DynamicObject]
     p.group = "consensus"
     p.displayName = "validators weights"
     p.nullPolicy = Mandatory
@@ -188,12 +187,10 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "ftt") with SingleValueProperty[Double]
-    p.quantity = Quantity.PlainNumber
+    val p = new DofAttributeSingleWithStaticType(name = "ftt", staticValueType = DofFraction)
     p.group = "consensus"
     p.displayName = "relative ftt"
     p.nullPolicy = Mandatory
-    p.range = (0.0, 1.0)
     p.help = "Finalizer - relative fault tolerance threshold used for summits"
     p
   }

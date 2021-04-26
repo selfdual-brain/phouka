@@ -9,6 +9,11 @@ case class HumanReadableTimeAmount(
                                   seconds: Int,
                                   micros: Int
                                   ) {
+  assert (days >= 0)
+  assert (hours >= 0 && hours <= 23)
+  assert (minutes >= 0 && minutes <= 59)
+  assert (seconds >= 0 && seconds <= 59)
+  assert (micros >= 0 && micros <= 999999)
 
   override def toString: String = s"$days-${padding2TwoDigits(hours)}:${padding2TwoDigits(minutes)}:${padding2TwoDigits(seconds)}.${padding2SixDigits(micros)}"
 
@@ -38,5 +43,23 @@ case class HumanReadableTimeAmount(
     }
   }
 
+}
+
+object HumanReadableTimeAmount {
+  private val pattern = raw"(\d+)-(\d{2}):(\d{2}):(\d{2}).(\d{1,6})".r
+
+  def parseString(s: String): HumanReadableTimeAmount =
+    s match {
+      case pattern(d, hh, mm, ss, m) =>
+        val days = d.toInt
+        val hours = hh.toInt
+        val minutes = mm.toInt
+        val seconds = ss.toInt
+        val micros = m.toInt
+        HumanReadableTimeAmount(days, hours, minutes, seconds, micros)
+      case other =>
+        throw new RuntimeException("invalid format, expected ddd-hh:mm:ss.mmmmmm")
+
+    }
 }
 

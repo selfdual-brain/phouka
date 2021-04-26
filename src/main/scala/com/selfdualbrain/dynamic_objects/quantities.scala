@@ -87,20 +87,7 @@ object QuantityUnit {
 
 /*                                                               Quantity-enabled values                                                                                       */
 
-class NumberWithQuantityAndUnit(val value: Double, val quantity: Quantity, val unit: QuantityUnit) {
-
-  override def equals(obj: Any): Boolean = {
-    if (obj == null)
-      return false
-
-    if (! obj.isInstanceOf[NumberWithQuantityAndUnit])
-      return false
-
-    val theOther = obj.asInstanceOf[NumberWithQuantityAndUnit]
-
-    return value == theOther.value && quantity == theOther.quantity
-
-  }
+case class NumberWithQuantityAndUnit(value: Double, quantity: Quantity, unit: QuantityUnit) {
 
   override def toString: String = s"$quantity($value ${unit.name})"
 
@@ -119,4 +106,14 @@ object NumberWithQuantityAndUnit {
 
   def plainNumber(value: Double) = new NumberWithQuantityAndUnit(value, quantity = Quantity.PlainNumber, unit = Quantity.PlainNumber.baseUnit)
 
+}
+
+case class IntervalWithQuantity(quantity: Quantity, leftEnd: NumberWithQuantityAndUnit, rightEnd: NumberWithQuantityAndUnit) {
+  assert(leftEnd.value <= rightEnd.value)
+  assert(leftEnd.quantity == quantity)
+  assert(rightEnd.quantity == quantity)
+
+  override def toString: String = s"$leftEnd...$rightEnd"
+
+  def length: Double = rightEnd.value - leftEnd.value
 }

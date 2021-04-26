@@ -7,6 +7,14 @@ import scala.collection.mutable
 
 class DynamicObject(val dofClass: DofClass) {
   private val attrValues: mutable.Map[String, ValueContainer[Any]] = new mutable.HashMap[String, ValueContainer[Any]]
+  private var quantityX: Option[Quantity] = None
+
+  def quantity: Option[Quantity] = quantityX
+
+  def quantity_=(q: Quantity): Unit = {
+    assert (quantityX.isEmpty)
+    quantityX = Some(q)
+  }
 
   def getSingle[T](propertyName: String): Option[T] = property[T](propertyName).asInstanceOf[SingleValueProperty[T]].readSingleValue(this)
 

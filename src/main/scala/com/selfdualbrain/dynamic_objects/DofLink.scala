@@ -1,7 +1,6 @@
 package com.selfdualbrain.dynamic_objects
-import com.selfdualbrain.data_structures.FastMapOnIntInterval
 
-class DofLink(name: String, val valueType: DofClass, group: String = "") extends DofProperty[DynamicObject](name) {
+abstract class DofLink(name: String, val valueType: DofClass) extends DofProperty[DynamicObject](name) {
   var quantity: Quantity = _
 
 //  override def readSingleValue(context: DynamicObject): Option[DynamicObject] = ???
@@ -18,5 +17,9 @@ class DofLink(name: String, val valueType: DofClass, group: String = "") extends
 //
 //  override def getCollection(context: DynamicObject): FastMapOnIntInterval[DynamicObject] = ???
 
-  override def createNewValueContainer(): DynamicObject.ValueContainer[DynamicObject] = ???
+//  override def createNewValueContainer(): DynamicObject.ValueContainer[DynamicObject] = ???
 }
+
+class DofLinkSingle(name: String, valueType: DofClass, quantity: Option[Quantity] = None) extends DofLink(name, valueType) with SingleValueProperty[DynamicObject]
+
+class DofLinkCollection(name: String, valueType: DofClass) extends DofLink(name, valueType) with CollectionProperty[DynamicObject]
