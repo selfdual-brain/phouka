@@ -34,7 +34,7 @@ class DofClass(val name: String, val displayName: String = "", val isAbstract: B
     }
   }
 
-  def newSubclass(name: String, displayName: String = "", help: String): DofClass = new DofClass(name, displayName, superclass = Some(this), help)
+  def newSubclass(name: String, displayName: String = "", help: String): DofClass = new DofClass(name, displayName, superclass = Some(this), isAbstract = false, help = help)
 
   def getProperty(name: String): DofProperty[_] =
     this.lookupPropertyInSuperclassChain(name) match {

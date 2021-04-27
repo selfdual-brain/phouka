@@ -1,7 +1,7 @@
 package com.selfdualbrain.config
 
 import com.selfdualbrain.dynamic_objects.NullPolicy._
-import com.selfdualbrain.dynamic_objects._
+import com.selfdualbrain.dynamic_objects.{DofFloatingPointWithQuantity, _}
 import com.selfdualbrain.time.TimeDelta
 
 object ConfigDofModel {
@@ -752,91 +752,88 @@ object ConfigDofModel {
   /*       ValidatorImpl_Highway                               */
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeInt(name = "initialRoundExponent")
-    p.displayName = "initialRoundExponent"
+    val p = new DofAttributeSingleWithStaticType(name = "initialRoundExponent", staticValueType = new DofInt(range = (0, 32)))
+    p.displayName = "initial round exponent"
     p.nullPolicy = Mandatory
-    p.range = (0, 32)
     p.help = "Round exponent to be used at validator's boot, i.e. at the beginning of the simulation."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeTimeDelta(name = "omegaWaitingMargin")
-    p.displayName = "omegaWaitingMargin"
+    val p = new DofAttributeSingleWithStaticType(name = "omegaWaitingMargin", DofTimeDelta)
+    p.displayName = "omega waiting margin"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "Creation of omega messages is scheduled at least 'omegaWaitingMargin' microseconds before the end of corresponding round."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeInt(name = "exponentAccelerationPeriod")
-    p.displayName = "exponentAccelerationPeriod"
+    val p = new DofAttributeSingleWithStaticType(name = "exponentAccelerationPeriod", staticValueType = new DofInt(1, Int.MaxValue))
+    p.displayName = "exponent acceleration period"
     p.nullPolicy = Mandatory
     p.help = "Every 'exponentAccelerationPeriod' rounds a validator decreases the round exponent by 1."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeInt(name = "exponentInertia")
-    p.displayName = "exponentInertia"
+    val p = new DofAttributeSingleWithStaticType(name = "exponentInertia", staticValueType = new DofInt(1, 1000))
+    p.displayName = "exponent inertia"
     p.nullPolicy = Mandatory
-    p.range = (1, 1000)
     p.help = "The round exponent used by the validator will be unchanged for at least as many rounds as set in exponentInertia after last change. ExponentInertia=1 means" +
       " that the feature is effectively disabled."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeInt(name = "runaheadTolerance")
-    p.displayName = "runaheadTolerance"
+    val p = new DofAttributeSingleWithStaticType(name = "runaheadTolerance", staticValueType = new DofInt(1, 1000))
+    p.displayName = "runahead tolerance"
     p.nullPolicy = Mandatory
-    p.range = (1, 1000)
     p.help = "Runahead exceeding 'runaheadTolerance' * 'currentRoundLength' will trigger a slowdown."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeTimeDelta(name = "droppedBricksMovingAverageWindow")
-    p.displayName = "droppedBricksMovingAverageWindow"
+    val p = new DofAttributeSingleWithStaticType(
+      name = "droppedBricksMovingAverageWindow",
+      staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.AmountOfSimulatedTime, range = (TimeDelta.millis(1), TimeDelta.days(10)))
+    )
+    p.displayName = "dropped bricks moving average window"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.AmountOfSimulatedTime
-    p.range = (TimeDelta.millis(1), TimeDelta.days(10))
     p.help = "Length of the moving window used for dropped brick statistic calculation."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "droppedBricksAlarmLevel")
-    p.displayName = "droppedBricksAlarmLevel"
+    val p = new DofAttributeSingleWithStaticType(
+      name = "droppedBricksAlarmLevel",
+      staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.Fraction, range = (0.00001, 1.0))
+    )
+    p.displayName = "dropped bricks alarm level"
     p.nullPolicy = Mandatory
-    p.range = (0.00001, 1.0)
     p.help = "Fraction of dropped bricks (within moving window) which - once exceeded - triggers the 'dropped bricks alarm'."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeInt(name = "droppedBricksAlarmSuppressionPeriod")
-    p.displayName = "droppedBricksAlarmSuppressionPeriod"
+    val p = new DofAttributeSingleWithStaticType(name = "droppedBricksAlarmSuppressionPeriod", staticValueType = new DofInt(range = (0, 1000)))
+    p.displayName = "dropped bricks alarm suppression period"
     p.nullPolicy = Mandatory
-    p.range = (0, 1000)
     p.help = "After an activation of 'dropped bricks' alarm, triggering subsequent 'dropped bricks' alarms is suppressed for number of rounds specified here."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeInt(name = "perLaneOrphanRateCalculationWindow")
-    p.displayName = "perLaneOrphanRateCalculationWindow"
+    val p = new DofAttributeSingleWithStaticType(name = "perLaneOrphanRateCalculationWindow", staticValueType = new DofInt(range = (3, 1000)))
+    p.displayName = "per lane orphan rate calculation window"
     p.nullPolicy = Mandatory
     p.help = "Number of rounds to be taken into account when calculating per-lane orphan rate (for orphan-rate implied slowdown)."
     p
   }
 
   ValidatorImpl_Highway defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "perLaneOrphanRateThreshold")
-    p.displayName = "perLaneOrphanRateThreshold"
+    val p = new DofAttributeSingleWithStaticType(name = "perLaneOrphanRateThreshold", DofFraction)
+    p.displayName = "per lane orphan rate threshold"
     p.nullPolicy = Mandatory
-    p.range = (0.0, 1.0)
     p.help = "Fraction of per-lane orphaned blocks which - once exceeded - triggers orphan-rate implied slowdown."
     p
   }
@@ -844,10 +841,12 @@ object ConfigDofModel {
   /*       DownloadBandwidthConfig_Uniform                     */
 
   DownloadBandwidthConfig_Uniform defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "bandwidth")
+    val p = new DofAttributeSingleWithStaticType(
+      name = "bandwidth",
+      staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.ConnectionSpeed, range = (1, 1e15))
+    )
     p.displayName = "bandwidth"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.ConnectionSpeed
     p.help = "Download speed to be used for all nodes"
     p
   }
@@ -855,10 +854,9 @@ object ConfigDofModel {
   /*       DownloadBandwidthConfig_Generic                              */
 
   DownloadBandwidthConfig_Generic defineProperty {
-    val p = new DofLink(name = "generator", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLinkSingle(name = "generator", valueType = IntegerSequence, quantity = Some(Quantity.ConnectionSpeed))
     p.displayName = "generator"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.ConnectionSpeed
     p.help = "Download bandwidth generator to be applied for configuring nodes."
     p
   }
@@ -866,19 +864,17 @@ object ConfigDofModel {
   /*       TransactionsStreamConfig_IndependentSizeAndExecutionCost     */
 
   TransactionsStreamConfig_IndependentSizeAndExecutionCost defineProperty {
-    val p = new DofLink(name = "sizeDistribution", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLinkSingle(name = "sizeDistribution", valueType = IntegerSequence, quantity = Some(Quantity.DataVolume))
     p.displayName = "size distribution"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.DataVolume
     p.help = "Transaction size generator."
     p
   }
 
   TransactionsStreamConfig_IndependentSizeAndExecutionCost defineProperty {
-    val p = new DofLink(name = "costDistribution", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLinkSingle(name = "costDistribution", valueType = IntegerSequence, quantity = Some(Quantity.ComputingCost))
     p.displayName = "cost distribution"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.ComputingCost
     p.help = "Transaction cost generator."
     p
   }
@@ -886,19 +882,17 @@ object ConfigDofModel {
   /*       TransactionsStreamConfig_Constant                            */
 
   TransactionsStreamConfig_Constant defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "size")
+    val p = new DofAttributeSingleWithStaticType(name = "size", staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.DataVolume, range = (1, 1e5)))
     p.displayName = "size"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.DataVolume
     p.help = "Transaction fixed size (applied to all transactions)."
     p
   }
 
   TransactionsStreamConfig_Constant defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "cost")
+    val p = new DofAttributeSingleWithStaticType(name = "cost", staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.ComputingCost, range = (1, 10e9)))
     p.displayName = "cost distribution"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.ComputingCost
     p.help = "Transaction fixed cost (applied to all transactions)"
     p
   }
@@ -906,10 +900,9 @@ object ConfigDofModel {
   /*       BlocksBuildingStrategyModel_FixedNumberOfTransactions        */
 
   BlocksBuildingStrategyModel_FixedNumberOfTransactions defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "n")
+    val p = new DofAttributeSingleWithStaticType(name = "n", staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.DataVolume, range = (1, 1e9)))
     p.displayName = "number of transactions"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.DataVolume
     p.help = "Number of transactions (every block will have the same number of transactions)."
     p
   }
@@ -917,19 +910,17 @@ object ConfigDofModel {
   /*       BlocksBuildingStrategyModel_CostAndSizeLimit                 */
 
   BlocksBuildingStrategyModel_CostAndSizeLimit defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "sizeLimit")
+    val p = new DofAttributeSingleWithStaticType(name = "sizeLimit", staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.DataVolume, range = (10, 1e9)))
     p.displayName = "size limit"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.DataVolume
     p.help = "Total limit for (cumulative) size of transaction in a block."
     p
   }
 
   BlocksBuildingStrategyModel_CostAndSizeLimit defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "costLimit")
+    val p = new DofAttributeSingleWithStaticType(name = "costLimit", staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.ComputingCost, range = (10, 1e15)))
     p.displayName = "cost limit"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.ComputingCost
     p.help = "Total cost limit for (cumulative) cost of transaction in a block."
     p
   }
@@ -937,7 +928,7 @@ object ConfigDofModel {
   /*       FinalizationCostModel_ScalingOfRealImplementationCost        */
 
   FinalizationCostModel_ScalingOfRealImplementationCost defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "microsToGasConversionRate")
+    val p = new DofAttributeSingleWithStaticType(name = "microsToGasConversionRate", new DofFloatingPoint(range = (0.001, 1000.0)))
     p.displayName = "micros-to-gas conversion rate"
     p.nullPolicy = Mandatory
     p.help = "Conversion rate used for scaling wall-clock time to simulation time."
@@ -947,7 +938,7 @@ object ConfigDofModel {
   /*       FinalizationCostModel_DefaultPolynomial                      */
 
   FinalizationCostModel_DefaultPolynomial defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "a")
+    val p = new DofAttributeSingleWithStaticType(name = "a", new DofFloatingPoint(range = (0.1, 10000)))
     p.displayName = "a"
     p.nullPolicy = Mandatory
     p.help = "Coefficient 'a' in the default polynomial formula."
@@ -955,7 +946,7 @@ object ConfigDofModel {
   }
 
   FinalizationCostModel_DefaultPolynomial defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "b")
+    val p = new DofAttributeSingleWithStaticType(name = "b", new DofFloatingPoint(range = (0.1, 10000)))
     p.displayName = "b"
     p.nullPolicy = Mandatory
     p.help = "Coefficient 'b' in the default polynomial formula."
@@ -963,7 +954,7 @@ object ConfigDofModel {
   }
 
   FinalizationCostModel_DefaultPolynomial defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "c")
+    val p = new DofAttributeSingleWithStaticType(name = "c", new DofFloatingPoint(range = (0.1, 10000)))
     p.displayName = "c"
     p.nullPolicy = Mandatory
     p.help = "Coefficient 'c' in the default polynomial formula."
@@ -973,7 +964,7 @@ object ConfigDofModel {
   /*       SimulationEngineStopCondition_NumberOfSteps                      */
 
   SimulationEngineStopCondition_NumberOfSteps defineProperty {
-    val p = new DofAttributeLong(name = "steps")
+    val p = new DofAttributeSingleWithStaticType(name = "steps", staticValueType = new DofLong(range = (1, Long.MaxValue)))
     p.displayName = "steps"
     p.nullPolicy = Mandatory
     p.help = "Number of steps to be executed."
@@ -982,9 +973,8 @@ object ConfigDofModel {
 
   /*       SimulationEngineStopCondition_SimulationTime                      */
 
-
   SimulationEngineStopCondition_SimulationTime defineProperty {
-    val p = new DofAttributeHHMMSS(name = "timepoint")
+    val p = new DofAttributeSingleWithStaticType(name = "timepoint", staticValueType = DofHHMMSS)
     p.displayName = "timepoint"
     p.nullPolicy = Mandatory
     p.help = "Simulated time when to stop the simulation."
@@ -994,7 +984,7 @@ object ConfigDofModel {
   /*       SimulationEngineStopCondition_WallClockTime                      */
 
   SimulationEngineStopCondition_WallClockTime defineProperty {
-    val p = new DofAttributeHHMMSS(name = "timepoint")
+    val p = new DofAttributeSingleWithStaticType(name = "timepoint", staticValueType = DofHHMMSS)
     p.displayName = "timepoint"
     p.nullPolicy = Mandatory
     p.help = "Wall-clock time when to stop the simulation."

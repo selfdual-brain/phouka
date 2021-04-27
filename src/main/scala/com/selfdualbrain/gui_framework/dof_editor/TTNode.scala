@@ -2,7 +2,7 @@ package com.selfdualbrain.gui_framework.dof_editor
 
 import com.selfdualbrain.data_structures.FastMapOnIntInterval
 import com.selfdualbrain.dynamic_objects._
-import com.selfdualbrain.gui_framework.dof_editor.cell_editors.{CellEditorLinkClassSelection, DofCellEditor}
+import com.selfdualbrain.gui_framework.dof_editor.cell_editors.DofCellEditor
 
 /**
   * Nodes making the tree structure we use underneath tree-table of dof editor.
@@ -107,11 +107,13 @@ object TTNode {
     override def value: String = "root"
 
     override protected def createCellEditor: DofCellEditor[String] = ???
+
+    override def check(x: String): Option[String] = ???
   }
 
   /* AttrSingle */
   class AttrSingle[A](owner: TTModel, obj: DynamicObject, propertyName: String) extends TTNode[Option[A]](owner, obj) {
-    private val property: DofAttribute = obj.dofClass.getProperty(propertyName)
+    private val property: DofAttribute[A] = obj.dofClass.getProperty(propertyName).asInstanceOf[DofAttribute[A]]
 
     override def displayedName: String = property.displayName
 
@@ -126,11 +128,16 @@ object TTNode {
     }
 
     override protected def createCellEditor: DofCellEditor[Option[A]] = ???
+
+    override def check(x: Option[A]): Option[String] = ???
+
+
+
   }
 
   /* AttrCollection */
   class AttrCollection(owner: TTModel, obj: DynamicObject, propertyName: String) extends TTNode[Int](owner: TTModel, obj: DynamicObject) {
-    private val property = obj.dofClass.getProperty(propertyName).asInstanceOf[DofAttribute]
+    private val property = obj.dofClass.getProperty(propertyName).asInstanceOf[DofAttribute[_]]
 
     override def displayedName: String = property.displayName
 
@@ -144,6 +151,8 @@ object TTNode {
     override def value: Int = obj.getCollection(propertyName).size
 
     override protected def createCellEditor: DofCellEditor[Int] = ???
+
+    override def check(x: Int): Option[String] = ???
   }
 
   /* AttrCollectionElement */
@@ -159,6 +168,8 @@ object TTNode {
     override def value: A = obj.getCollection[A](propertyName)(index)
 
     override protected def createCellEditor: DofCellEditor[A] = ???
+
+    override def check(x: A): Option[String] = ???
   }
 
   /* LinkSingle */
@@ -193,9 +204,7 @@ object TTNode {
 
     override def check(x: Option[DofClass]): Option[String] = None
 
-    override protected def createCellEditor: DofCellEditor[Option[DofClass]] =
-      if (property.)
-        new CellEditorLinkClassSelection(this)
+    override protected def createCellEditor: DofCellEditor[Option[DofClass]] = ??? //todo
   }
 
   /* LinkCollection */
@@ -214,6 +223,8 @@ object TTNode {
     override def value: Int = this.childNodes.size
 
     override protected def createCellEditor: DofCellEditor[Int] = ???
+
+    override def check(x: Int): Option[String] = ???
   }
 
   /* LinkCollectionElement */
@@ -238,6 +249,8 @@ object TTNode {
     }
 
     override protected def createCellEditor: DofCellEditor[DofClass] = ???
+
+    override def check(x: DofClass): Option[String] = ???
   }
 
   /* PropertiesGroup */
@@ -255,6 +268,8 @@ object TTNode {
     override def value: String = groupName
 
     override protected def createCellEditor: DofCellEditor[String] = ???
+
+    override def check(x: String): Option[String] = ???
   }
 
 }
