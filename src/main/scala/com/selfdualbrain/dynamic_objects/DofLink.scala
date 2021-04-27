@@ -1,7 +1,6 @@
 package com.selfdualbrain.dynamic_objects
 
 abstract class DofLink(name: String, val valueType: DofClass) extends DofProperty[DynamicObject](name) {
-  var quantity: Quantity = _
 
 //  override def readSingleValue(context: DynamicObject): Option[DynamicObject] = ???
 //

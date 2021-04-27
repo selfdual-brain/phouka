@@ -214,6 +214,8 @@ class DofFloatingPointIntervalWithQuantity(
                                             val quantity: Quantity,
                                             val leftEndRange: (Double, Double),
                                             val spreadRange: (Double, Double),
+                                            val leftEndName: String,
+                                            val rightEndName: String
                                           ) extends DofValueType[IntervalWithQuantity] {
   private val separator: Char = ':'
   private val leftEndType =  new DofFloatingPointWithQuantity(quantity, leftEndRange)

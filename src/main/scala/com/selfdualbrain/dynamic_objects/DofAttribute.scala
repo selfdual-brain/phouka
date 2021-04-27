@@ -18,12 +18,12 @@ class DofAttributeNumberWithContextDependentQuantity(name: String, range: (Doubl
 
 }
 
-class DofAttributeIntervalWithContextDependentQuantity(name: String, leftEndRange: (Double, Double), spreadRange: (Double, Double))
+class DofAttributeIntervalWithContextDependentQuantity(name: String, leftEndRange: (Double, Double), spreadRange: (Double, Double), leftEndName: String, rightEndName: String)
   extends DofAttribute[IntervalWithQuantity](name) with SingleValueProperty[IntervalWithQuantity] {
 
   override def valueType(context: DynamicObject): DofValueType[IntervalWithQuantity] = {
     assert (context.quantity.isDefined)
-    return new DofFloatingPointIntervalWithQuantity(context.quantity.get, leftEndRange, spreadRange)
+    return new DofFloatingPointIntervalWithQuantity(context.quantity.get, leftEndRange, spreadRange, leftEndName, rightEndName)
   }
 
 }

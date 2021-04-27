@@ -177,11 +177,10 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLinkSingle(name = "validatorsWeights", valueType = IntegerSequence) with SingleValueProperty[DynamicObject]
+    val p = new DofLinkSingle(name = "validatorsWeights", valueType = IntegerSequence, quantity = Some(Quantity.InternalCurrencyAmount)) with SingleValueProperty[DynamicObject]
     p.group = "consensus"
     p.displayName = "validators weights"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.InternalCurrencyAmount
     p.help = "Algorithm of generating weights of validators."
     p
   }
@@ -196,17 +195,16 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeInt(name = "ackLevel")
+    val p = new DofAttributeSingleWithStaticType(name = "ackLevel", staticValueType = new DofInt(range = (1, 50)))
     p.group = "consensus"
     p.displayName = "ack-level"
     p.nullPolicy = Mandatory
-    p.range = (1, 50)
     p.help = "Finalizer - acknowledgement level used for summits"
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "validatorImplementation", valueType = ValidatorImpl)
+    val p = new DofLinkSingle(name = "validatorImplementation", valueType = ValidatorImpl)
     p.group = "consensus"
     p.displayName = "validator impl variant"
     p.nullPolicy = Mandatory
@@ -217,7 +215,7 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "network" /* group: network */
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "internetModel", valueType = NetworkModel)
+    val p = new DofLinkSingle(name = "internetModel", valueType = NetworkModel)
     p.group = "network"
     p.displayName = "network model"
     p.nullPolicy = Mandatory
@@ -226,7 +224,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "downloadBandwidthDistribution", valueType = DownloadBandwidthConfig)
+    val p = new DofLinkSingle(name = "downloadBandwidthDistribution", valueType = DownloadBandwidthConfig)
     p.group = "network"
     p.displayName = "download bandwidth distribution"
     p.nullPolicy = Mandatory
@@ -238,32 +236,39 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "disruptions" /* group: disruptions */
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "networkOutagesFreq")
-    p.quantity = Quantity.EventsFrequency
+    val p = new DofAttributeSingleWithStaticType(
+      name = "networkOutagesFreq",
+      staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.EventsFrequency, range = (0, 10)))
     p.group = "disruptions"
     p.displayName = "network connection outages frequency"
     p.nullPolicy = Optional(present = "on", absent = "off")
-    p.help = "Every node can independently experience temporary network outage. Frequency of such outage events (per node) is defined here. Outage events are simulated as Poisson process"
+    p.help = "Every node can independently experience temporary network outage. Frequency of such outage events (per node) is defined here. Outage events are simulated as a Poisson process"
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeInterval(name = "networkOutagesLength")
-    p.quantity = Quantity.AmountOfSimulatedTime
+    val p = new DofAttributeSingleWithStaticType(
+      name = "networkOutagesLength",
+      staticValueType = new DofFloatingPointIntervalWithQuantity(
+        quantity = Quantity.AmountOfSimulatedTime,
+        leftEndRange  = (1, TimeDelta.days(100)),
+        spreadRange = (1, TimeDelta.days(100)),
+        leftEndName = "min",
+        rightEndName = "max"
+      )
+    )
     p.group = "disruptions"
     p.displayName = "outages length"
     p.nullPolicy = Optional(present = "on", absent = "off")
-    p.leftEndName = "min"
-    p.rightEndName = "max"
-    p.leftEndRange  = (1, TimeDelta.days(100))
-    p.spreadRange = (1, TimeDelta.days(100))
     p.help = "Every node can independently experience temporary network outage. Frequency of such outage is randomly selected within this interval."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "nodeCrashFreq")
-    p.quantity = Quantity.EventsFrequency
+    val p = new DofAttributeSingleWithStaticType(
+      name = "nodeCrashFreq",
+      staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.EventsFrequency, range = (0, 1))
+    )
     p.group = "disruptions"
     p.displayName = "node crashes frequency"
     p.nullPolicy = Optional(present = "on", absent = "off")
@@ -272,8 +277,10 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "bifurcationsFreq")
-    p.quantity = Quantity.EventsFrequency
+    val p = new DofAttributeSingleWithStaticType(
+      name = "bifurcationsFreq",
+      staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.EventsFrequency, range = (0, 1))
+    )
     p.group = "disruptions"
     p.displayName = "node bifurcations frequency"
     p.nullPolicy = Optional(present = "on", absent = "off")
@@ -282,7 +289,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFraction(name = "faultyValidatorsRelativeWeightThreshold")
+    val p = new DofAttributeSingleWithStaticType(name = "faultyValidatorsRelativeWeightThreshold", staticValueType = DofFraction)
     p.group = "disruptions"
     p.displayName = "faulty validators threshold"
     p.nullPolicy = Mandatory
@@ -294,8 +301,10 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "simulated-payload-calibration" /* group: simulated payload calibration */
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "brickHeaderCoreSize")
-    p.quantity = Quantity.DataVolume
+    val p = new DofAttributeSingleWithStaticType(
+      name = "brickHeaderCoreSize",
+      staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.DataVolume, range = (0, 10000))
+    )
     p.group = "simulated-payload-calibration"
     p.displayName = "brickHeaderCoreSize"
     p.nullPolicy = Mandatory
@@ -304,8 +313,10 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "singleJustificationSize")
-    p.quantity = Quantity.DataVolume
+    val p = new DofAttributeSingleWithStaticType(
+      name = "singleJustificationSize",
+      staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.DataVolume, range = (0, 1000))
+    )
     p.group = "simulated-payload-calibration"
     p.displayName = "single justification size"
     p.nullPolicy = Mandatory
@@ -314,7 +325,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "transactionsStreamModel", valueType = TransactionsStreamConfig)
+    val p = new DofLinkSingle(name = "transactionsStreamModel", valueType = TransactionsStreamConfig)
     p.group = "simulated-payload-calibration"
     p.displayName = "transactions stream model"
     p.nullPolicy = Mandatory
@@ -324,7 +335,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "blocksBuildingStrategy", valueType = BlocksBuildingStrategyModel)
+    val p = new DofLinkSingle(name = "blocksBuildingStrategy", valueType = BlocksBuildingStrategyModel)
     p.group = "simulated-payload-calibration"
     p.displayName = "blocks building strategy"
     p.nullPolicy = Mandatory
@@ -336,46 +347,44 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "simulated-time-calibration" /* group: simulated time calibration */
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "nodesComputingPowerModel", valueType = IntegerSequence)
+    val p = new DofLinkSingle(name = "nodesComputingPowerModel", valueType = IntegerSequence, quantity = Some(Quantity.ComputingPower))
     p.group = "simulated-time-calibration"
     p.displayName = "nodes computing power distribution"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.ComputingPower
-    p.help = "todo"
+    p.help = "Distribution of computing power among validators."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofAttributeTimeDelta(name = "consumptionDelayHardLimit")
+    val p = new DofAttributeSingleWithStaticType(name = "consumptionDelayHardLimit", staticValueType = DofTimeDelta)
     p.group = "simulated-time-calibration"
     p.displayName = "consumption delay hard limit"
     p.nullPolicy = Mandatory
-    p.help = "Size of a single justification. This is used to calculate bricks binary size."
+    p.help = "Max time that handling of an event by a node (arrived brick handler or wake-up handler) is allowed wait. Exceeding this handling delay will halt the simulation. " +
+      "The idea is that extreme consumption delay usually means that the simulation reached some super-unrealistic region and running it further may be just wasting resources."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "brickCreationCostModel", valueType = IntegerSequence)
+    val p = new DofLinkSingle(name = "brickCreationCostModel", valueType = IntegerSequence, quantity = Some(Quantity.ComputingCost))
     p.group = "simulated-time-calibration"
-    p.displayName = "nodes computing power distribution"
+    p.displayName = "brick creation cost model"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.ComputingCost
     p.help = "We simulate computing cost of bricks creation by randomized values. This parameter defines the corresponding probabilistic distribution."
     p
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "brickValidationCostModel", valueType = IntegerSequence)
+    val p = new DofLinkSingle(name = "brickValidationCostModel", valueType = IntegerSequence, quantity = Some(Quantity.ComputingCost))
     p.group = "simulated-time-calibration"
-    p.displayName = "nodes computing power distribution"
+    p.displayName = "brick validation cost model"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.ComputingCost
     p.help = "We simulate computing cost of bricks validation by randomized values. This parameter defines the corresponding probabilistic distribution."
     p
   }
 
   ExperimentConfig.defineProperty {
-    val p = new DofLink(name = "finalizationCostModel", valueType = FinalizationCostModel)
+    val p = new DofLinkSingle(name = "finalizationCostModel", valueType = FinalizationCostModel)
     p.group = "simulated-time-calibration"
     p.displayName = "finalization cost model"
     p.nullPolicy = Mandatory
@@ -384,10 +393,10 @@ object ConfigDofModel {
   }
 
   ExperimentConfig.defineProperty {
-    val p = new DofAttributeTimeDelta(name = "chartsSamplingPeriod")
+    val p = new DofAttributeSingleWithStaticType(name = "chartsSamplingPeriod", staticValueType = DofTimeDelta)
     p.displayName = "charts sampling period"
     p.nullPolicy = Mandatory
-    p.help = "Time interval between subsequent stats snapshot. We take these snapshots for charts only. Smaller value means better charts resolution, but it consumes more RAM" +
+    p.help = "(Simulated) time interval between subsequent stats snapshot. We take these snapshots for charts only. Smaller value means better charts resolution, but it consumes more RAM" +
       " and slows down the simulator."
     p
   }
@@ -395,7 +404,7 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "gui-output" /* group: GUI output */
 
   ExperimentConfig.defineProperty {
-    val p = new DofAttributeBoolean(name = "guiLogAnalyzerEnabled")
+    val p = new DofAttributeSingleWithStaticType(name = "guiLogAnalyzerEnabled", staticValueType = DofBoolean)
     p.group = "gui-output"
     p.displayName = "log analyzer"
     p.nullPolicy = Mandatory
@@ -404,7 +413,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig.defineProperty {
-    val p = new DofAttributeBoolean(name = "guiStatEnabled")
+    val p = new DofAttributeSingleWithStaticType(name = "guiStatEnabled", staticValueType = DofBoolean)
     p.group = "gui-output"
     p.displayName = "statistics"
     p.nullPolicy = Mandatory
@@ -415,7 +424,7 @@ object ConfigDofModel {
   ExperimentConfig defineGroup "file-output" /* group: file output */
 
   ExperimentConfig.defineProperty {
-    val p = new DofAttributeBoolean(name = "fileStatsEnabled")
+    val p = new DofAttributeSingleWithStaticType(name = "fileStatsEnabled", staticValueType = DofBoolean)
     p.group = "file-output"
     p.displayName = "statistics"
     p.nullPolicy = Mandatory
@@ -424,7 +433,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig.defineProperty {
-    val p = new DofAttributeBoolean(name = "fileChartsEnabled")
+    val p = new DofAttributeSingleWithStaticType(name = "fileChartsEnabled", staticValueType = DofBoolean)
     p.group = "file-output"
     p.displayName = "charts"
     p.nullPolicy = Mandatory
@@ -433,7 +442,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig.defineProperty {
-    val p = new DofAttributeBoolean(name = "fileEventsLogEnabled")
+    val p = new DofAttributeSingleWithStaticType(name = "fileEventsLogEnabled", staticValueType = DofBoolean)
     p.group = "file-output"
     p.displayName = "events log (human-readable)"
     p.nullPolicy = Mandatory
@@ -442,7 +451,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig.defineProperty {
-    val p = new DofAttributeBoolean(name = "csvExportEnabled")
+    val p = new DofAttributeSingleWithStaticType(name = "csvExportEnabled", staticValueType = DofBoolean)
     p.group = "file-output"
     p.displayName = "events log (csv)"
     p.nullPolicy = Mandatory
@@ -453,7 +462,7 @@ object ConfigDofModel {
 
   /*       RandomGenerator_JdkRandom                           */
   RandomGenerator_JdkRandom defineProperty {
-    val p = new DofAttributeLong(name = "seed")
+    val p = new DofAttributeSingleWithStaticType(name = "seed", staticValueType = new DofLong(range = (Long.MinValue, Long.MaxValue)))
     p.displayName = "seed"
     p.nullPolicy = Optional(present = "explicit", absent = "auto")
     p.help = "Seed for the random number generator"
@@ -463,7 +472,7 @@ object ConfigDofModel {
   /*       RandomGenerator_JdkSecureRandom                     */
 
   RandomGenerator_JdkSecureRandom defineProperty {
-    val p = new DofAttributeLong(name = "seed")
+    val p = new DofAttributeSingleWithStaticType(name = "seed", staticValueType = new DofLong(range = (Long.MinValue, Long.MaxValue)))
     p.displayName = "seed"
     p.nullPolicy = Optional(present = "explicit", absent = "auto")
     p.help = "Seed for the random number generator"
@@ -485,10 +494,9 @@ object ConfigDofModel {
   /*       NetworkModel_HomogenousNetworkWithRandomDelays      */
 
   NetworkModel_HomogenousNetworkWithRandomDelays defineProperty {
-    val p = new DofLink(name = "delaysGenerator", valueType = IntegerSequence)
+    val p = new DofLinkSingle(name = "delaysGenerator", valueType = IntegerSequence, quantity = Some(Quantity.AmountOfSimulatedTime))
     p.displayName = "delays distribution"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "Distribution of node-to-node delivery delays."
     p
   }
@@ -496,29 +504,25 @@ object ConfigDofModel {
   /*       NetworkModel_SymmetricLatencyBandwidthGraphNetwork  */
 
   NetworkModel_SymmetricLatencyBandwidthGraphNetwork defineProperty {
-    val p = new DofLink(name = "connGraphLatencyAverageGenCfg", valueType = IntegerSequence)
+    val p = new DofLinkSingle(name = "connGraphLatencyAverageGenCfg", valueType = IntegerSequence, quantity = Some(Quantity.AmountOfSimulatedTime))
     p.displayName = "connection latency average (distribution)"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "For every edge in the connection graph, latency mean value is assigned (from the sequence defined here)"
     p
   }
 
   NetworkModel_SymmetricLatencyBandwidthGraphNetwork defineProperty {
-    val p = new DofAttributeDecimal(name = "connGraphLatencyStdDeviationNormalized")
+    val p = new DofAttributeSingleWithStaticType(name = "connGraphLatencyStdDeviationNormalized", staticValueType = DofFraction)
     p.displayName = "connection latency std deviation (normalized)"
     p.nullPolicy = Mandatory
     p.help = "For every edge in the connection graph, latency standard deviation is assigned as fraction of mean value"
-    p.precision = 4
-    p.range = (0.0001, 1.0)
     p
   }
 
   NetworkModel_SymmetricLatencyBandwidthGraphNetwork defineProperty {
-    val p = new DofLink(name = "connGraphBandwidthGenCfg", valueType = IntegerSequence)
+    val p = new DofLinkSingle(name = "connGraphBandwidthGenCfg", valueType = IntegerSequence, quantity = Some(Quantity.ConnectionSpeed))
     p.displayName = "connection bandwidth (distribution)"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.ConnectionSpeed
     p.help = "For every edge in the connection graph, bandwidth is assigned (from the sequence defined here)"
     p
   }
@@ -526,10 +530,9 @@ object ConfigDofModel {
   /*       IntegerSequence_Fixed                               */
 
   IntegerSequence_Fixed defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "value")
+    val p = new DofAttributeNumberWithContextDependentQuantity(name = "value", range = (0, Long.MaxValue))
     p.displayName = "value"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
     p.help = "The value to be repeated."
     p
   }
@@ -537,37 +540,33 @@ object ConfigDofModel {
   /*       IntegerSequence_ArithmeticSeq                        */
 
   IntegerSequence_ArithmeticSeq defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "start")
+    val p = new DofAttributeNumberWithContextDependentQuantity(name = "start", range = (0, Long.MaxValue))
     p.displayName = "start"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
     p.help = "The first value in the sequence"
     p
   }
 
   IntegerSequence_ArithmeticSeq defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "step")
+    val p = new DofAttributeNumberWithContextDependentQuantity(name = "step", range = (0, Long.MaxValue))
     p.displayName = "step"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
     p.help = "The sequence is defined as f(n+1) = f(n) + step"
     p
   }
 
-
   /*       IntegerSequence_GeometricSeq                        */
 
   IntegerSequence_GeometricSeq defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "start")
+    val p = new DofAttributeNumberWithContextDependentQuantity(name = "start", range = (0, Long.MaxValue))
     p.displayName = "start"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
     p.help = "The first value in the sequence"
     p
   }
 
   IntegerSequence_GeometricSeq defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "growthFactor")
+    val p = new DofAttributeSingleWithStaticType(name = "growthFactor", staticValueType = new DofFloatingPoint(range = (0.0001, 100000)))
     p.displayName = "growth factor"
     p.nullPolicy = Mandatory
     p.help = "The sequence is defined as f(n+1) = f(n) * factor"
@@ -577,12 +576,15 @@ object ConfigDofModel {
   /*       IntegerSequence_Uniform                             */
 
   IntegerSequence_Uniform defineProperty {
-    val p = new DofAttributeInterval(name = "range")
+    val p = new DofAttributeIntervalWithContextDependentQuantity(
+      name = "range",
+      leftEndRange = (0, Long.MaxValue),
+      spreadRange = (1e-10, 1e20),
+      leftEndName = "min",
+      rightEndName = "max"
+    )
     p.displayName = "range"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
-    p.leftEndName = "min"
-    p.rightEndName = "max"
     p.help = "The interval of values."
     p
   }
@@ -590,12 +592,15 @@ object ConfigDofModel {
   /*       IntegerSequence_PseudoGaussian                      */
 
   IntegerSequence_PseudoGaussian defineProperty {
-    val p = new DofAttributeInterval(name = "range")
+    val p = new DofAttributeIntervalWithContextDependentQuantity(
+      name = "range",
+      leftEndRange = (0, Long.MaxValue),
+      spreadRange = (1e-10, 1e20),
+      leftEndName = "min",
+      rightEndName = "max"
+    )
     p.displayName = "range"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
-    p.leftEndName = "min"
-    p.rightEndName = "max"
     p.help = "The interval of values."
     p
   }
@@ -603,10 +608,11 @@ object ConfigDofModel {
   /*       IntegerSequence_PoissonProcess                      */
 
   IntegerSequence_PoissonProcess defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "lambda")
+    val p = new DofAttributeSingleWithStaticType(
+      name = "lambda",
+      staticValueType = new DofFloatingPointWithQuantity(quantity = Quantity.EventsFrequency, range = (1e-20, 1e20)))
     p.displayName = "lambda"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.EventsFrequency
     p.help = "Desired frequency of events."
     p
   }
@@ -614,19 +620,17 @@ object ConfigDofModel {
   /*       IntegerSequence_Exponential                         */
 
   IntegerSequence_Exponential defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "mean")
+    val p = new DofAttributeNumberWithContextDependentQuantity(name = "mean", range = (1e-20, 1e20))
     p.displayName = "mean"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
     p.help = "Desired mean value of the random variable."
     p
   }
 
-
   /*       IntegerSequence_Erlang                              */
 
   IntegerSequence_Erlang defineProperty {
-    val p = new DofAttributeInt(name = "k")
+    val p = new DofAttributeSingleWithStaticType(name = "k", staticValueType = new DofInt(range = (1, 20)))
     p.displayName = "k"
     p.nullPolicy = Mandatory
     p.help = "Shape index. This is really the number of exponential distributions we compose to obtain this Erlang distribution. For k=1 this is just ordinary Poisson process."
@@ -634,18 +638,17 @@ object ConfigDofModel {
   }
 
   IntegerSequence_Erlang defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "lambda")
+    val p = new DofAttributeSingleWithStaticType(name = "lambda", staticValueType = new DofFloatingPointWithQuantity(Quantity.EventsFrequency, range = (1e-20, 1e20)))
     p.displayName = "lambda"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.EventsFrequency
-    p.help = "Rate parameter as defined by the Erlang distribution. Meal value is k/lambda."
+    p.help = "Rate parameter as defined by the Erlang distribution. Mean value is k/lambda."
     p
   }
 
   /*       IntegerSequence_ErlangViaMeanValueWithHardBoundary  */
 
   IntegerSequence_ErlangViaMeanValueWithHardBoundary defineProperty {
-    val p = new DofAttributeInt(name = "k")
+    val p = new DofAttributeSingleWithStaticType(name = "k", staticValueType = new DofInt(range = (1, 20)))
     p.displayName = "k"
     p.nullPolicy = Mandatory
     p.help = "Shape index. This is really the number of exponential distributions we compose to obtain this Erlang distribution. For k=1 this is just ordinary Poisson process."
@@ -653,21 +656,23 @@ object ConfigDofModel {
   }
 
   IntegerSequence_ErlangViaMeanValueWithHardBoundary defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "mean")
+    val p = new DofAttributeNumberWithContextDependentQuantity(name = "mean", range = (1e-20, 1e20))
     p.displayName = "mean"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
     p.help = "Desired mean value of the random variable."
     p
   }
 
   IntegerSequence_ErlangViaMeanValueWithHardBoundary defineProperty {
-    val p = new DofAttributeInterval(name = "range")
+    val p = new DofAttributeIntervalWithContextDependentQuantity(
+      name = "range",
+      leftEndRange = (0, Long.MaxValue),
+      spreadRange = (1e-10, 1e20),
+      leftEndName = "min",
+      rightEndName = "max"
+    )
     p.displayName = "range"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
-    p.leftEndName = "min"
-    p.rightEndName = "max"
     p.help = "The interval of values."
     p
   }
@@ -675,19 +680,17 @@ object ConfigDofModel {
   /*       IntegerSequence_Pareto                              */
 
   IntegerSequence_Pareto defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "minValue")
-    p.displayName = "minValue"
+    val p = new DofAttributeNumberWithContextDependentQuantity(name = "minValue", range = (1e-20, 1e20))
+    p.displayName = "min value"
     p.nullPolicy = Mandatory
-    p.inheritedQuantity = true
     p.help = "Minimal value."
     p
   }
 
   IntegerSequence_Pareto defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "alpha")
+    val p = new DofAttributeSingleWithStaticType(name = "alpha", staticValueType = new DofFloatingPoint(range = (1.0, 10.0)))
     p.displayName = "alpha"
     p.nullPolicy = Mandatory
-    p.range = (1.0, 10.0)
     p.help = "Shape coefficient. Alpha=1.2 corresponds to the 80-20 Pareto rule"
     p
   }
@@ -695,21 +698,23 @@ object ConfigDofModel {
   /*       IntegerSequence_ParetoWithCap                       */
 
   IntegerSequence_ParetoWithCap defineProperty {
-    val p = new DofAttributeInterval(name = "range")
+    val p = new DofAttributeIntervalWithContextDependentQuantity(
+      name = "range",
+      leftEndRange = (0, Long.MaxValue),
+      spreadRange = (1e-10, 1e20),
+      leftEndName = "min",
+      rightEndName = "max"
+    )
     p.displayName = "range"
     p.nullPolicy = Mandatory
-    p.leftEndName = "min"
-    p.rightEndName = "max"
-    p.inheritedQuantity = true
     p.help = "Range of values"
     p
   }
 
   IntegerSequence_ParetoWithCap defineProperty {
-    val p = new DofAttributeFloatingPointWithQuantity(name = "alpha")
+    val p = new DofAttributeSingleWithStaticType(name = "alpha", staticValueType = new DofFloatingPoint(range = (1.0, 10.0)))
     p.displayName = "alpha"
     p.nullPolicy = Mandatory
-    p.range = (1.0, 10.0)
     p.help = "Shape coefficient. Alpha=1.2 corresponds to the 80-20 Pareto rule"
     p
   }
@@ -717,17 +722,16 @@ object ConfigDofModel {
   /*       ValidatorImpl_NaiveCasper                           */
 
   ValidatorImpl_NaiveCasper defineProperty {
-    val p = new DofLink(name = "brickProposeDelays", valueType = IntegerSequence, polymorphic = true)
+    val p = new DofLinkSingle(name = "brickProposeDelays", valueType = IntegerSequence, quantity = Some(Quantity.AmountOfSimulatedTime))
     p.displayName = "brick propose delays"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "Generator for (usually randomized) delays between subsequent executions of <brick propose> operation. In other words, after a validator publishes a brick, it" +
       " takes the next value from this sequence to decide how long to wait before publishing next brick."
     p
   }
 
   ValidatorImpl_NaiveCasper defineProperty {
-    val p = new DofAttributeFraction(name = "blocksFraction")
+    val p = new DofAttributeSingleWithStaticType(name = "blocksFraction", staticValueType = DofFraction)
     p.displayName = "blocks fraction"
     p.nullPolicy = Mandatory
     p.help = "Probability that a newly created brick will be a block. Whenever a validator reaches a timepoint when it want to publish a new brick, it randomly decides" +
@@ -738,10 +742,9 @@ object ConfigDofModel {
   /*       ValidatorImpl_LeaderSeq                             */
 
   ValidatorImpl_LeaderSeq defineProperty {
-    val p = new DofAttributeTimeDelta(name = "roundLength")
+    val p = new DofAttributeSingleWithStaticType(name = "roundLength", staticValueType = DofTimeDelta)
     p.displayName = "round length"
     p.nullPolicy = Mandatory
-    p.quantity = Quantity.AmountOfSimulatedTime
     p.help = "Length of a single round. This is a rounds-based protocol, all validators will use the same round length."
     p
   }

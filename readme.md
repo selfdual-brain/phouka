@@ -224,33 +224,22 @@ IN PROGRESS:
 - user's manual
 
 
-
 ## Dev roadmap
 
 Milestones achieved:
 - 2020-05-14: project kick-off
-- 2021-02-15: demo-1: hardcoded experiments config, limited log analyzer, limited stats, j-dag graph missing
-- 2021-03-10: demo-2: hardcoded experiments config, limited log analyzer, complete stats, j-dag graph missing
-- 2021-03-15: demo-3: hardcoded experiments config, complete log analyzer, complete stats, j-dag graph missing
+- 2021-02-15: demo-1: hardcoded experiments config, limited log analyzer, limited stats
+- 2021-03-10: demo-2: demo-1 + stats GUI + engine performance (radically) improved
+- 2021-03-15: demo-3: demo-2 + log analyzer GUI
 
-Current roadmap (estimated):
-- 2021-04-15: demo-4: (demo-3) + limited experiments config GUI + improved memory optimizations + j-dag graph
-- 2021-05-xx: beta-1: demo-4 + full experiments-manager + binary release
-- 2021-06-xx: beta-2: improved test coverage, improved memory management
-- 2021-07-xx: beta-3: scope to be defined later
-- 2021-08-xx: official release of ver 1.0
+Current roadmap:
+- 2021-05-05: beta-1: demo-3 + experiments config GUI + j-dag graph + sim data export + binary release
+- 2021-07-01: beta-2: bugfixes/polishing
+- 2021-08-01: release of ver 1.0 + user's manual
 
-Features expected in ver 2.0:
-- enhanced support for simulation data export (so that external data-science tooling may be plugged-in)
-- full blockchain consensus model support (endorsements/spam protection, eras with slots, validators rotation)
-- enhanced P2P network model (explicit implementation RPC-over-DES, gossip protocol over RPC, Kademlia-based discovery)
-
-Rough plans for the uncertain future:
-- extracting the engine as a separate library
-- Docker support
-- storage support (currently the sim runs in RAM)
-- javascript frontend + hosting a web version
-- parallel simulation engine (PDES)
+Changes expected in ver 2.0:
+- full consensus protocol support (endorsements/spam protection, eras with slots, validators rotation)
+- realistic blockchain P2P network model (explicit implementation RPC-over-DES, gossip protocol over RPC, Kademlia-based discovery)
 
 # Licensing and forking
 This software is covered by GPLv3 license. The text of the license is included in `license.md` file.
