@@ -47,7 +47,7 @@ class DofTreeEditorView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel
           super.getCellRenderer(row, column)
         else {
           val ttNode: TTNode[_] = this.convertRowToNode(row).asInstanceOf[TTNode[_]]
-          ttNode.cellEditor
+          ttNode.cellRenderer
         }
       }
 
@@ -56,7 +56,7 @@ class DofTreeEditorView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel
           super.getCellEditor(row, column)
         else {
           val ttNode: TTNode[_] = this.convertRowToNode(row).asInstanceOf[TTNode[_]]
-          ttNode.cellEditor
+          ttNode.cellRenderer
         }
       }
     }

@@ -6,6 +6,11 @@ import org.jdesktop.swingx.treetable.AbstractTreeTableModel
 import javax.swing.tree.TreePath
 import scala.language.existentials
 
+/**
+  * TreeTable model underlying the dof-tree dynamic editor.
+  *
+  * @param rootDynamicObject dynamic object to be edited in the tree (the tree is implied - it comes out by recursively traversing properties)
+  */
 class TTModel(rootDynamicObject: DynamicObject) extends AbstractTreeTableModel {
   val ttRootNode: TTNode.Root = new TTNode.Root(this, rootDynamicObject)
 
@@ -44,11 +49,18 @@ class TTModel(rootDynamicObject: DynamicObject) extends AbstractTreeTableModel {
   }
 
   override def setValueAt(value: Any, node: Any, column: Int): Unit = {
-    this.privateSetValueAt(value, node.asInstanceOf[TTNode[_]], column)
+    this.privateSetValueAt(value.asInstanceOf[Option[Any]], node.asInstanceOf[TTNode[Any]], column)
   }
 
-  private def privateSetValueAt[V](value: Any, node: TTNode[V], column: Int): Unit = {
-    node.value = value.asInstanceOf[V]
+  private def privateSetValueAt[V](value: Option[V], node: TTNode[V], column: Int): Unit = {
+    column match {
+      case 0 => throw new RuntimeException("column 0 is not editable")
+      case 1 =>
+        if (node.isEditable)
+          node.asInstanceOf[EditableTTNode[V]].value = value
+        else
+          throw new RuntimeException(s"Attempted to use non-editable TTNode as if it is editable - node instance was: $node")
+    }
   }
 
   override def getColumnName(column: Int): String = super.getColumnName(column)

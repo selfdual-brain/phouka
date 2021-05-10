@@ -210,11 +210,11 @@ class GeneralSimulationStatsView(val guiLayoutConfig: GuiLayoutConfig) extends R
   brickdagGeometryPanel.surroundWithTitledBorder("Brickdag geometry")
   transactionsProcessingPerformancePanel.surroundWithTitledBorder("Transactions processing performance")
 
-  this.addPanel(desEnginePanel, wantGrowX = true, wantGrowY = false)
-  this.addPanel(validatorsPanel, wantGrowX = true, wantGrowY = false)
-  this.addPanel(perNodePerformancePanel, wantGrowX = true, wantGrowY = false)
-  this.addPanel(brickdagGeometryPanel, wantGrowX = true, wantGrowY = false)
-  this.addPanel(transactionsProcessingPerformancePanel, wantGrowX = true, wantGrowY = false)
+  this.addComponent(desEnginePanel, wantGrowX = true, wantGrowY = false)
+  this.addComponent(validatorsPanel, wantGrowX = true, wantGrowY = false)
+  this.addComponent(perNodePerformancePanel, wantGrowX = true, wantGrowY = false)
+  this.addComponent(brickdagGeometryPanel, wantGrowX = true, wantGrowY = false)
+  this.addComponent(transactionsProcessingPerformancePanel, wantGrowX = true, wantGrowY = false)
   this.addSpacer()
 
 //  this.surroundWithTitledBorder("Overall statistics")

@@ -73,6 +73,22 @@ class FieldsLadderPanel(guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(gui
     return panel
   }
 
+  def addPanel(label: String): JPanel = {
+    addLabel(label)
+    val panel = new PlainPanel(guiLayoutConfig)
+    panel.setPreferredSize(new Dimension(-1, guiLayoutConfig.fieldsHeight))
+    val gbc = new GridBagConstraints
+    gbc.gridx = 1
+    gbc.gridy = lastRowUsed
+    gbc.anchor = GridBagConstraints.CENTER
+    gbc.weightx = 1.0
+    gbc.weighty = 0.0
+    gbc.fill = GridBagConstraints.HORIZONTAL
+    gbc.insets = new Insets(0, 2, 0, 2)
+    this.add(panel, gbc)
+    return panel
+  }
+
   def sealLayout(): Unit = {
     lastRowUsed += 1
     val spacer = new JPanel

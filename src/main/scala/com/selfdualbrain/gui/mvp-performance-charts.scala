@@ -43,8 +43,8 @@ class PerformanceChartsView(val guiLayoutConfig: GuiLayoutConfig) extends Ribbon
   override def afterModelConnected(): Unit = {
     val latencyChart = createLatencyChart()
     val throughputBphChart = createThroughputBphChart()
-    this.addPanel(latencyChart, preGap = 0, postGap = 0)
-    this.addPanel(throughputBphChart, preGap = 0, postGap = 0)
+    this.addComponent(latencyChart, preGap = 0, postGap = 0)
+    this.addComponent(throughputBphChart, preGap = 0, postGap = 0)
   }
 
   def createThroughputBphChart(): PlainPanel = {

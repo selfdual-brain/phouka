@@ -48,6 +48,8 @@ case class HumanReadableTimeAmount(
 object HumanReadableTimeAmount {
   private val pattern = raw"(\d+)-(\d{2}):(\d{2}):(\d{2}).(\d{1,6})".r
 
+  val zero = HumanReadableTimeAmount(days = 0, hours = 0, minutes = 0, seconds = 0, micros = 0)
+
   def parseString(s: String): HumanReadableTimeAmount =
     s match {
       case pattern(d, hh, mm, ss, m) =>

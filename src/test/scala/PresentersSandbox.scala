@@ -173,6 +173,9 @@ object PresentersSandbox {
       case 12 =>
         val p = new SandboxPresenter
         p
+      case 13 =>
+        val p = new GuiPlaygroundPresenter
+        p
 
     }
     log.info("controller instance created")

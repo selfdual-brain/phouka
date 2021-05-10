@@ -8,7 +8,7 @@ import com.selfdualbrain.gui_framework.swing_tweaks.{SmartFormattedTextField, Sm
 import java.text.Format
 import javax.swing.JFormattedTextField.AbstractFormatter
 import javax.swing.text.MaskFormatter
-import javax.swing.{JButton, JCheckBox, JFormattedTextField, JLabel, JPanel, JTextField, SwingConstants}
+import javax.swing.{JButton, JCheckBox, JComponent, JFormattedTextField, JLabel, JPanel, JTextField, SwingConstants}
 
 class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) extends PlainPanel(guiLayoutConfig) {
   self: JPanel =>
@@ -224,7 +224,7 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
     return checkboxComponent
   }
 
-  def addPanel(panel: JPanel, preGap: Int = guiLayoutConfig.ribbonPreGap, postGap: Int = guiLayoutConfig.ribbonPostGap, wantGrowX: Boolean = true, wantGrowY: Boolean = true): Unit = {
+  def addComponent(comp: JComponent, preGap: Int = guiLayoutConfig.ribbonPreGap, postGap: Int = guiLayoutConfig.ribbonPostGap, wantGrowX: Boolean = true, wantGrowY: Boolean = true): Unit = {
     position += 1
     val gbc = new GridBagConstraints
     orientation match {
@@ -245,7 +245,7 @@ class RibbonPanel(guiLayoutConfig: GuiLayoutConfig, orientation: Orientation) ex
         gbc.fill = GridBagConstraints.BOTH
         gbc.insets = new Insets(preGap, 0, postGap, 0)
     }
-    this.add(panel, gbc)
+    this.add(comp, gbc)
   }
 
 }
