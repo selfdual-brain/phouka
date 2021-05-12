@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 import java.awt.Color
 import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import javax.swing.border.Border
+import javax.swing.text.MaskFormatter
 import javax.swing.{BorderFactory, JFormattedTextField}
 
 class SandboxPresenter extends Presenter[SandboxModel, SandboxModel, SandboxPresenter, SandboxView, Nothing] {
@@ -34,11 +35,16 @@ class SandboxView(val guiLayoutConfig: GuiLayoutConfig) extends RibbonPanel(guiL
   val invalidValueColor: Color = new Color(255, 0, 0)
   val border: Border = BorderFactory.createLineBorder(Color.RED, 3)
 
-  /* FIELD 1 (LONG) */
+  /* FIELD 1 (LONG) using LongValueFormatter */
 
   val field1_formatter = new LongValueFormatter
   val field1_range: (Long, Long) = (0, 1000)
-  val field1: JFormattedTextField = addFormattedTxtField(label = s"long value $field1_range", alignment = TextAlignment.RIGHT, width = 150, isEditable = true, format = field1_formatter)
+  val field1: JFormattedTextField = addFormattedTxtField(
+    label = s"long value $field1_range",
+    alignment = TextAlignment.RIGHT,
+    width = 150,
+    isEditable = true,
+    format = field1_formatter)
   field1.setFocusLostBehavior(JFormattedTextField.COMMIT)
 
   field1.addPropertyChangeListener("value", new PropertyChangeListener {
@@ -60,7 +66,12 @@ class SandboxView(val guiLayoutConfig: GuiLayoutConfig) extends RibbonPanel(guiL
 
   val field2_formatter = new FloatingPointValueFormatter(2)
   val field2_range: (Double, Double) = (0.0, 1.0)
-  val field2: JFormattedTextField = addFormattedTxtField(label = s"double value $field2_range", alignment = TextAlignment.RIGHT, width = 150, isEditable = true, format = field2_formatter)
+  val field2: JFormattedTextField = addFormattedTxtField(
+    label = s"double value $field2_range",
+    alignment = TextAlignment.RIGHT,
+    width = 150,
+    isEditable = true,
+    format = field2_formatter)
 //  log.debug(s"default background color was ${field2.getBackground}")
   field2.setFocusLostBehavior(JFormattedTextField.COMMIT_OR_REVERT)
 
@@ -78,6 +89,34 @@ class SandboxView(val guiLayoutConfig: GuiLayoutConfig) extends RibbonPanel(guiL
       }
     }
   })
+
+
+  /* FIELD 3 (LONG) using MaskFormatter */
+  val field3_range: (Long, Long) = (0, 1000)
+  val field3: JFormattedTextField = addMaskedTxtField(
+    label = s"long with mask $field3_range",
+    alignment = TextAlignment.RIGHT,
+    width = 150,
+    isEditable = true,
+    format = new MaskFormatter("####"))
+
+  field3.setFocusLostBehavior(JFormattedTextField.COMMIT)
+
+  field3.addPropertyChangeListener("value", new PropertyChangeListener {
+    override def propertyChange(evt: PropertyChangeEvent): Unit = {
+      if (evt.getNewValue != null) {
+        val number: Long = evt.getNewValue.asInstanceOf[Long]
+        if (field3_range._1 <= number && number <= field3_range._2) {
+          log.debug(s"value $number is valid")
+          field1.setBorder(null)
+        } else {
+          log.debug(s"value $number is not valid")
+          field3.setBorder(border)
+        }
+      }
+    }
+  })
+
 
 }
 

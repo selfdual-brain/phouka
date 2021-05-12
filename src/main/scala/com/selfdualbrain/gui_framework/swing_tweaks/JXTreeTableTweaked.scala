@@ -14,17 +14,18 @@ import org.jdesktop.swingx.treetable.TreeTableModel
 class JXTreeTableTweaked(model: TreeTableModel) extends JXTreeTable(model) {
   private var reflectionAccessIsPrepared: Boolean = false
   private var internalAdapter: JXTreeTable.TreeTableModelAdapter = _
-  private var nodeForRowMethod: java.lang.reflect.Method = _
+  private var nodeForRow_Method: java.lang.reflect.Method = _
 
   def convertRowToNode(row: Int): AnyRef = {
     if (! reflectionAccessIsPrepared)
       prepareAccessByReflectionToModelAdapter()
-    nodeForRowMethod.invoke(internalAdapter).asInstanceOf[AnyRef]
+    nodeForRow_Method.invoke(internalAdapter, row).asInstanceOf[AnyRef]
   }
 
   private def prepareAccessByReflectionToModelAdapter(): Unit = {
     internalAdapter = this.getModel.asInstanceOf[JXTreeTable.TreeTableModelAdapter]
-    nodeForRowMethod = internalAdapter.getClass.getMethod("nodeForRow", classOf[java.lang.Integer])
+    nodeForRow_Method = internalAdapter.getClass.getDeclaredMethod("nodeForRow", Integer.TYPE)
+    nodeForRow_Method.setAccessible(true)
     reflectionAccessIsPrepared = true
   }
 

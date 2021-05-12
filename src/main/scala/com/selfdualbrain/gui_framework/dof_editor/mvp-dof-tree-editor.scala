@@ -8,7 +8,7 @@ import com.selfdualbrain.gui_framework.swing_tweaks.JXTreeTableTweaked
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import org.slf4j.LoggerFactory
 
-import java.awt.BorderLayout
+import java.awt.{BorderLayout, Dimension}
 import javax.swing.JScrollPane
 import javax.swing.table.{TableCellEditor, TableCellRenderer}
 
@@ -34,6 +34,7 @@ class DofTreeEditorPresenter extends Presenter[DynamicObject, DynamicObject, Dof
 
 class DofTreeEditorView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[DynamicObject, DofTreeEditorPresenter] {
   private val log = LoggerFactory.getLogger(s"mvp-dof-tree-editor[View]")
+  this.setPreferredSize(new Dimension(1000, 800))
 
   override def afterModelConnected(): Unit = {
     val treeTableModel = new TTModel(this.model)

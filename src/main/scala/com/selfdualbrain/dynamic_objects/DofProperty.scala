@@ -20,7 +20,7 @@ abstract class DofProperty[T](val name: String) {
     throw new LineUnreachable
   }
 
-  override def toString: String = "DofProperty:$name"
+  override def toString: String = s"DofProperty:$name"
 }
 
 /*                                                         "SINGLE-VALUE" PROPERTIES                                                       */

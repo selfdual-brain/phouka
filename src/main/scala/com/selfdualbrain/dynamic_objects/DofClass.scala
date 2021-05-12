@@ -47,9 +47,9 @@ class DofClass private (val name: String, val displayName: String = "", val isAb
   }
 
   protected def locallyAddGroup(groupName: String): Unit = {
-    if (! definedGroupsX.contains(name)) {
-      definedGroupsX += name
-      masterDisplayOrder += "group" -> name
+    if (! definedGroupsX.contains(groupName)) {
+      definedGroupsX += groupName
+      masterDisplayOrder += "group" -> groupName
     }
   }
 

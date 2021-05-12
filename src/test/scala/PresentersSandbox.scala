@@ -2,6 +2,7 @@ import com.selfdualbrain.blockchain_structure.AbstractGenesis
 import com.selfdualbrain.gui._
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.SwingSessionManager
+import com.selfdualbrain.gui_framework.dof_editor.DofTreeEditorPresenter
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine._
 import com.selfdualbrain.simulator_engine.config.{BlocksBuildingStrategyModel, ConfigBasedSimulationSetup, DisruptionModelConfig, DownloadBandwidthConfig, ExperimentConfig, FinalizationCostModel, FinalizerConfig, ForkChoiceStrategy, NetworkConfig, ObserverConfig, ProposeStrategyConfig, TransactionsStreamConfig}
@@ -176,6 +177,10 @@ object PresentersSandbox {
       case 13 =>
         val p = new GuiPlaygroundPresenter
         p
+      case 14 =>
+        val p = new DofTreeEditorPresenter
+        p
+
 
     }
     log.info("controller instance created")

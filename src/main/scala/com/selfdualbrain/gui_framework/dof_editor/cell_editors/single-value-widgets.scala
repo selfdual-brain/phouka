@@ -86,9 +86,9 @@ class OptionalityDecoratorWidget[T](
 
   override def showValue(x: Option[T], default: T): Unit =
     x match {
-      case None => wrapper.disableCheckbox()
+      case None => wrapper.checkboxSwitchOff()
       case Some(a) =>
-        wrapper.enableCheckbox()
+        wrapper.checkboxSwitchOn()
         wrappedWidget.showValue(x, default)
     }
 

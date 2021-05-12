@@ -7,10 +7,6 @@ import com.selfdualbrain.time.TimeDelta
 
 object ConfigDofModel {
 
-  /*                                                                              QUANTITIES                                                                                            */
-
-
-
   /*                                                                              CLASSES                                                                                            */
 
   val ExperimentConfig: DofClass = DofClass.createNewTopLevel(name = "ExperimentConfig", displayName = "experiment config", help = "Configuration of a simulation experiment")
@@ -159,7 +155,7 @@ object ConfigDofModel {
   /*     ExperimentConfig     */
 
   ExperimentConfig defineProperty {
-    val p = new DofLink(name = "randomGenerator", valueType = RandomGenerator) with SingleValueProperty[DynamicObject]
+    val p = new DofLinkSingle(name = "randomGenerator", valueType = RandomGenerator)
     p.displayName = "random generator"
     p.nullPolicy = Mandatory
     p.help = "Source of randomness for the simulation"
@@ -178,7 +174,7 @@ object ConfigDofModel {
   }
 
   ExperimentConfig defineProperty {
-    val p = new DofLinkSingle(name = "validatorsWeights", valueType = IntegerSequence, quantity = Some(Quantity.InternalCurrencyAmount)) with SingleValueProperty[DynamicObject]
+    val p = new DofLinkSingle(name = "validatorsWeights", valueType = IntegerSequence, quantity = Some(Quantity.InternalCurrencyAmount))
     p.group = "consensus"
     p.displayName = "validators weights"
     p.nullPolicy = Mandatory

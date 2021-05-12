@@ -6,13 +6,13 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
 
 import java.awt.event.ActionEvent
-import java.awt.{Dimension, GridBagConstraints, GridBagLayout, Insets}
+import java.awt._
 import javax.swing.{JCheckBox, JComponent, JPanel}
 
 /**
   * Swing component upgrading (decorating) any other single-value-presenting-swing-component to be able to handle optionality.
   * We do this by adding an explicit checkbox to the left.
-  * Checkbox disabled means "None". Checkbox enabled means Some(value), where the value is to be edited in the wrapped widget.
+  * Checkbox switched off means "None". Checkbox switched on means Some(value), where the value is to be edited in the wrapped widget.
   *
   * @param guiLayoutConfig
   * @param valueAbsentMarker
@@ -34,15 +34,17 @@ class OptionalityDecoratorComponent(
   private val wrappedWidgetPanel = new JPanel
   private val checkbox = new JCheckBox()
   checkbox.addActionListener {
-    (e: ActionEvent) => { self.trigger(new Ev.CheckboxToggled(checkbox.isEnabled)) }
+    (e: ActionEvent) => { self.trigger(new Ev.CheckboxToggled(checkbox.isSelected)) }
   }
 
   configureSubPanels()
   configureCheckbox()
+  this.onCheckboxToggled()
 
   private def configureSubPanels(): Unit = {
     checkboxPanel.setLayout(new GridBagLayout)
     checkboxPanel.setPreferredSize(new Dimension(100, 20))//todo: use gui config here
+//    checkboxPanel.setBackground(Color.GREEN)
     val gbc1 = new GridBagConstraints
     gbc1.gridx = 0
     gbc1.gridy = 0
@@ -53,7 +55,9 @@ class OptionalityDecoratorComponent(
     gbc1.insets = new Insets(0, 0, 0, 0)
     this.add(checkboxPanel, gbc1)
 
-    wrappedWidgetPanel.setLayout(new GridBagLayout)
+    wrappedWidgetPanel.setLayout(new BorderLayout)
+    wrappedWidgetPanel.setPreferredSize(new Dimension(100, 20))//todo: use gui config here
+//    wrappedWidgetPanel.setBackground(Color.RED)
     val gbc2 = new GridBagConstraints
     gbc2.gridx = 1
     gbc2.gridy = 0
@@ -63,10 +67,11 @@ class OptionalityDecoratorComponent(
     gbc2.fill = GridBagConstraints.BOTH
     gbc2.insets = new Insets(0, 0, 0, 0)
     this.add(wrappedWidgetPanel, gbc2)
+    wrappedWidgetPanel.add(wrappedComponent, BorderLayout.CENTER)
   }
 
   private def configureCheckbox(): Unit = {
-    checkbox.setEnabled(false)
+    checkbox.setSelected(false)
     val gbc = new GridBagConstraints
     gbc.gridx = 0
     gbc.gridy = 0
@@ -79,18 +84,18 @@ class OptionalityDecoratorComponent(
     checkbox.addActionListener((e: ActionEvent) => onCheckboxToggled())
   }
 
-  def enableCheckbox(): Unit = {
-    checkbox.setEnabled(true)
+  def checkboxSwitchOn(): Unit = {
+    checkbox.setSelected(true)
   }
 
-  def disableCheckbox(): Unit = {
-    checkbox.setEnabled(false)
+  def checkboxSwitchOff(): Unit = {
+    checkbox.setSelected(false)
   }
 
-  def checkboxState: Boolean = checkbox.isEnabled
+  def checkboxState: Boolean = checkbox.isSelected
 
   private def onCheckboxToggled(): Unit = {
-    if (checkbox.isEnabled) {
+    if (checkbox.isSelected) {
       checkbox.setText(valuePresentMarker)
       wrappedComponent.setVisible(true)
     } else {
