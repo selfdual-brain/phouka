@@ -6,9 +6,4 @@ trait ValueHolderWithValidation[T] {
   def check(x: T): Option[String]
 }
 
-//trait NonemptyValueHolderWithValidation[T] {
-//  def value: T
-//  def value_=(x: T)
-//  def check(x: T): Option[String]
-//}
 

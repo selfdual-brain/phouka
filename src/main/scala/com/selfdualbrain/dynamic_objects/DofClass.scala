@@ -13,12 +13,25 @@ class DofClass private (val name: String, val displayName: String = "", val isAb
   private val definedGroupsX: mutable.Set[String] = new mutable.HashSet[String]
   private val directSubclassesX: mutable.Set[DofClass] = new mutable.HashSet[DofClass]
 
+  if (superclass.isDefined) {
+    for ((name, inheritedProperty) <- superclass.get.definedProperties)
+      this.locallyAddProperty(inheritedProperty)
+    for (inheritedGroup <- superclass.get.definedGroups)
+      this.locallyAddGroup(inheritedGroup)
+  }
+
   //a group cannot contain nested groups, hence the data structure keeping the display order for a group
   //is simpler than the data structure keeping master display order
   val perGroupDisplayOrder: mutable.Map[String, mutable.ArrayBuffer[String]] = new mutable.HashMap[String, mutable.ArrayBuffer[String]]
   val masterDisplayOrder: BufferOfMarker2NamePairs = new BufferOfMarker2NamePairs
 
   def defineProperty[T](property: DofProperty[T]): Unit = {
+    this.locallyAddProperty(property)
+    for (c <- this.allTransitivelyReachableSubclasses)
+      c. locallyAddProperty(property)
+  }
+
+  protected def locallyAddProperty[T](property: DofProperty[T]): Unit = {
     definedPropertiesX += property.name -> property
     if (property.group == null) {
       masterDisplayOrder += "property" -> property.name
@@ -27,7 +40,13 @@ class DofClass private (val name: String, val displayName: String = "", val isAb
     }
   }
 
-  def defineGroup(name: String): Unit = {
+  def defineGroup(groupName: String): Unit = {
+    this.locallyAddGroup(groupName)
+    for (c <- this.allTransitivelyReachableSubclasses)
+      c.locallyAddGroup(groupName)
+  }
+
+  protected def locallyAddGroup(groupName: String): Unit = {
     if (! definedGroupsX.contains(name)) {
       definedGroupsX += name
       masterDisplayOrder += "group" -> name
@@ -51,6 +70,21 @@ class DofClass private (val name: String, val displayName: String = "", val isAb
   def definedGroups: Iterable[String] = definedGroupsX
 
   def directSubclasses: Iterable[DofClass] = directSubclassesX
+
+  def visitSubclassTreeViaDfs(visitor: DofClass => Unit): Unit = {
+    visitor(this)
+    for (c <- this.directSubclasses)
+      c.visitSubclassTreeViaDfs(visitor)
+  }
+
+  def allTransitivelyReachableSubclasses: Iterable[DofClass] = {
+    val buffer = new ArrayBuffer[DofClass]
+    visitSubclassTreeViaDfs { (clazz: DofClass) =>
+      if (clazz != this)
+        buffer += clazz
+    }
+    return buffer
+  }
 
   /*                                                         PRIVATE                                                       */
 
@@ -76,7 +110,7 @@ class DofClass private (val name: String, val displayName: String = "", val isAb
 
 object DofClass {
 
-  def createNew(name: String, displayName: String = "", isAbstract: Boolean = false, help: String = ""): DofClass =
+  def createNewTopLevel(name: String, displayName: String = "", isAbstract: Boolean = false, help: String = ""): DofClass =
     new DofClass(name, displayName, isAbstract, None, help)
 
 }

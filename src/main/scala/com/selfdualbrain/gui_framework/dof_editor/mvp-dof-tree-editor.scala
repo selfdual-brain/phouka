@@ -3,16 +3,14 @@ package com.selfdualbrain.gui_framework.dof_editor
 import com.selfdualbrain.config.ConfigDofModel
 import com.selfdualbrain.dynamic_objects.DynamicObject
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
-import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
 import com.selfdualbrain.gui_framework.swing_tweaks.JXTreeTableTweaked
-import org.jdesktop.swingx.JXTreeTable
+import com.selfdualbrain.gui_framework.{MvpView, Presenter}
 import org.slf4j.LoggerFactory
 
-import java.awt.{BorderLayout, Dimension}
-import javax.swing.event.ChangeEvent
+import java.awt.BorderLayout
+import javax.swing.JScrollPane
 import javax.swing.table.{TableCellEditor, TableCellRenderer}
-import javax.swing.{JPanel, JScrollPane}
 
 /*                                                                        PRESENTER                                                                                        */
 
@@ -42,23 +40,23 @@ class DofTreeEditorView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel
 
     val treeTable = new JXTreeTableTweaked(treeTableModel) {
 
-      override def getCellRenderer(row: Int, column: Int): TableCellRenderer = {
+      override def getCellRenderer(row: Int, column: Int): TableCellRenderer =
         if (column == 0)
           super.getCellRenderer(row, column)
         else {
           val ttNode: TTNode[_] = this.convertRowToNode(row).asInstanceOf[TTNode[_]]
-          ttNode.cellRenderer
+          ttNode.cellRenderer(guiLayoutConfig)
         }
-      }
 
-      override def getCellEditor(row: Int, column: Int): TableCellEditor = {
+
+      override def getCellEditor(row: Int, column: Int): TableCellEditor =
         if (column == 0)
           super.getCellEditor(row, column)
         else {
-          val ttNode: TTNode[_] = this.convertRowToNode(row).asInstanceOf[TTNode[_]]
-          ttNode.cellRenderer
+          val ttNode: EditableTTNode[_] = this.convertRowToNode(row).asInstanceOf[EditableTTNode[_]]
+          ttNode.cellEditor(guiLayoutConfig)
         }
-      }
+
     }
 
     treeTable.setShowHorizontalLines(true)

@@ -3,7 +3,7 @@ package com.selfdualbrain.gui_framework.dof_editor
 import com.selfdualbrain.dynamic_objects.DynamicObject
 import org.jdesktop.swingx.treetable.AbstractTreeTableModel
 
-import javax.swing.tree.TreePath
+import java.awt.EventQueue
 import scala.language.existentials
 
 /**
@@ -12,7 +12,7 @@ import scala.language.existentials
   * @param rootDynamicObject dynamic object to be edited in the tree (the tree is implied - it comes out by recursively traversing properties)
   */
 class TTModel(rootDynamicObject: DynamicObject) extends AbstractTreeTableModel {
-  val ttRootNode: TTNode.Root = new TTNode.Root(this, rootDynamicObject)
+  val ttRootNode: TTNode.Root = TTNode.Root(this, parent = None, rootDynamicObject)
 
   override def getRoot: AnyRef = ttRootNode
 
@@ -70,5 +70,26 @@ class TTModel(rootDynamicObject: DynamicObject) extends AbstractTreeTableModel {
     return column == 1 && ttNode.isEditable
   }
 
-  override def valueForPathChanged(path: TreePath, newValue: Any): Unit = super.valueForPathChanged(path, newValue) //todo: should we handle this ?
+  def fireNodeChanged(node: TTNode[_]): Unit = {
+    EventQueue invokeLater {
+      () => modelSupport.firePathChanged(node.path)
+    }
+  }
+
+  def fireSubtreeChanged(node: TTNode[_]): Unit = {
+    EventQueue invokeLater {
+      () => modelSupport.fireTreeStructureChanged(node.path)
+    }
+  }
+
+  def fireNodeInserted(node: TTNode[_]): Unit = {
+    EventQueue invokeLater {
+      () => modelSupport.fireChildAdded(node.parent.get.path, node.indexAmongSiblings, node)
+    }
+  }
+
+  def fireNodeRemoved(node: TTNode[_], indexAmongSiblings: Int): Unit = {
+    () => modelSupport.fireChildRemoved(node.parent.get.path, indexAmongSiblings, node)
+  }
+
 }

@@ -37,6 +37,7 @@ class DynamicObject(val dofClass: DofClass) {
 
   private def property[T](propertyName: String): DofProperty[T] = dofClass.getProperty(propertyName).asInstanceOf[DofProperty[T]]
 
+  override def toString: String = s"dynamic-object[${dofClass.name}]"
 }
 
 object DynamicObject {

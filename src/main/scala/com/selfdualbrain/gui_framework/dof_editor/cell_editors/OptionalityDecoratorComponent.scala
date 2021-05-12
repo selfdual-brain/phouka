@@ -1,5 +1,7 @@
 package com.selfdualbrain.gui_framework.dof_editor.cell_editors
 
+import com.selfdualbrain.gui_framework.EventsBroadcaster
+import com.selfdualbrain.gui_framework.dof_editor.cell_editors.OptionalityDecoratorComponent.Ev
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
 
@@ -22,13 +24,18 @@ class OptionalityDecoratorComponent(
                             valueAbsentMarker: String,
                             valuePresentMarker: String,
                             wrappedComponent: JComponent
-                          ) extends PlainPanel(guiLayoutConfig) {
+                          ) extends PlainPanel(guiLayoutConfig) with EventsBroadcaster[OptionalityDecoratorComponent.Ev] {
+
+  self =>
 
   this.setLayout(new GridBagLayout)
 
   private val checkboxPanel = new JPanel
   private val wrappedWidgetPanel = new JPanel
   private val checkbox = new JCheckBox()
+  checkbox.addActionListener {
+    (e: ActionEvent) => { self.trigger(new Ev.CheckboxToggled(checkbox.isEnabled)) }
+  }
 
   configureSubPanels()
   configureCheckbox()
@@ -92,4 +99,11 @@ class OptionalityDecoratorComponent(
     }
   }
 
+}
+
+object OptionalityDecoratorComponent {
+  sealed abstract class Ev
+  object Ev {
+    case class CheckboxToggled(newState: Boolean) extends Ev
+  }
 }

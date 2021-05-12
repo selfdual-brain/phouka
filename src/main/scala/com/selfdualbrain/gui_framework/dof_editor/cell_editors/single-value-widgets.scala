@@ -103,16 +103,39 @@ class OptionalityDecoratorWidget[T](
 
 /*                                                       String label widget                                                             */
 
-class StringLabelWidget extends SingleValuePresentingSwingWidget[String] {
-  protected val textField = new JLabel
+//This is really a "pseudo-editor". It follows editor API, but no editing is possible.
+class StringLabelWidget extends SingleValueEditingSwingWidget[String] {
+  protected val jLabel = new JLabel
 
-  override def swingComponent: JComponent = textField
+  override def swingComponent: JComponent = jLabel
 
   override def showValue(x: Option[String], default: String): Unit =
     x match {
-      case Some(s) => textField.setText(s)
-      case None => textField.setText(default)
+      case Some(s) => jLabel.setText(s)
+      case None => jLabel.setText(default)
     }
+
+  override def editingResult: Option[Either[String, String]] = Some(Right(jLabel.getText))
+}
+
+/*                                                       String label mapper widget                                                             */
+
+//This is really a "pseudo-editor". It follows editor API, but no editing is possible.
+class StringLabelMapperWidget[T](value2string: T => String) extends SingleValueEditingSwingWidget[T] {
+  protected val jLabel = new JLabel
+  private var storedValue: Option[T] = None
+
+  override def swingComponent: JComponent = jLabel
+
+  override def showValue(x: Option[T], default: T): Unit = {
+    x match {
+      case Some(v) => jLabel.setText(value2string(v))
+      case None => jLabel.setText("")
+    }
+    storedValue = x
+  }
+
+  override def editingResult: Option[Either[String, T]] = storedValue map {(v: T) => Right(v)}
 }
 
 /*                                                         String editor widget                                                             */
