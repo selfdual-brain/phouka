@@ -6,11 +6,12 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
 import com.selfdualbrain.gui_framework.swing_tweaks.JXTreeTableTweaked
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
+import org.jdesktop.swingx.JXTreeTable
 import org.slf4j.LoggerFactory
 
-import java.awt.{BorderLayout, Dimension}
+import java.awt.{BorderLayout, Color, Dimension}
 import javax.swing.JScrollPane
-import javax.swing.table.{TableCellEditor, TableCellRenderer}
+import javax.swing.table.{DefaultTableCellRenderer, TableCellEditor, TableCellRenderer}
 
 /*                                                                        PRESENTER                                                                                        */
 
@@ -62,6 +63,8 @@ class DofTreeEditorView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel
 
     treeTable.setShowHorizontalLines(true)
     treeTable.setShowVerticalLines(true)
+    treeTable.setRowHeight(22)
+    treeTable.setGridColor(Color.LIGHT_GRAY)
     val scroll = new JScrollPane(treeTable)
     this.add(scroll, BorderLayout.CENTER)
   }

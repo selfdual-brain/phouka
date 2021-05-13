@@ -11,7 +11,9 @@ import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.{TimeDelta, TimeUnit}
 import org.slf4j.LoggerFactory
 
-import javax.swing.UIManager
+import javax.swing.{UIDefaults, UIManager}
+import scala.collection.JavaConverters.enumerationAsScalaIteratorConverter
+import scala.collection.convert.ImplicitConversions.`enumeration AsScalaIterator`
 import scala.util.Random
 
 object PresentersSandbox {
@@ -75,6 +77,15 @@ object PresentersSandbox {
     for(lf <- UIManager.getInstalledLookAndFeels)
       println(lf)
     println("----------------")
+
+    val uiDefaults: UIDefaults = UIManager.getDefaults
+    val keys: Iterator[AnyRef] = uiDefaults.keys.asScala
+    val keys1: Iterator[String] = keys.filter(k => k.isInstanceOf[String]).asInstanceOf[Iterator[String]]
+    for (k <- keys1.toSeq.sorted)
+      println(k)
+
+//    val textFieldFocus = UIManager.get("TextField.focus")
+//    println(s"text field focus defined in UIManager: $textFieldFocus")
 
     //set look-and-feel to mimic local OS
     val lookAndFeel = UIManager.getSystemLookAndFeelClassName

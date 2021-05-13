@@ -197,6 +197,8 @@ object TTNode {
 
     override protected def createCellRenderer(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer =
       new GenericDofCellRenderer[String](new StringLabelWidget, "")
+
+    override def toString: String = "ttNode:Root"
   }
 
   /* AttrSingle */
@@ -217,6 +219,8 @@ object TTNode {
       this.createAttrCellRenderer(guiLayoutConfig, valueType, property.nullPolicy)
 
     override def check(x: Option[V]): Option[String] = super.check(x) //todo
+
+    override def toString: String = s"ttNode:AttrSingle(obj=$obj, property=$property)"
   }
 
   /* AttrCollection */
@@ -236,6 +240,7 @@ object TTNode {
     override protected def createCellRenderer(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer =
       new GenericDofCellRenderer[String](new StringLabelWidget, "")
 
+    override def toString: String = s"ttNode:AttrCollection(obj=$obj, property=$property)"
   }
 
   /* AttrCollectionElement */
@@ -254,6 +259,8 @@ object TTNode {
       this.createAttrCellRenderer(guiLayoutConfig, valueType, NullPolicy.Mandatory)
 
     override def check(x: Option[V]): Option[String] = super.check(x) //todo
+
+    override def toString: String = s"ttNode:AttrCollectionElement(obj=$obj, property=$property, index=${this.indexAmongSiblings})"
   }
 
   /* LinkSingle - exact target type*/
@@ -316,6 +323,8 @@ object TTNode {
     }
 
     override def check(x: Option[DofClass]): Option[String] = None
+
+    override def toString: String = s"ttNode:LinkSingleWithExactTargetType(obj=$obj, property=$property)"
   }
 
   /* LinkSingle - polymorphic type*/
@@ -352,6 +361,8 @@ object TTNode {
       new GenericDofCellEditor(new DofSubclassSelectionWidget(guiLayoutConfig, property.valueType), property.valueType)
 
     override def check(x: Option[DofClass]): Option[String] = None
+
+    override def toString: String = s"ttNode:LinkSingleWithPolymorphicTargetType(obj=$obj, property=$property)"
   }
 
   /* LinkCollection */
@@ -370,6 +381,8 @@ object TTNode {
 
     override protected def createCellRenderer(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer =
       new GenericDofCellRenderer[String](new StringLabelWidget, "")
+
+    override def toString: String = s"ttNode:LinkCollection(obj=$obj, property=$property)"
   }
 
   /* LinkCollectionElement */
@@ -397,6 +410,8 @@ object TTNode {
     }
 
     override protected def createCellEditor(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer with TableCellEditor = ??? //todo
+
+    override def toString: String = s"ttNode:LinkCollectionElement(obj=$obj, property=$property)"
   }
 
   /* PropertiesGroup */
@@ -415,6 +430,8 @@ object TTNode {
 
     override protected def createCellRenderer(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer =
       new GenericDofCellRenderer[String](new StringLabelWidget, "")
+
+    override def toString: String = s"ttNode:PropertiesGroup(obj=$obj, groupName=$groupName)"
   }
 
 }

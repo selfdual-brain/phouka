@@ -4,7 +4,9 @@ import com.selfdualbrain.dynamic_objects._
 import com.selfdualbrain.gui_framework.Orientation
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.RibbonPanel
+import com.selfdualbrain.gui_framework.swing_tweaks.SmartTextField
 import com.selfdualbrain.time.{HumanReadableTimeAmount, SimTimepoint}
+import org.slf4j.LoggerFactory
 
 import java.awt.Component
 import javax.swing._
@@ -141,7 +143,7 @@ class StringLabelMapperWidget[T](value2string: T => String) extends SingleValueE
 /*                                                         String editor widget                                                             */
 
 class StringEditorWidget extends SingleValueEditingSwingWidget[String] {
-  private val textField = new JTextField()
+  private val textField = new SmartTextField
 
   override def swingComponent: JComponent = textField
 
@@ -174,27 +176,57 @@ class BooleanWidget extends SingleValueEditingSwingWidget[Boolean] {
 /*                                                         Int Widget                                                             */
 
 class IntWidget extends SingleValueEditingSwingWidget[Int] {
-  private val textField = new JTextField()
+  private val mnemonic: String = System.nanoTime().toString.takeRight(5)
+  private val log = LoggerFactory.getLogger(s"int-widget-$mnemonic")
+  private val textField = new SmartTextField()
 
-  override def swingComponent: JComponent = textField
+  override def swingComponent: JComponent = {
+    log.debug("swingComponent()")
+    textField
+  }
 
-  override def showValue(x: Option[Int], default: Int): Unit =
+  override def showValue(x: Option[Int], default: Int): Unit = {
+    log.debug(s"showValue($x)")
     x match {
       case Some(number) => textField.setText(number.toString)
       case None => textField.setText(default.toString)
     }
+  }
 
-  override def editingResult: Option[Either[String, Int]] =
-    Try {textField.getText.toInt} match {
+  override def editingResult: Option[Either[String, Int]] = {
+    val result = Try {textField.getText.toInt} match {
       case Success(v) => Some(Right(v))
       case Failure(ex) => Some(Left(ex.getMessage))
     }
+
+    log.debug(s"editingResult() returns $result ")
+    return result
+  }
 }
+
+
+//class IntWidget extends SingleValueEditingSwingWidget[Int] {
+//  private val textField = new SmartTextField()
+//
+//  override def swingComponent: JComponent = textField
+//
+//  override def showValue(x: Option[Int], default: Int): Unit =
+//    x match {
+//      case Some(number) => textField.setText(number.toString)
+//      case None => textField.setText(default.toString)
+//    }
+//
+//  override def editingResult: Option[Either[String, Int]] =
+//    Try {textField.getText.toInt} match {
+//      case Success(v) => Some(Right(v))
+//      case Failure(ex) => Some(Left(ex.getMessage))
+//    }
+//}
 
 /*                                                          Long Widget                                                             */
 
 class LongWidget extends SingleValueEditingSwingWidget[Long] {
-  private val textField = new JTextField()
+  private val textField = new SmartTextField()
 
   override def swingComponent: JComponent = textField
 
@@ -215,7 +247,7 @@ class LongWidget extends SingleValueEditingSwingWidget[Long] {
 /*                                                       FloatingPoint Widget                                                             */
 
 class FloatingPointWidget extends SingleValueEditingSwingWidget[Double] {
-  private val textField = new JTextField()
+  private val textField = new SmartTextField()
 
   override def swingComponent: JComponent = textField
 
@@ -297,7 +329,7 @@ class FloatingPointIntervalWithQuantityWidget(guiLayoutConfig: GuiLayoutConfig, 
 /*                                                      SimTimepoint widget                                                             */
 
 class SimTimepointWidget extends SingleValueEditingSwingWidget[SimTimepoint] {
-  private val textField = new JTextField()
+  private val textField = new SmartTextField()
 
   override def swingComponent: JComponent = textField
 
