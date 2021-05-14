@@ -41,6 +41,7 @@ sealed trait TTNode[V] {
   val obj: DynamicObject
   private var childNodesX: Option[Seq[TTNode[_]]] = None
   private var cellRendererX: Option[TableCellRenderer] = None
+  val nodeId: Long = TTNode.nextNodeId
 
   def displayedName: String
 
@@ -60,7 +61,7 @@ sealed trait TTNode[V] {
     */
   def recreateChildNodes(): Unit = {
     childNodesX = None
-    owner.fireSubtreeChanged(this)
+    owner.fireNodeChanged(this)
   }
 
   def isEditable: Boolean = false
@@ -153,7 +154,7 @@ sealed trait EditableTTNode[V] extends TTNode[V] with ValueHolderWithValidation[
 
   protected def createCellEditor(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer with TableCellEditor
 
-  protected def createAttrCellRenderer[E](guiLayoutConfig: GuiLayoutConfig, valueType: DofValueType[E], nullPolicy: NullPolicy): TableCellRenderer with TableCellEditor = {
+  protected def createAttrCellEditor[E](guiLayoutConfig: GuiLayoutConfig, valueType: DofValueType[E], nullPolicy: NullPolicy): TableCellRenderer with TableCellEditor = {
     val internalWidget = (valueType match {
       case DofValueType.TBoolean => new BooleanWidget
       case DofValueType.TString => new StringEditorWidget
@@ -184,6 +185,14 @@ sealed trait EditableTTNode[V] extends TTNode[V] with ValueHolderWithValidation[
 /*                                                                            IMPLEMENTATIONS                                                                                        */
 
 object TTNode {
+
+  @volatile
+  var lastNodeId: Long = 0
+
+  def nextNodeId: Long = {
+    lastNodeId += 1
+    return lastNodeId
+  }
 
   /* Root */
   case class Root(owner: TTModel, parent: Option[TTNode[_]], obj: DynamicObject) extends TTNode[String] {
@@ -216,7 +225,7 @@ object TTNode {
     }
 
     override protected def createCellEditor(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer with TableCellEditor =
-      this.createAttrCellRenderer(guiLayoutConfig, valueType, property.nullPolicy)
+      this.createAttrCellEditor(guiLayoutConfig, valueType, property.nullPolicy)
 
     override def check(x: Option[V]): Option[String] = super.check(x) //todo
 
@@ -256,7 +265,7 @@ object TTNode {
     override def value: Option[V] = Some(obj.getCollection[V](property.name)(this.indexAmongSiblings))
 
     override protected def createCellEditor(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer with TableCellEditor =
-      this.createAttrCellRenderer(guiLayoutConfig, valueType, NullPolicy.Mandatory)
+      this.createAttrCellEditor(guiLayoutConfig, valueType, NullPolicy.Mandatory)
 
     override def check(x: Option[V]): Option[String] = super.check(x) //todo
 
@@ -350,15 +359,20 @@ object TTNode {
 
         case Some(c) =>
           val oldClassOption = this.value
-          if (oldClassOption.isDefined && oldClassOption.get != c) {
+          if (! oldClassOption.contains(c)) {
             obj.setSingle(property.name, Some(new DynamicObject(c)))
             recreateChildNodes()
           }
       }
     }
 
-    override protected def createCellEditor(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer with TableCellEditor =
-      new GenericDofCellEditor(new DofSubclassSelectionWidget(guiLayoutConfig, property.valueType), property.valueType)
+//    def privateUpdatePropertyValue()
+
+    override protected def createCellEditor(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer with TableCellEditor = {
+      val widget = new DofSubclassSelectionWidget(guiLayoutConfig, property.valueType)
+      val editor: GenericDofCellEditor[DofClass] = new GenericDofCellEditor(widget, property.valueType)
+      return editor
+    }
 
     override def check(x: Option[DofClass]): Option[String] = None
 

@@ -1,18 +1,27 @@
 package com.selfdualbrain.gui_framework.dof_editor.cell_editors
 
+import org.slf4j.LoggerFactory
+
 import java.awt.{Color, Component}
 import javax.swing.border.LineBorder
 import javax.swing.{AbstractCellEditor, JTable}
 import javax.swing.table.{TableCellEditor, TableCellRenderer}
 
 class GenericDofCellEditor[V](widget: SingleValueEditingSwingWidget[V], defaultValue: V) extends AbstractCellEditor with TableCellRenderer with TableCellEditor {
+  private val log = LoggerFactory.getLogger(s"GenericDofCellEditor-${widget.mnemonic}")
+  widget installChangesHandler {
+    (r: Option[Either[String, V]]) => this.stopCellEditing()
+  }
 
-  override def getCellEditorValue: AnyRef =
-    widget.editingResult match {
+  override def getCellEditorValue: AnyRef = {
+    val result = widget.editingResult match {
       case Some(Left(error)) => None
       case Some(Right(value)) => Some(value)
       case None => None
     }
+    log.debug(s"getCellEditorValue=$result")
+    return result
+  }
 
   override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): Component = {
     widget.showValue(value.asInstanceOf[Option[V]], defaultValue)

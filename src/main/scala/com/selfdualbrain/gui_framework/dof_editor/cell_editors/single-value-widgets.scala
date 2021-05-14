@@ -9,6 +9,7 @@ import com.selfdualbrain.time.{HumanReadableTimeAmount, SimTimepoint}
 import org.slf4j.LoggerFactory
 
 import java.awt.Component
+import java.awt.event.ActionEvent
 import javax.swing._
 import javax.swing.text.MaskFormatter
 import scala.util.{Failure, Success, Try}
@@ -21,6 +22,8 @@ import scala.util.{Failure, Success, Try}
   * @tparam T type of values this component deals with
   */
 trait SingleValuePresentingSwingWidget[T] {
+  //internal code of this instance - useful for debugging
+  val mnemonic: String = System.nanoTime().toString.takeRight(5)
 
   /**
     * Underlying Swing component.
@@ -38,6 +41,8 @@ trait SingleValuePresentingSwingWidget[T] {
     * @param default fallback value to be displayed if this widget is not able to deal with "None"
     */
   def showValue(x: Option[T], default: T): Unit
+
+  override def toString: String = s"${this.getClass.getSimpleName}(mnemonic=$mnemonic) "
 }
 
 /**
@@ -67,6 +72,12 @@ trait SingleValueEditingSwingWidget[T] extends SingleValuePresentingSwingWidget[
     * When the checkbox is enabled and the text field contains "3$14", editingResult should return Some(Left("invalid number format")).
     */
   def editingResult: Option[Either[String, T]]
+
+  protected var changesHandler: Option[Option[Either[String, T]] => Unit] = None
+
+  def installChangesHandler(h: Option[Either[String, T]] => Unit): Unit = {
+    changesHandler = Some(h)
+  }
 }
 
 /*                                                    Optionality decorator widget                                                             */
@@ -165,18 +176,16 @@ class BooleanWidget extends SingleValueEditingSwingWidget[Boolean] {
 
   override def showValue(x: Option[Boolean], default: Boolean): Unit =
     x match {
-      case Some(b) => checkbox.setEnabled(b)
-      case None => checkbox.setEnabled(default)
+      case Some(b) => checkbox.setSelected(b)
+      case None => checkbox.setSelected(default)
     }
 
   override def editingResult: Option[Either[String, Boolean]] = Some(Right(checkbox.isEnabled))
-
 }
 
 /*                                                         Int Widget                                                             */
 
 class IntWidget extends SingleValueEditingSwingWidget[Int] {
-  private val mnemonic: String = System.nanoTime().toString.takeRight(5)
   private val log = LoggerFactory.getLogger(s"int-widget-$mnemonic")
   private val textField = new SmartTextField()
 
@@ -394,10 +403,17 @@ class HumanReadableTimeAmountWidget(guiLayoutConfig: GuiLayoutConfig) extends Si
 /*                                                      Dof subclass selection widget                                                             */
 
 class DofSubclassSelectionWidget(guiLayoutConfig: GuiLayoutConfig, parentClass: DofClass) extends SingleValueEditingSwingWidget[DofClass] {
+  private val log = LoggerFactory.getLogger(s"DofSubclassSelectionWidget-$mnemonic")
+
   private val comboItems: Iterable[DofClass] = parentClass +: parentClass.directSubclasses.toSeq
   val comboBox: JComboBox[DofClass] = new JComboBox[DofClass](new DefaultComboBoxModel[DofClass](comboItems.toArray))
   comboBox.setEditable(false)
   comboBox.setRenderer(new Renderer)
+  comboBox addActionListener {
+    (ev: ActionEvent) =>
+      if (changesHandler.isDefined)
+        changesHandler.get(this.editingResult)
+  }
 
   override def swingComponent: JComponent = comboBox
 
@@ -413,18 +429,23 @@ class DofSubclassSelectionWidget(guiLayoutConfig: GuiLayoutConfig, parentClass: 
 
   }
 
-  override def showValue(x: Option[DofClass], default: DofClass): Unit =
+  override def showValue(x: Option[DofClass], default: DofClass): Unit = {
+    log.debug(s"showValue: $x")
     x match {
       case Some(c) => comboBox.getModel.setSelectedItem(c)
       case None => comboBox.getModel.setSelectedItem(parentClass)
     }
+  }
 
   override def editingResult: Option[Either[String, DofClass]] = {
     val selectedClass: DofClass = comboBox.getModel.getSelectedItem.asInstanceOf[DofClass]
-    return if (selectedClass == parentClass)
+    val result = if (selectedClass == parentClass)
       None
     else
       Some(Right(selectedClass))
+
+    log.debug(s"editingResult=$result")
+    return result
   }
 
 }

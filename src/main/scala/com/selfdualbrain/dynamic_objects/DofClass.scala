@@ -20,6 +20,8 @@ class DofClass private (val name: String, val displayName: String = "", val isAb
       this.locallyAddGroup(inheritedGroup)
   }
 
+  override def toString: String = s"DofClass[$name]"
+
   //a group cannot contain nested groups, hence the data structure keeping the display order for a group
   //is simpler than the data structure keeping master display order
   val perGroupDisplayOrder: mutable.Map[String, mutable.ArrayBuffer[String]] = new mutable.HashMap[String, mutable.ArrayBuffer[String]]

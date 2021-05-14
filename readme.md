@@ -114,22 +114,18 @@ great detail. Stay tuned._
 
 ## Blockchain consensus model
 
-Phouka is based around "Casper the friendly ghost" line of consensus protocols research. The consensus theory we use
-is somewhat overlapping with the one described in paper [Highway: Efficient Consensus with Flexible Finality](https://arxiv.org/abs/2101.02159).
-Nevertheless, our implementation is a fork of ideas described in the paper, plus we use different naming.
+The consensus theory used in Phouka is a variant of proof-of-stake building on a directed graph of blocks and votes (aka "ballots").
+The formal descritpion of the theory is under construction.
 
-The complete description of our consensus theory is under construction.
-
-The current version of Phouka implements only a sub-protocol of the desired "blockchain consensus" solution:
+Please be warned that the current version of Phouka implements only a sub-protocol of the desired "blockchain consensus" solution:
 
 - the set of validators is fixed (= no eras, no validator rotation)
 - spam protection aka "endorsements" is not implemented
 
-Support for the complete protocol is planned (see "Dev roadmap" section below).
+Support for the complete blockchain protocol is planned in Phouka ver 2.0 (see "Dev roadmap" section below).
 
-Actually, Phouka is thought as a platform for playing with a wide collection of protocol variants, especially
-in the area of block production strategies. Validator implementations are pluggable. Currently, 3 validator
-strategies are implemented:
+Phouka is thought as a platform for playing with a wide collection of protocol variants, especially in the area of block production
+strategies. Validator implementations are pluggable. Currently, 3 validator  strategies are implemented:
 
 - NCB (Naive Casper Blockchain) - where blocks and ballots are produced randomly, at predefined average frequency
 - SLS (Simple leaders sequence) - round based with fixed round length and pseudo-random leaders sequence;

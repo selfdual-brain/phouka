@@ -46,7 +46,7 @@ class TTModel(rootDynamicObject: DynamicObject) extends AbstractTreeTableModel {
     val ttNode = node.asInstanceOf[TTNode[_]]
 
     column match {
-      case 0 => ttNode.displayedName
+      case 0 => s"[${ttNode.nodeId}] ${ttNode.displayedName}"
       case 1 => ttNode.value.asInstanceOf[AnyRef]
     }
   }

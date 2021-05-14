@@ -5,7 +5,7 @@ import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.gui_framework.dof_editor.DofTreeEditorPresenter
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine._
-import com.selfdualbrain.simulator_engine.config.{BlocksBuildingStrategyModel, ConfigBasedSimulationSetup, DisruptionModelConfig, DownloadBandwidthConfig, ExperimentConfig, FinalizationCostModel, FinalizerConfig, ForkChoiceStrategy, NetworkConfig, ObserverConfig, ProposeStrategyConfig, TransactionsStreamConfig}
+import com.selfdualbrain.simulator_engine.config._
 import com.selfdualbrain.stats.StatsPrinter
 import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.{TimeDelta, TimeUnit}
@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory
 
 import javax.swing.{UIDefaults, UIManager}
 import scala.collection.JavaConverters.enumerationAsScalaIteratorConverter
-import scala.collection.convert.ImplicitConversions.`enumeration AsScalaIterator`
 import scala.util.Random
 
 object PresentersSandbox {
@@ -99,6 +98,8 @@ object PresentersSandbox {
 //    UIManager.put("Label.font", defaultFont)
 
     println(UIManager.get("TextFieldUI"))
+//    UIManager.put("Table.textBackground", new ColorUIResource(Color.yellow))
+//    UIManager.put("Table.focusCellHighlightBorder", new BorderUIResource(new EmptyBorder(0,0,0,0)))
 
     //    UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel")
 
