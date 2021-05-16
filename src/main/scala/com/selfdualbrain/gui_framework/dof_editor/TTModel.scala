@@ -46,7 +46,7 @@ class TTModel(rootDynamicObject: DynamicObject) extends AbstractTreeTableModel {
     val ttNode = node.asInstanceOf[TTNode[_]]
 
     column match {
-      case 0 => s"[${ttNode.nodeId}] ${ttNode.displayedName}"
+      case 0 => s"[${ttNode.debugId}] ${ttNode.displayedName}"
       case 1 => ttNode.value.asInstanceOf[AnyRef]
     }
   }
@@ -74,31 +74,50 @@ class TTModel(rootDynamicObject: DynamicObject) extends AbstractTreeTableModel {
   }
 
   def fireNodeChanged(node: TTNode[_]): Unit = {
-    log.debug(s"fired <node changed> for node: $node")
+    log.debug(s"fired <node changed> for node: ${node.debugId}")
     EventQueue invokeLater {
       () => modelSupport.firePathChanged(node.path)
     }
   }
 
   def fireSubtreeChanged(node: TTNode[_]): Unit = {
-    log.debug(s"fired <subtree changed> under node: $node")
+    log.debug(s"fired <subtree changed> under node: ${node.debugId}")
     EventQueue invokeLater {
       () => modelSupport.fireTreeStructureChanged(node.path)
     }
   }
 
   def fireNodeInserted(node: TTNode[_]): Unit = {
-    log.debug(s"fired <node added> for node: $node")
+    log.debug(s"fired <node added> for node: ${node.debugId}")
     EventQueue invokeLater {
       () => modelSupport.fireChildAdded(node.parent.get.path, node.indexAmongSiblings, node)
     }
   }
 
+  def fireNodesInserted(parent: TTNode[_], index2child: Seq[(Int, TTNode[_])]): Unit = {
+    val nodesCollectionAsString = (index2child map {case (i, node) => s"$i->${node.debugId}"}).mkString(",")
+    log.debug(s"fired <nodes added> for nodes collection: $nodesCollectionAsString")
+    val (indices, nodes) = index2child.unzip
+    EventQueue invokeLater {
+      () => modelSupport.fireChildrenAdded(parent.path, indices.toArray, nodes.toArray)
+    }
+  }
+
   def fireNodeRemoved(node: TTNode[_], indexAmongSiblings: Int): Unit = {
-    log.debug(s"fired <node removed> for node: $node")
+    log.debug(s"fired <node removed> for node: ${node.debugId}")
     EventQueue invokeLater {
       () => modelSupport.fireChildRemoved(node.parent.get.path, indexAmongSiblings, node)
     }
   }
+
+  def fireNodesRemoved(parent: TTNode[_], index2child: Seq[(Int, TTNode[_])]): Unit = {
+    val nodesCollectionAsString = (index2child map {case (i, node) => s"$i->${node.debugId}"}).mkString(",")
+    log.debug(s"fired <nodes removed> for nodes collection: $nodesCollectionAsString")
+    val (indices, nodes) = index2child.unzip
+    EventQueue invokeLater {
+      () => modelSupport.fireChildrenRemoved(parent.path, indices.toArray, nodes.toArray)
+    }
+  }
+
 
 }

@@ -113,7 +113,7 @@ class DofAttributeCollection[T](name: String, staticValueType: DofValueType[T]) 
   */
 abstract class DofLink(name: String, val valueType: DofClass) extends DofProperty[DynamicObject](name)
 
-class DofLinkSingle(name: String, valueType: DofClass, quantity: Option[Quantity] = None) extends DofLink(name, valueType) with SingleValueProperty[DynamicObject]
+class DofLinkSingle(name: String, valueType: DofClass, val quantity: Option[Quantity] = None) extends DofLink(name, valueType) with SingleValueProperty[DynamicObject]
 
 class DofLinkCollection(name: String, valueType: DofClass) extends DofLink(name, valueType) with CollectionProperty[DynamicObject]
 

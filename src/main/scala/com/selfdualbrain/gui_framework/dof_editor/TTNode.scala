@@ -40,8 +40,9 @@ sealed trait TTNode[V] {
   //dynamic object which contains information displayed by this node
   val obj: DynamicObject
   private var childNodesX: Option[Seq[TTNode[_]]] = None
+  private var childNodesOngoingRefresh: Boolean = false
   private var cellRendererX: Option[TableCellRenderer] = None
-  val nodeId: Long = TTNode.nextNodeId
+  val debugId: Long = TTNode.nextNodeId
 
   def displayedName: String
 
@@ -51,6 +52,11 @@ sealed trait TTNode[V] {
       case None =>
         val coll = this.discoverChildNodes.toSeq
         childNodesX = Some(coll)
+        if (childNodesOngoingRefresh) {
+          childNodesOngoingRefresh = false
+          val index2childPairs: Seq[(Int, TTNode[_])] = childNodesX.get.zipWithIndex.map{case (node, index) => (index, node)}
+          owner.fireNodesInserted(this, index2childPairs)
+        }
         coll
     }
 
@@ -60,8 +66,12 @@ sealed trait TTNode[V] {
     * Called after the data in this node is changed in a way that enforces re-creation of the whole subtree.
     */
   def recreateChildNodes(): Unit = {
-    childNodesX = None
-    owner.fireNodeChanged(this)
+    if (childNodesX.nonEmpty) {
+      val index2childPairs: Seq[(Int, TTNode[_])] = childNodesX.get.zipWithIndex.map{case (node, index) => (index, node)}
+      childNodesX = None
+      childNodesOngoingRefresh = true
+      owner.fireNodesRemoved(this, index2childPairs)
+    }
   }
 
   def isEditable: Boolean = false
@@ -69,7 +79,7 @@ sealed trait TTNode[V] {
   def path: TreePath =
     parent match {
       case None => new TreePath(this)
-      case Some(p) => new TreePath(p.path, this)
+      case Some(node) => node.path.pathByAddingChild(this)
     }
 
   def getIndexOfChild(node: TTNode[_]): Int = this.childNodes.indexOf(node)
@@ -273,7 +283,7 @@ object TTNode {
   }
 
   /* LinkSingle - exact target type*/
-  case class LinkSingleWithExactTargetType(owner: TTModel, parent: Option[TTNode[_]], obj: DynamicObject, property: DofLink) extends EditableTTNode[DofClass] {
+  case class LinkSingleWithExactTargetType(owner: TTModel, parent: Option[TTNode[_]], obj: DynamicObject, property: DofLinkSingle) extends EditableTTNode[DofClass] {
 
     override def displayedName: String = property.name
 
@@ -315,8 +325,11 @@ object TTNode {
           recreateChildNodes()
         case Some(c) =>
           val oldClassOption = this.value
-          if (oldClassOption.isDefined && oldClassOption.get != c) {
-            obj.setSingle(property.name, Some(new DynamicObject(c)))
+          if (! oldClassOption.contains(c)) {
+            val newInstanceOfTargetClass = new DynamicObject(c)
+            if (property.quantity.isDefined)
+              newInstanceOfTargetClass.quantity = property.quantity.get
+            obj.setSingle(property.name, Some(newInstanceOfTargetClass))
             recreateChildNodes()
           }
       }
@@ -337,7 +350,7 @@ object TTNode {
   }
 
   /* LinkSingle - polymorphic type*/
-  case class LinkSingleWithPolymorphicTargetType(owner: TTModel, parent: Option[TTNode[_]], obj: DynamicObject, property: DofLink) extends EditableTTNode[DofClass] {
+  case class LinkSingleWithPolymorphicTargetType(owner: TTModel, parent: Option[TTNode[_]], obj: DynamicObject, property: DofLinkSingle) extends EditableTTNode[DofClass] {
 
     override def displayedName: String = property.name
 
@@ -360,13 +373,14 @@ object TTNode {
         case Some(c) =>
           val oldClassOption = this.value
           if (! oldClassOption.contains(c)) {
-            obj.setSingle(property.name, Some(new DynamicObject(c)))
+            val newInstanceOfTargetClass = new DynamicObject(c)
+            if (property.quantity.isDefined)
+              newInstanceOfTargetClass.quantity = property.quantity.get
+            obj.setSingle(property.name, Some(newInstanceOfTargetClass))
             recreateChildNodes()
           }
       }
     }
-
-//    def privateUpdatePropertyValue()
 
     override protected def createCellEditor(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer with TableCellEditor = {
       val widget = new DofSubclassSelectionWidget(guiLayoutConfig, property.valueType)
