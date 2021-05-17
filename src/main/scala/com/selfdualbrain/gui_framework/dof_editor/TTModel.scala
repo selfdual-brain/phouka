@@ -66,7 +66,11 @@ class TTModel(rootDynamicObject: DynamicObject) extends AbstractTreeTableModel {
     }
   }
 
-  override def getColumnName(column: Int): String = super.getColumnName(column)
+  override def getColumnName(column: Int): String =
+    column match {
+      case 0 => "Configuration parameter"
+      case 1 => "Value"
+    }
 
   override def isCellEditable(node: Any, column: Int): Boolean ={
     val ttNode = node.asInstanceOf[TTNode[_]]

@@ -285,7 +285,7 @@ object TTNode {
   /* LinkSingle - exact target type*/
   case class LinkSingleWithExactTargetType(owner: TTModel, parent: Option[TTNode[_]], obj: DynamicObject, property: DofLinkSingle) extends EditableTTNode[DofClass] {
 
-    override def displayedName: String = property.name
+    override def displayedName: String = property.displayName
 
     override def discoverChildNodes: Iterable[TTNode[_]] =
       obj.getSingle[DynamicObject](property.name) match {
@@ -352,7 +352,7 @@ object TTNode {
   /* LinkSingle - polymorphic type*/
   case class LinkSingleWithPolymorphicTargetType(owner: TTModel, parent: Option[TTNode[_]], obj: DynamicObject, property: DofLinkSingle) extends EditableTTNode[DofClass] {
 
-    override def displayedName: String = property.name
+    override def displayedName: String = property.displayName
 
     override def discoverChildNodes: Iterable[TTNode[_]] =
       obj.getSingle[DynamicObject](property.name) match {
@@ -454,7 +454,7 @@ object TTNode {
 
     override def isEditable: Boolean = false
 
-    override def value: Option[String] = Some(groupName)
+    override def value: Option[String] = Some("")
 
     override protected def createCellRenderer(guiLayoutConfig: GuiLayoutConfig): TableCellRenderer =
       new GenericDofCellRenderer[String](new StringLabelWidget, "")

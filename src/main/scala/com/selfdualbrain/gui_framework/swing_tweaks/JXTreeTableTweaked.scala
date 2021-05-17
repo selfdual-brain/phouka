@@ -3,6 +3,8 @@ package com.selfdualbrain.gui_framework.swing_tweaks
 import org.jdesktop.swingx.JXTreeTable
 import org.jdesktop.swingx.treetable.TreeTableModel
 
+import javax.swing.tree.TreeCellRenderer
+
 /**
   * Adding some dirty hacks to workaround the limitations of JXTreeTable.
   *

@@ -6,12 +6,11 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
 import com.selfdualbrain.gui_framework.swing_tweaks.JXTreeTableTweaked
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
-import org.jdesktop.swingx.{JXTree, JXTreeTable}
 import org.slf4j.LoggerFactory
 
 import java.awt.{BorderLayout, Color, Dimension}
 import javax.swing.JScrollPane
-import javax.swing.table.{DefaultTableCellRenderer, TableCellEditor, TableCellRenderer}
+import javax.swing.table.{TableCellEditor, TableCellRenderer}
 
 /*                                                                        PRESENTER                                                                                        */
 
@@ -36,6 +35,26 @@ class DofTreeEditorPresenter extends Presenter[DynamicObject, DynamicObject, Dof
 class DofTreeEditorView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel(guiLayoutConfig) with MvpView[DynamicObject, DofTreeEditorPresenter] {
   private val log = LoggerFactory.getLogger(s"mvp-dof-tree-editor[View]")
   this.setPreferredSize(new Dimension(1000, 800))
+
+//  class TableCellRendererDecorator(delegate: TableCellRenderer) extends TableCellRenderer {
+//
+//    override def getTableCellRendererComponent(table: JTable, value: Any, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int): Component = {
+//      val originalComponent = delegate.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
+//      if (! isSelected)
+//        originalComponent.setBackground(new Color(255, 254, 232))
+//      return originalComponent
+//    }
+//
+//  }
+//
+//  class TreeCellRendererDecorator(delegate: TreeCellRenderer) extends TreeCellRenderer {
+//    override def getTreeCellRendererComponent(tree: JTree, value: Any, selected: Boolean, expanded: Boolean, leaf: Boolean, row: Int, hasFocus: Boolean): Component = {
+//      val originalComponent = delegate.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus)
+//      if (! selected)
+//        originalComponent.setBackground(new Color(255, 254, 232))
+//      return originalComponent
+//    }
+//  }
 
   override def afterModelConnected(): Unit = {
     val treeTableModel = new TTModel(this.model)
@@ -65,8 +84,11 @@ class DofTreeEditorView(val guiLayoutConfig: GuiLayoutConfig) extends PlainPanel
     treeTable.setShowVerticalLines(true)
     treeTable.setRowHeight(22)
     treeTable.setGridColor(Color.LIGHT_GRAY)
-    val delegate = treeTable.getTreeCellRenderer.asInstanceOf[JXTree#DelegatingRenderer].getDelegateRenderer
-    println(s"tree column renderer is: $delegate")
+//    val originalTreeCellRenderer = treeTable.getTreeCellRenderer
+//    treeTable.setTreeCellRenderer(new TreeCellRendererDecorator(originalTreeCellRenderer))
+//    val treeCellRendererAfterUpdate = treeTable.getTreeCellRenderer
+    //    val delegate = treeTable.getTreeCellRenderer.asInstanceOf[JXTree#DelegatingRenderer].getDelegateRenderer
+//    println(s"tree column renderer is: $delegate")
     val scroll = new JScrollPane(treeTable)
     this.add(scroll, BorderLayout.CENTER)
   }
