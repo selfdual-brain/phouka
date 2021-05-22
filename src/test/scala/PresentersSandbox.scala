@@ -31,7 +31,7 @@ object PresentersSandbox {
       32 + //target block
       32   //signature
 
-  val config: ExperimentConfig = ExperimentConfig(
+  val config: LegacyExperimentConfig = LegacyExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(15))
@@ -68,7 +68,7 @@ object PresentersSandbox {
     )
   )
 
-  val simulationSetup: SimulationSetup = new ConfigBasedSimulationSetup(config)
+  val simulationSetup: SimulationSetup = new LegacyConfigBasedSimulationSetup(config)
   val engine: BlockchainSimulationEngine = simulationSetup.engine
   val genesis: AbstractGenesis = simulationSetup.genesis
 

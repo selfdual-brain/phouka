@@ -27,7 +27,7 @@ object ReferenceExpConfig {
   //network is fast, nodes have high computing power
   //every node has the same computing speed ,the same weight and the same download bandwidth
   //no disruptions, no equivocators
-  def Tokyo(seed: Long): ExperimentConfig = ExperimentConfig(
+  def Tokyo(seed: Long): LegacyExperimentConfig = LegacyExperimentConfig(
     randomSeed = Some(seed),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(100), max = TimeDelta.millis(1000)),
@@ -70,7 +70,7 @@ object ReferenceExpConfig {
   //validators have equal nodes
   //stable (but slow) network, no disruptions, no equivocators
   //finalizer working at ack-level=3, ftt=0.3
-  def Amsterdam(seed: Long): ExperimentConfig = mainstreamCfg(seed,
+  def Amsterdam(seed: Long): LegacyExperimentConfig = mainstreamCfg(seed,
     ProposeStrategyConfig.NaiveCasper(
       brickProposeDelays = LongSequence.Config.PoissonProcess(lambda = 6, lambdaUnit = TimeUnit.MINUTES, outputUnit = TimeUnit.MICROSECONDS),
       blocksFractionAsPercentage = 4
@@ -78,15 +78,15 @@ object ReferenceExpConfig {
   )
 
   //same as Amsterdam but using leaders-sequence
-  def London(seed: Long): ExperimentConfig = mainstreamCfg(seed,
+  def London(seed: Long): LegacyExperimentConfig = mainstreamCfg(seed,
     ProposeStrategyConfig.RandomLeadersSequenceWithFixedRounds(TimeDelta.seconds(10))
   )
 
   //same as Amsterdam but using Highway
-  def NewYork(seed: Long): ExperimentConfig = mainstreamCfg(seed, typicalHighwayConfig)
+  def NewYork(seed: Long): LegacyExperimentConfig = mainstreamCfg(seed, typicalHighwayConfig)
 
   //NewYork with nontrivial distribution of validator's weights.
-  def PuertoRico(seed: Long): ExperimentConfig =
+  def PuertoRico(seed: Long): LegacyExperimentConfig =
     genericCfg(
       seed,
       typicalHighwayConfig,
@@ -95,7 +95,7 @@ object ReferenceExpConfig {
     )
 
   //PuertoRico with all types of disruptions enabled
-  def RioDeJaneiro(seed: Long): ExperimentConfig =
+  def RioDeJaneiro(seed: Long): LegacyExperimentConfig =
     genericCfg(
       seed,
       typicalHighwayConfig,
@@ -111,7 +111,7 @@ object ReferenceExpConfig {
 
   //###############################################################################################################
 
-  private def mainstreamCfg(seed: Long, bricksProposeStrategy: ProposeStrategyConfig): ExperimentConfig =
+  private def mainstreamCfg(seed: Long, bricksProposeStrategy: ProposeStrategyConfig): LegacyExperimentConfig =
     genericCfg(
       seed,
       bricksProposeStrategy,
@@ -132,8 +132,8 @@ object ReferenceExpConfig {
     perLaneOrphanRateThreshold = 0.2
   )
 
-  private def genericCfg(seed: Long, bricksProposeStrategy: ProposeStrategyConfig, validatorsWeights: IntSequence.Config, disruptionModel: DisruptionModelConfig): ExperimentConfig =
-    ExperimentConfig(
+  private def genericCfg(seed: Long, bricksProposeStrategy: ProposeStrategyConfig, validatorsWeights: IntSequence.Config, disruptionModel: DisruptionModelConfig): LegacyExperimentConfig =
+    LegacyExperimentConfig(
       randomSeed = Some(seed),
       networkModel = NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(
         connGraphLatencyAverageGenCfg = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(5)),

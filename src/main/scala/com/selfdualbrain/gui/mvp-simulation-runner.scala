@@ -3,7 +3,7 @@ package com.selfdualbrain.gui
 import com.selfdualbrain.gui.model.SimulationDisplayModel
 import com.selfdualbrain.gui_framework.MultiWindowOrchestrator
 
-class ExperimentRunnerPresenter extends MultiWindowOrchestrator[SimulationDisplayModel, ExperimentRunnerPresenter.Ev] {
+class SimulationRunnerPresenter extends MultiWindowOrchestrator[SimulationDisplayModel, SimulationRunnerPresenter.Ev] {
   override def afterModelConnected(): Unit = ???
 
   override def afterViewConnected(): Unit = ???
@@ -13,7 +13,7 @@ class ExperimentRunnerPresenter extends MultiWindowOrchestrator[SimulationDispla
   override def createDefaultModel(): SimulationDisplayModel = ???
 }
 
-object ExperimentRunnerPresenter {
+object SimulationRunnerPresenter {
 
   sealed trait Ev {}
 

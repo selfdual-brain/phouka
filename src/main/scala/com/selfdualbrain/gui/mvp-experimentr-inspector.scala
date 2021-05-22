@@ -8,6 +8,7 @@ import com.selfdualbrain.gui_framework.{MvpView, PanelEdge, Presenter}
 /**
   * Composite view of one simulation experiment. Displays configuration, log of events and statistics. Allows user interaction with the experiment.
   */
+@deprecated
 class ExperimentInspectorPresenter extends Presenter[SimulationDisplayModel, SimulationDisplayModel, ExperimentInspectorPresenter,ExperimentInspectorView, ExperimentInspectorPresenter.Ev] {
   private val eventsLog = new EventsLogPresenter
   private val experimentConfig = new ExperimentInspectorPresenter

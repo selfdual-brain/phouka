@@ -3,7 +3,7 @@ package com.selfdualbrain.experiments_framework
 /**
   * Base class for simulation experiments runnable from command-line.
   */
-abstract class Experiment[T] {
+abstract class CommandLineExperiment[T] {
 
   final def main(args: Array[String]): Unit = {
     script(parseArgs(args))

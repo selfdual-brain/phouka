@@ -6,7 +6,7 @@ import com.selfdualbrain.data_structures.{FastIntMap, FastMapOnIntInterval}
 import com.selfdualbrain.des.Event
 import com.selfdualbrain.gui.EventsFilter
 import com.selfdualbrain.gui_framework.EventsBroadcaster
-import com.selfdualbrain.simulator_engine.config.{ConfigBasedSimulationSetup, ExperimentConfig}
+import com.selfdualbrain.simulator_engine.config.{LegacyConfigBasedSimulationSetup, LegacyExperimentConfig}
 import com.selfdualbrain.simulator_engine.core.PhoukaEngine
 import com.selfdualbrain.simulator_engine.{EventPayload, _}
 import com.selfdualbrain.stats.{BlockchainPerNodeStats, BlockchainSimulationStats}
@@ -98,7 +98,7 @@ import scala.collection.mutable.ArrayBuffer
   * a hard limit for maximal number of simulation steps the GUI can display. This limit is equal to Int.MaxValue.
   */
 class SimulationDisplayModel(
-                              val experimentConfig: ExperimentConfig,
+                              val experimentConfig: LegacyExperimentConfig,
                               val engine: BlockchainSimulationEngine,
                               stats: BlockchainSimulationStats,
                               genesis: AbstractGenesis,
@@ -465,8 +465,8 @@ class SimulationDisplayModel(
 object SimulationDisplayModel {
 
   def createDefault(): SimulationDisplayModel = {
-    val config = ExperimentConfig.default
-    val expSetup = new ConfigBasedSimulationSetup(config)
+    val config = LegacyExperimentConfig.default
+    val expSetup = new LegacyConfigBasedSimulationSetup(config)
     val engine: PhoukaEngine = expSetup.engine.asInstanceOf[PhoukaEngine]
     val genesis = expSetup.genesis
     new SimulationDisplayModel(

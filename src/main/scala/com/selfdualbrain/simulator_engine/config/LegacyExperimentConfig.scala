@@ -13,7 +13,7 @@ import scala.util.Random
 /**
   * Simulation experiment layout as defined by the end-user.
   */
-case class ExperimentConfig(
+case class LegacyExperimentConfig(
                              randomSeed: Option[Long],
                              networkModel: NetworkConfig,
                              downloadBandwidthModel: DownloadBandwidthConfig,
@@ -161,7 +161,7 @@ object ObserverConfig {
 
 }
 
-object ExperimentConfig {
+object LegacyExperimentConfig {
 
   private val headerSize: Int =
     32 + //message id
@@ -173,7 +173,7 @@ object ExperimentConfig {
     32 + //target block
     32   //signature
 
-  val default: ExperimentConfig = ExperimentConfig(
+  val default: LegacyExperimentConfig = LegacyExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(delaysGenerator = LongSequence.Config.PseudoGaussian(100000, 20000000)),
     downloadBandwidthModel = DownloadBandwidthConfig.Uniform(1000000),

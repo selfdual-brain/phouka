@@ -83,7 +83,7 @@ object Demo1 {
     val config = createSimulationConfig(randomSeed, proposeStrategy)
 
     //build simulation engine instance
-    simulationSetup  = new ConfigBasedSimulationSetup(config)
+    simulationSetup  = new LegacyConfigBasedSimulationSetup(config)
     engine = simulationSetup.engine
     genesis = simulationSetup.genesis
     stats = simulationSetup.guiCompatibleStats.get
@@ -143,8 +143,8 @@ object Demo1 {
     perLaneOrphanRateThreshold = 0.2
   )
 
-  def createSimulationConfig(randomSeed: Long, bricksProposeStrategy: ProposeStrategyConfig): ExperimentConfig =
-    ExperimentConfig(
+  def createSimulationConfig(randomSeed: Long, bricksProposeStrategy: ProposeStrategyConfig): LegacyExperimentConfig =
+    LegacyExperimentConfig(
       randomSeed = Some(randomSeed),
       networkModel = NetworkConfig.SymmetricLatencyBandwidthGraphNetwork(
         connGraphLatencyAverageGenCfg = LongSequence.Config.PseudoGaussian(TimeDelta.millis(200), TimeDelta.millis(1000)),

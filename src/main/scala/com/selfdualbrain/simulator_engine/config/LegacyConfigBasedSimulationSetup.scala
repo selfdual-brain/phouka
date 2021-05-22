@@ -20,7 +20,7 @@ import scala.util.Random
 /**
   * Base class for experiments based on ExperimentConfig instance.
   */
-class ConfigBasedSimulationSetup(val config: ExperimentConfig) extends SimulationSetup {
+class LegacyConfigBasedSimulationSetup(val config: LegacyExperimentConfig) extends SimulationSetup {
   val actualRandomSeed: Long = config.randomSeed.getOrElse(new Random().nextLong())
   val randomGenerator: Random = new Random(actualRandomSeed)
   private val weightsGenerator: IntSequence.Generator = IntSequence.Generator.fromConfig(config.validatorsWeights, randomGenerator)

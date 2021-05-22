@@ -4,7 +4,7 @@ import com.selfdualbrain.gui_framework.SwingSessionManager
 import com.selfdualbrain.network.NetworkSpeed
 import com.selfdualbrain.randomness.{IntSequence, LongSequence}
 import com.selfdualbrain.simulator_engine._
-import com.selfdualbrain.simulator_engine.config.{BlocksBuildingStrategyModel, ConfigBasedSimulationSetup, DisruptionModelConfig, DownloadBandwidthConfig, ExperimentConfig, FinalizationCostModel, FinalizerConfig, ForkChoiceStrategy, NetworkConfig, ObserverConfig, ProposeStrategyConfig, TransactionsStreamConfig}
+import com.selfdualbrain.simulator_engine.config.{BlocksBuildingStrategyModel, LegacyConfigBasedSimulationSetup, DisruptionModelConfig, DownloadBandwidthConfig, LegacyExperimentConfig, FinalizationCostModel, FinalizerConfig, ForkChoiceStrategy, NetworkConfig, ObserverConfig, ProposeStrategyConfig, TransactionsStreamConfig}
 import com.selfdualbrain.stats.{BlockchainSimulationStats, StatsPrinter}
 import com.selfdualbrain.textout.TextOutput
 import com.selfdualbrain.time.{SimTimepoint, TimeDelta, TimeUnit}
@@ -34,7 +34,7 @@ object ChartsSandbox {
     32 + //target block
     32   //signature
 
-  val config: ExperimentConfig = ExperimentConfig(
+  val config: LegacyExperimentConfig = LegacyExperimentConfig(
     randomSeed = Some(new Random(42).nextLong()),
     networkModel = NetworkConfig.HomogenousNetworkWithRandomDelays(
       delaysGenerator = LongSequence.Config.PseudoGaussian(min = TimeDelta.millis(200), max = TimeDelta.seconds(5))
@@ -72,7 +72,7 @@ object ChartsSandbox {
     )
   )
 
-  private val simulationSetup: SimulationSetup = new ConfigBasedSimulationSetup(config)
+  private val simulationSetup: SimulationSetup = new LegacyConfigBasedSimulationSetup(config)
   private val engine: BlockchainSimulationEngine = simulationSetup.engine
   private val genesis: AbstractGenesis = simulationSetup.genesis
   private val stats: BlockchainSimulationStats = simulationSetup.guiCompatibleStats.get

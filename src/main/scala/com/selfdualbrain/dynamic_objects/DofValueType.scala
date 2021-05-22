@@ -85,8 +85,8 @@ sealed abstract class DofValueType[T] {
 }
 
 object DofValueType {
-  class IllegalPrimitiveValue[T](valueType: DofValueType[T], wrongValue: T) extends Exception
-  class ParsingException[T](valueType: DofValueType[T], wrongString: String, comment: String) extends Exception
+  class IllegalPrimitiveValue[T](val valueType: DofValueType[T], val wrongValue: T) extends Exception(s"type: $valueType, wrong value: $wrongValue")
+  class ParsingException[T](val valueType: DofValueType[T], val wrongString: String, val comment: String) extends Exception(s"type: $valueType, wrong string: $wrongString, explanation: $comment")
 
   /*                              Dof-Boolean                                 */
 

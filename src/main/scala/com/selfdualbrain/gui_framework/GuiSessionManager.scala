@@ -27,4 +27,28 @@ trait GuiSessionManager {
 
   def guiLayoutConfig: GuiLayoutConfig
 
+  def showMessageDialog(
+                         msg: String,
+                         category: DialogMessageCategory,
+                         buttons: Array[String],
+                         initiallySelectedButton: String,
+                         modalContext: Presenter[_,_,_,_,_]
+                       ): Option[Int]
+
+  def showOptionSelectionDialog(
+                         msg: String,
+                         category: DialogMessageCategory,
+                         availableOptions: Array[String],
+                         initiallySelectedOption: String,
+                         modalContext: Presenter[_,_,_,_,_]
+                       ): Option[Int]
+
+
+  def showTextInputDialog(
+                         msg: String,
+                         category: DialogMessageCategory,
+                         defaultValue: String,
+                         modalContext: Presenter[_,_,_,_,_]
+                         ): Option[String]
+
 }

@@ -5,18 +5,18 @@ import com.selfdualbrain.gui_framework.MvpView.{JCheckBoxOps, JTextComponentOps}
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.{FieldsLadderPanel, RibbonPanel}
 import com.selfdualbrain.gui_framework.{MvpView, Presenter}
-import com.selfdualbrain.simulator_engine.config.ExperimentConfig
+import com.selfdualbrain.simulator_engine.config.LegacyExperimentConfig
 
 import javax.swing.{JCheckBox, JTextField}
 
 /**
   * Presents configuration of a simulation engine, i.e the definition of given experiment.
   */
-class ExperimentConfigPresenter extends Presenter[ExperimentConfig, ExperimentConfig, ExperimentConfigPresenter, ExperimentConfigView, Nothing] {
+class ExperimentConfigPresenter extends Presenter[LegacyExperimentConfig, LegacyExperimentConfig, ExperimentConfigPresenter, ExperimentConfigView, Nothing] {
 
   override def createDefaultView(): ExperimentConfigView = new ExperimentConfigView(guiLayoutConfig)
 
-  override def createDefaultModel(): ExperimentConfig = ExperimentConfig.default
+  override def createDefaultModel(): LegacyExperimentConfig = LegacyExperimentConfig.default
 
   override def afterViewConnected(): Unit = {
     //do nothing
@@ -29,7 +29,7 @@ class ExperimentConfigPresenter extends Presenter[ExperimentConfig, ExperimentCo
 
 //##################################################################################################################################################
 
-class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadderPanel(guiLayoutConfig) with MvpView[ExperimentConfig, ExperimentConfigPresenter] {
+class ExperimentConfigView(val guiLayoutConfig: GuiLayoutConfig) extends FieldsLadderPanel(guiLayoutConfig) with MvpView[LegacyExperimentConfig, ExperimentConfigPresenter] {
   import com.selfdualbrain.gui_framework.TextAlignment._
 
   private val randomSeed_TextField: JTextField = addTxtField(width = 140, label = "Random seed", isEditable = false)

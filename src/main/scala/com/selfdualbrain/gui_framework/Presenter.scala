@@ -79,6 +79,16 @@ abstract class Presenter[M,VM,VP<:PresentersTreeVertex,V <: MvpView[VM,VP], E] e
   def createDefaultView(): V
 
   def createDefaultModel():M
+
+  def showMessageDialog(msg: String, category: DialogMessageCategory, buttons: Array[String], initiallySelectedButton: String): Option[Int] =
+    sessionManager.showMessageDialog(msg, category, buttons, initiallySelectedButton, modalContext = this)
+
+  def showOptionSelectionDialog(msg: String, category: DialogMessageCategory, availableOptions: Array[String], initiallySelectedOption: String): Option[Int] =
+    sessionManager.showOptionSelectionDialog(msg, category, availableOptions, initiallySelectedOption, modalContext = this)
+
+  def showTextInputDialog(msg: String, category: DialogMessageCategory, defaultValue: String): Option[String] =
+    sessionManager.showTextInputDialog(msg, category, defaultValue, modalContext = this)
+
 }
 
 /**

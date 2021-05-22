@@ -1,6 +1,6 @@
 package com.selfdualbrain.experiments_framework
 
-import com.selfdualbrain.simulator_engine.config.ExperimentConfig
+import com.selfdualbrain.simulator_engine.config.LegacyExperimentConfig
 
 import java.io.File
 

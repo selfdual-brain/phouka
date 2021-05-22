@@ -5,13 +5,13 @@ import com.selfdualbrain.dynamic_objects._
 import com.selfdualbrain.network.NetworkSpeed
 import com.selfdualbrain.time.TimeDelta
 
-object ConfigDofModel {
+object ConfigDofModel extends DofModel {
 
   /*                                                                              CLASSES                                                                                            */
 
-  val ExperimentConfig: DofClass = DofClass.createNewTopLevel(name = "ExperimentConfig", displayName = "experiment config", help = "Configuration of a simulation experiment")
+  val ExperimentConfig: DofClass = this.createNewTopLevel(name = "ExperimentConfig", displayName = "experiment config", help = "Configuration of a simulation experiment")
 
-  val RandomGenerator: DofClass = DofClass.createNewTopLevel(name = "RandomGenerator", displayName = "random numbers generator", isAbstract = true)
+  val RandomGenerator: DofClass = this.createNewTopLevel(name = "RandomGenerator", displayName = "random numbers generator", isAbstract = true)
   val RandomGenerator_JdkRandom: DofClass = RandomGenerator.newSubclass(name = "RandomGenerator.JdkRandom", displayName = "jdk random",
     help = "Standard random generator built into Java platform"
   )
@@ -31,7 +31,7 @@ object ConfigDofModel {
     help = "Mersenne Twister generator from apache.commons.math"
   )
 
-  val NetworkModel: DofClass = DofClass.createNewTopLevel(name = "NetworkModel", displayName = "network model", isAbstract = true)
+  val NetworkModel: DofClass = this.createNewTopLevel(name = "NetworkModel", displayName = "network model", isAbstract = true)
   val NetworkModel_HomogenousNetworkWithRandomDelays: DofClass = NetworkModel.newSubclass(
     name = "NetworkModel.HomogenousNetworkWithRandomDelays",
     displayName = "homogenous distribution of delays",
@@ -43,7 +43,7 @@ object ConfigDofModel {
     help = "Full graph of connections between nodes is generated. For every edge we pick bandwidth (just single value) and latency (gaussian distribution parameters)."
   )
 
-  val IntegerSequence: DofClass = DofClass.createNewTopLevel(name = "IntegerSequence", displayName = "integer sequence", isAbstract = true)
+  val IntegerSequence: DofClass = this.createNewTopLevel(name = "IntegerSequence", displayName = "integer sequence", isAbstract = true)
   val IntegerSequence_Fixed: DofClass = IntegerSequence.newSubclass(name = "IntegerSequence.Fixed", displayName = "fixed value", help = "Fixed value i.e. this is a constant sequence")
   val IntegerSequence_ArithmeticSeq: DofClass = IntegerSequence.newSubclass(name = "IntegerSequence.ArithmeticSeq", displayName = "arithmetic sequence", help = "Arithmetic sequence.")
   val IntegerSequence_GeometricSeq: DofClass = IntegerSequence.newSubclass(name = "IntegerSequence.GeometricSeq", displayName = "geometric sequence", help = "Geometric sequence.")
@@ -72,7 +72,7 @@ object ConfigDofModel {
     help = "Random variable with Pareto distribution given by shape and min-value, but also with explicit max-value. Values bigger than max-value are skipped."
   )
 
-  val ValidatorImpl: DofClass = DofClass.createNewTopLevel(name = "ValidatorImpl", displayName = "validator implementation", isAbstract = true)
+  val ValidatorImpl: DofClass = this.createNewTopLevel(name = "ValidatorImpl", displayName = "validator implementation", isAbstract = true)
   val ValidatorImpl_NaiveCasper: DofClass = ValidatorImpl.newSubclass(name = "ValidatorImpl.NCB", displayName = "naive casper",
     help = "Naive Casper validator (blocks and ballots are generated at random times, with configured frequency)"
   )
@@ -83,7 +83,7 @@ object ConfigDofModel {
     help = "Dynamic rounds protocol (inspired by Highway paper) with pseudo-randomly selected leader for every round"
   )
 
-  val DownloadBandwidthConfig = DofClass.createNewTopLevel(name = "DownloadBandwidthConfig", displayName = "download bandwidth config", isAbstract = true)
+  val DownloadBandwidthConfig = this.createNewTopLevel(name = "DownloadBandwidthConfig", displayName = "download bandwidth config", isAbstract = true)
   val DownloadBandwidthConfig_Uniform: DofClass = DownloadBandwidthConfig.newSubclass(name = "DownloadBandwidthConfig.Uniform", displayName = "uniform",
     help = "Every node has the same download bandwidth"
   )
@@ -91,7 +91,7 @@ object ConfigDofModel {
     help = "Different download bandwidth is generated per node, using provided integer sequence generator."
   )
 
-  val TransactionsStreamConfig = DofClass.createNewTopLevel(name = "TransactionsStreamConfig", displayName = "transactions stream config",isAbstract = true)
+  val TransactionsStreamConfig = this.createNewTopLevel(name = "TransactionsStreamConfig", displayName = "transactions stream config",isAbstract = true)
   val TransactionsStreamConfig_IndependentSizeAndExecutionCost: DofClass = TransactionsStreamConfig.newSubclass(
     name = "TransactionsStreamConfig.IndependentSizeAndExecutionCost",
     displayName = "independent size and execution cost",
@@ -101,7 +101,7 @@ object ConfigDofModel {
     help = "Every transaction has the same fixed size and cost."
   )
 
-  val BlocksBuildingStrategyModel = DofClass.createNewTopLevel(name = "BlocksBuildingStrategyModel", displayName = "transactions stream config", isAbstract = true)
+  val BlocksBuildingStrategyModel = this.createNewTopLevel(name = "BlocksBuildingStrategyModel", displayName = "transactions stream config", isAbstract = true)
   val BlocksBuildingStrategyModel_FixedNumberOfTransactions: DofClass = BlocksBuildingStrategyModel.newSubclass(
     name = "BlocksBuildingStrategyModel.FixedNumberOfTransactions",
     displayName = "fixed number of transactions",
@@ -113,7 +113,7 @@ object ConfigDofModel {
     help = "A block is filled by taking taking transactions (from the transactions stream) as long as the total cost and total size are below predefined thresholds"
   )
 
-  val FinalizationCostModel = DofClass.createNewTopLevel(name = "FinalizationCostModel", displayName = "finalization cost model", isAbstract = true)
+  val FinalizationCostModel = this.createNewTopLevel(name = "FinalizationCostModel", displayName = "finalization cost model", isAbstract = true)
   val FinalizationCostModel_ScalingOfRealImplementationCost: DofClass = FinalizationCostModel.newSubclass(
     name = "FinalizationCostModel_ScalingOfRealImplementationCost",
     displayName = "scaling of real implementation cost",
@@ -132,7 +132,7 @@ object ConfigDofModel {
     help = "Cost of finalization is always zero, which means we effectively disable this part of time consumption modeling"
   )
 
-  val SimulationEngineStopCondition: DofClass = DofClass.createNewTopLevel("SimulationEngineStopCondition", displayName = "simulation stop condition", isAbstract = true)
+  val SimulationEngineStopCondition: DofClass = this.createNewTopLevel("SimulationEngineStopCondition", displayName = "simulation stop condition", isAbstract = true)
   val SimulationEngineStopCondition_NumberOfSteps: DofClass = SimulationEngineStopCondition.newSubclass(
     name = "SimulationEngineStopCondition_NumberOfSteps",
     displayName = "number of steps",

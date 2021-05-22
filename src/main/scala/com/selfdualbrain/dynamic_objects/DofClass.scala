@@ -3,12 +3,13 @@ package com.selfdualbrain.dynamic_objects
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class DofClass private (val name: String, val displayName: String = "", val isAbstract: Boolean = false, val superclass: Option[DofClass] = None, val help: String = "") {
+class DofClass private[dynamic_objects] (val name: String, val displayName: String = "", val isAbstract: Boolean = false, val superclass: Option[DofClass] = None, val help: String = "") {
   //first element of the pair is a marker
   //"group" -> group-name
   //"property" -> property-name
   type BufferOfMarker2NamePairs = mutable.ArrayBuffer[(String,String)]
 
+  private[dynamic_objects] var model: DofModel = _
   private val definedPropertiesX: mutable.Map[String, DofProperty[_]] = new mutable.HashMap[String, DofProperty[_]]
   private val definedGroupsX: mutable.Set[String] = new mutable.HashSet[String]
   private val directSubclassesX: mutable.Set[DofClass] = new mutable.HashSet[DofClass]
@@ -57,6 +58,7 @@ class DofClass private (val name: String, val displayName: String = "", val isAb
 
   def newSubclass(name: String, displayName: String = "", help: String): DofClass = {
     val result  = new DofClass(name, displayName, superclass = Some(this), isAbstract = false, help = help)
+    model.registerClass(result)
     directSubclassesX += result
     return result
   }
@@ -112,6 +114,7 @@ class DofClass private (val name: String, val displayName: String = "", val isAb
 
 object DofClass {
 
+  @deprecated
   def createNewTopLevel(name: String, displayName: String = "", isAbstract: Boolean = false, help: String = ""): DofClass =
     new DofClass(name, displayName, isAbstract, None, help)
 

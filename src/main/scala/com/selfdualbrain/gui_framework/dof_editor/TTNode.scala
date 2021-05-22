@@ -1,6 +1,5 @@
 package com.selfdualbrain.gui_framework.dof_editor
 
-import com.selfdualbrain.data_structures.FastMapOnIntInterval
 import com.selfdualbrain.dynamic_objects._
 import com.selfdualbrain.gui_framework.dof_editor.cell_editors._
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
@@ -8,6 +7,7 @@ import com.selfdualbrain.util.LineUnreachable
 
 import javax.swing.table.{TableCellEditor, TableCellRenderer}
 import javax.swing.tree.TreePath
+import scala.collection.mutable.ArrayBuffer
 import scala.language.existentials
 
 /**
@@ -248,7 +248,7 @@ object TTNode {
     override def displayedName: String = property.displayName
 
     override def discoverChildNodes: Iterable[TTNode[_]] = {
-      val coll: FastMapOnIntInterval[_] = obj.getCollection(property.name)
+      val coll: ArrayBuffer[_] = obj.getCollection(property.name)
       return coll map { element => new AttrCollectionElement(owner, Some(this), obj, property) }
     }
 
@@ -327,8 +327,6 @@ object TTNode {
           val oldClassOption = this.value
           if (! oldClassOption.contains(c)) {
             val newInstanceOfTargetClass = new DynamicObject(c)
-            if (property.quantity.isDefined)
-              newInstanceOfTargetClass.quantity = property.quantity.get
             obj.setSingle(property.name, Some(newInstanceOfTargetClass))
             recreateChildNodes()
           }
@@ -399,7 +397,7 @@ object TTNode {
     override def displayedName: String = property.displayName
 
     override def discoverChildNodes: Iterable[TTNode[_]] = {
-      val coll: FastMapOnIntInterval[DynamicObject] = obj.getCollection[DynamicObject](property.name)
+      val coll: ArrayBuffer[DynamicObject] = obj.getCollection[DynamicObject](property.name)
       return coll map { element => LinkCollectionElement(owner, Some(this), obj, property) }
     }
 
@@ -426,8 +424,8 @@ object TTNode {
     override def isEditable: Boolean = true
 
     override def value: Option[DofClass] = {
-      val targetObject = obj.getCollection[DynamicObject](property.name).get(this.indexAmongSiblings)
-      return targetObject map (x => x.dofClass)
+      val targetObject = obj.getCollection[DynamicObject](property.name)(this.indexAmongSiblings)
+      return Some(targetObject.dofClass)
     }
 
     override def value_=(clazz: Option[DofClass]): Unit = {

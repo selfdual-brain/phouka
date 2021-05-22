@@ -1,7 +1,8 @@
 package com.selfdualbrain.dynamic_objects
 
-import com.selfdualbrain.data_structures.FastMapOnIntInterval
 import com.selfdualbrain.util.LineUnreachable
+
+import scala.collection.mutable.ArrayBuffer
 
 /**
   * Represents readable/writable "field" defined in the context of a DofClass.
@@ -55,7 +56,7 @@ trait SingleValueProperty[T] {
 trait CollectionProperty[T] {
   self: DofProperty[T] =>
 
-  def getCollection(context: DynamicObject): FastMapOnIntInterval[T] = {
+  def getCollection(context: DynamicObject): ArrayBuffer[T] = {
     val container: DynamicObject.ValueContainer.Collection[T] = context.propertyValueHolder[T](name).asInstanceOf[DynamicObject.ValueContainer.Collection[T]]
     return container.elements
   }
@@ -113,7 +114,15 @@ class DofAttributeCollection[T](name: String, staticValueType: DofValueType[T]) 
   */
 abstract class DofLink(name: String, val valueType: DofClass) extends DofProperty[DynamicObject](name)
 
-class DofLinkSingle(name: String, valueType: DofClass, val quantity: Option[Quantity] = None) extends DofLink(name, valueType) with SingleValueProperty[DynamicObject]
+class DofLinkSingle(name: String, valueType: DofClass, val quantity: Option[Quantity] = None) extends DofLink(name, valueType) with SingleValueProperty[DynamicObject] {
+
+  override def writeSingleValue(context: DynamicObject, newValue: Option[DynamicObject]): Unit = {
+    if (newValue.isDefined && quantity.isDefined)
+      newValue.get.quantity = quantity.get
+    super.writeSingleValue(context, newValue)
+  }
+
+}
 
 class DofLinkCollection(name: String, valueType: DofClass) extends DofLink(name, valueType) with CollectionProperty[DynamicObject]
 
