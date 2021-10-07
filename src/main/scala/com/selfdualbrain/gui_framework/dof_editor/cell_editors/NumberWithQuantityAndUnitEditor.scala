@@ -5,11 +5,11 @@ import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.RibbonPanel
 import com.selfdualbrain.gui_framework.{Orientation, TextAlignment}
 
-import java.awt.Component
+import java.awt.{Component, Dimension}
 import javax.swing._
 
 class NumberWithQuantityAndUnitEditor(guiLayoutConfig: GuiLayoutConfig, quantity: Quantity) extends RibbonPanel(guiLayoutConfig, Orientation.HORIZONTAL) {
-  val numberField: JTextField = this.addTxtField(width = 100, isEditable = true, alignment = TextAlignment.RIGHT, preGap = 0, postGap = 0, wantGrow = true)
+  val numberField: JTextField = this.addTxtField(width = 120, isEditable = true, alignment = TextAlignment.RIGHT, preGap = 0, postGap = 0, wantGrow = false)
   val unitSelector: JComboBox[QuantityUnit] = new JComboBox[QuantityUnit](new DefaultComboBoxModel[QuantityUnit](quantity.allUnits.toArray))
 
   class Renderer extends DefaultListCellRenderer {
@@ -24,7 +24,10 @@ class NumberWithQuantityAndUnitEditor(guiLayoutConfig: GuiLayoutConfig, quantity
   }
 
   unitSelector.setEditable(false)
+  unitSelector.setPreferredSize(new Dimension(120, -1))
+  unitSelector.setMinimumSize(new Dimension(120, -1))
   unitSelector.setRenderer(new Renderer)
-  this.addComponent(unitSelector, preGap = 5, postGap = 0, wantGrowX = true, wantGrowY = false)
+  this.addComponent(unitSelector, preGap = 5, postGap = 0, wantGrowX = false, wantGrowY = false)
+  this.addSpacer()
 }
 

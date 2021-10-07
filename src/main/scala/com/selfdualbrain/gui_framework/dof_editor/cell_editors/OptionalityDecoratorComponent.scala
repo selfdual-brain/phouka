@@ -5,8 +5,8 @@ import com.selfdualbrain.gui_framework.dof_editor.cell_editors.OptionalityDecora
 import com.selfdualbrain.gui_framework.layout_dsl.GuiLayoutConfig
 import com.selfdualbrain.gui_framework.layout_dsl.components.PlainPanel
 
-import java.awt.event.ActionEvent
 import java.awt._
+import java.awt.event.ActionEvent
 import javax.swing.{JCheckBox, JComponent, JPanel}
 
 /**
@@ -28,7 +28,7 @@ class OptionalityDecoratorComponent(
 
   self =>
 
-  this.setLayout(new GridBagLayout)
+//  this.setLayout(new GridBagLayout)
 
   private val checkboxPanel = new JPanel
   private val wrappedWidgetPanel = new JPanel
@@ -42,47 +42,65 @@ class OptionalityDecoratorComponent(
   this.onCheckboxToggled()
 
   private def configureSubPanels(): Unit = {
-    checkboxPanel.setLayout(new GridBagLayout)
-    checkboxPanel.setPreferredSize(new Dimension(100, 20))//todo: use gui config here
-//    checkboxPanel.setBackground(Color.GREEN)
-    val gbc1 = new GridBagConstraints
-    gbc1.gridx = 0
-    gbc1.gridy = 0
-    gbc1.anchor = GridBagConstraints.WEST
-    gbc1.weightx = 0.0
-    gbc1.weighty = 1.0
-    gbc1.fill = GridBagConstraints.BOTH
-    gbc1.insets = new Insets(0, 0, 0, 0)
-    this.add(checkboxPanel, gbc1)
+    checkboxPanel.setLayout(new BorderLayout)
+    checkboxPanel.setPreferredSize(new Dimension(80, -1))
+    this.add(checkboxPanel, BorderLayout.WEST)
 
     wrappedWidgetPanel.setLayout(new BorderLayout)
-    wrappedWidgetPanel.setPreferredSize(new Dimension(100, 20))//todo: use gui config here
-//    wrappedWidgetPanel.setBackground(Color.RED)
-    val gbc2 = new GridBagConstraints
-    gbc2.gridx = 1
-    gbc2.gridy = 0
-    gbc2.anchor = GridBagConstraints.WEST
-    gbc2.weightx = 1.0
-    gbc2.weighty = 1.0
-    gbc2.fill = GridBagConstraints.BOTH
-    gbc2.insets = new Insets(0, 0, 0, 0)
-    this.add(wrappedWidgetPanel, gbc2)
+    wrappedWidgetPanel.setPreferredSize(new Dimension(100, -1))
     wrappedWidgetPanel.add(wrappedComponent, BorderLayout.CENTER)
+    this.add(wrappedWidgetPanel, BorderLayout.CENTER)
   }
 
   private def configureCheckbox(): Unit = {
     checkbox.setSelected(false)
-    val gbc = new GridBagConstraints
-    gbc.gridx = 0
-    gbc.gridy = 0
-    gbc.anchor = GridBagConstraints.WEST
-    gbc.weightx = 1.0
-    gbc.weighty = 0.0
-    gbc.fill = GridBagConstraints.NONE
-    gbc.insets = new Insets(0, 0, 0, 0)
-    checkboxPanel.add(checkbox, gbc)
+    checkboxPanel.add(checkbox, BorderLayout.CENTER)
     checkbox.addActionListener((e: ActionEvent) => onCheckboxToggled())
   }
+
+
+  //  private def configureSubPanels(): Unit = {
+//    checkboxPanel.setLayout(new GridBagLayout)
+//    checkboxPanel.setPreferredSize(new Dimension(80, -1))//todo: use gui config here
+////    checkboxPanel.setBackground(Color.GREEN)
+//    val gbc1 = new GridBagConstraints
+//    gbc1.gridx = 0
+//    gbc1.gridy = 0
+//    gbc1.anchor = GridBagConstraints.WEST
+//    gbc1.weightx = 0.0
+//    gbc1.weighty = 1.0
+//    gbc1.fill = GridBagConstraints.BOTH
+//    gbc1.insets = new Insets(0, 0, 0, 0)
+//    this.add(checkboxPanel, gbc1)
+//
+//    wrappedWidgetPanel.setLayout(new BorderLayout)
+//    wrappedWidgetPanel.setPreferredSize(new Dimension(100, -1))//todo: use gui config here
+////    wrappedWidgetPanel.setBackground(Color.RED)
+//    val gbc2 = new GridBagConstraints
+//    gbc2.gridx = 1
+//    gbc2.gridy = 0
+//    gbc2.anchor = GridBagConstraints.WEST
+//    gbc2.weightx = 1.0
+//    gbc2.weighty = 1.0
+//    gbc2.fill = GridBagConstraints.BOTH
+//    gbc2.insets = new Insets(0, 0, 0, 0)
+//    wrappedWidgetPanel.add(wrappedComponent, BorderLayout.CENTER)
+//    this.add(wrappedWidgetPanel, gbc2)
+//  }
+//
+//  private def configureCheckbox(): Unit = {
+//    checkbox.setSelected(false)
+//    val gbc = new GridBagConstraints
+//    gbc.gridx = 0
+//    gbc.gridy = 0
+//    gbc.anchor = GridBagConstraints.WEST
+//    gbc.weightx = 1.0
+//    gbc.weighty = 0.0
+//    gbc.fill = GridBagConstraints.NONE
+//    gbc.insets = new Insets(0, 0, 0, 0)
+//    checkboxPanel.add(checkbox, gbc)
+//    checkbox.addActionListener((e: ActionEvent) => onCheckboxToggled())
+//  }
 
   def checkboxSwitchOn(): Unit = {
     checkbox.setSelected(true)

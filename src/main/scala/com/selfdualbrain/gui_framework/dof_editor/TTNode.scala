@@ -174,7 +174,7 @@ sealed trait EditableTTNode[V] extends TTNode[V] with ValueHolderWithValidation[
       case t:DofValueType.TDecimal => throw new RuntimeException("not supported yet") //todo: add support for decimal values
       case t:DofValueType.TFloatingPoint => new FloatingPointWidget
       case t:DofValueType.TFloatingPointWithQuantity => new FloatingPointWithQuantityWidget(guiLayoutConfig, t.quantity)
-      case t:DofValueType.TFloatingPointIntervalWithQuantity => new FloatingPointIntervalWithQuantityWidget(guiLayoutConfig, t.quantity)
+      case t:DofValueType.TFloatingPointIntervalWithQuantity => new FloatingPointIntervalWithQuantityWidget(guiLayoutConfig, t.quantity, t.leftEndName, t.rightEndName)
       case DofValueType.TSimTimepoint => new SimTimepointWidget
       case DofValueType.HHMMSS => new HumanReadableTimeAmountWidget(guiLayoutConfig)
       case other => throw new RuntimeException(s"unsupported dof type: $other")
@@ -372,8 +372,6 @@ object TTNode {
           val oldClassOption = this.value
           if (! oldClassOption.contains(c)) {
             val newInstanceOfTargetClass = new DynamicObject(c)
-            if (property.quantity.isDefined)
-              newInstanceOfTargetClass.quantity = property.quantity.get
             obj.setSingle(property.name, Some(newInstanceOfTargetClass))
             recreateChildNodes()
           }

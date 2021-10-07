@@ -303,12 +303,16 @@ class FloatingPointWithQuantityWidget(guiLayoutConfig: GuiLayoutConfig, quantity
 
 /*                                                 FloatingPoint interval with quantity Widget                                                             */
 
-class FloatingPointIntervalWithQuantityWidget(guiLayoutConfig: GuiLayoutConfig, quantity: Quantity) extends SingleValueEditingSwingWidget[IntervalWithQuantity] {
+class FloatingPointIntervalWithQuantityWidget(guiLayoutConfig: GuiLayoutConfig, quantity: Quantity, leftEndName: String, rightEndName: String) extends SingleValueEditingSwingWidget[IntervalWithQuantity] {
   private val leftEndEditor: FloatingPointWithQuantityWidget = new FloatingPointWithQuantityWidget(guiLayoutConfig, quantity)
   private val rightEndEditor: FloatingPointWithQuantityWidget = new FloatingPointWithQuantityWidget(guiLayoutConfig, quantity)
   private val enclosingPanel: RibbonPanel = new RibbonPanel(guiLayoutConfig, Orientation.HORIZONTAL)
-  enclosingPanel.addComponent(comp = leftEndEditor.swingComponent, preGap = 0, postGap = 0, wantGrowX = true, wantGrowY = false)
-  enclosingPanel.addComponent(comp = rightEndEditor.swingComponent, preGap = 0, postGap = 0, wantGrowX = true, wantGrowY = false)
+
+  enclosingPanel.addLabel(leftEndName)
+  enclosingPanel.addComponent(comp = leftEndEditor.swingComponent, preGap = 0, postGap = 0, wantGrowX = false, wantGrowY = false)
+  enclosingPanel.addLabel(rightEndName)
+  enclosingPanel.addComponent(comp = rightEndEditor.swingComponent, preGap = 0, postGap = 0, wantGrowX = false, wantGrowY = false)
+  enclosingPanel.addSpacer()
 
   override def swingComponent: JComponent = enclosingPanel
 
