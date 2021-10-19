@@ -228,10 +228,10 @@ Milestones achieved:
 - 2021-03-10: demo-2: demo-1 + stats GUI + engine performance (radically) improved
 - 2021-03-15: demo-3: demo-2 + log analyzer GUI
 
-Current roadmap:
-- 2021-05-20: beta-1: demo-3 + experiments config GUI + j-dag graph + sim data export + binary release
-- 2021-07-01: beta-2: bugfixes/polishing
-- 2021-09-01: release of ver 1.0 + user's manual
+Planned milestones:
+- beta-1: demo-3 + experiments config GUI + j-dag graph + sim data export + binary release
+- beta-2: bugfixes/polishing
+- release of ver 1.0 + user's manual
 
 Changes expected in ver 2.0:
 - full consensus protocol support (endorsements/spam protection, eras with slots, validators rotation)
